@@ -1,41 +1,21 @@
 {
   "expo": {
-    "name": "citas-jera",
-    "slug": "citas-jera",
+    "name": "AppSendaCitas",
+    "slug": "AppSendaCitas",
     "version": "1.0.0",
-    "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
-    "scheme": "myapp",
-    "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
-    "ios": {
-      "supportsTablet": true
-    },
-    "android": {
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
-      }
-    },
-    "web": {
-      "bundler": "metro",
-      "output": "static",
-      "favicon": "./assets/images/favicon.png"
-    },
+    "scheme": "app-senda-citas", // Add this line to set the URI scheme
     "plugins": [
-      "expo-router",
-      [
-        "expo-splash-screen",
-        {
-          "image": "./assets/images/splash-icon.png",
-          "imageWidth": 200,
-          "resizeMode": "contain",
-          "backgroundColor": "#ffffff"
-        }
-      ]
-    ],
-    "experiments": {
-      "typedRoutes": true
-    }
+      "expo-font",
+      "@react-native-google-signin/google-signin",
+      "@react-native-firebase/app",
+      "@react-native-firebase/auth",
+      "@react-native-firebase/crashlytics"
+    ]
+  },
+  "splash": {
+    "image": "./assets/splash.png", // Ruta de tu logo o imagen splash
+    // Ajusta la imagen (puede ser "contain" o "cover")
+    "backgroundColor": "#ffffff" // Color de fondo mientras carga el splash
   }
 }
