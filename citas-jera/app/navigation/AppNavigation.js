@@ -5,6 +5,7 @@ import { useFonts, Inter_400Regular, Inter_700Bold, Inter_500Medium, Inter_600Se
 
 import LoginScreen from '@screens/login.js';
 import HomeUser from '@screens/users/HomeUser.js';
+import HomeAdmin from '@screens/admins/HomeAdmin.js'
 
 const Stack = createStackNavigator();
 
@@ -20,6 +21,11 @@ function AppNavigator() {
       <Stack.Screen
         name="HomeUser"
         component={HomeUser}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="HomeAdmin"
+        component={HomeAdmin}
         options={{ headerShown: false }}
       />
     </Stack.Navigator>

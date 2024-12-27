@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -11,37 +11,37 @@ import {
   SafeAreaView,
   StatusBar,
   ScrollView,
-  Keyboard,
-  Animated
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import Input from '@components/Inputs.js';
 import Colors from '@styles/colors.js';
+
 
 const { width, height } = Dimensions.get('window');
 
 const LoginScreen = () => {
   const navigation = useNavigation();
   const password = useRef();
+  const usernameRef = useRef();
   const [hide, setHide] = useState(true);
 
-  // Estado para controlar el desplazamiento del teclado
-  
   const handleLogin = () => {
-    // Navegar a la pantalla HomeUser
-    navigation.navigate('HomeUser');
+    const username = usernameRef.current?.getValue(); // Obtiene el valor del Input
+    if (username === '1') {
+      navigation.navigate('HomeAdmin');
+    } else {
+      navigation.navigate('HomeUser');
+    }
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar style="light" backgroundColor="#6e4d7a" />
-
       <View style={styles.decorativeHeader} />
-
+      <StatusBar translucent={true} backgroundColor={'transparent'} />
       <KeyboardAvoidingView
         style={styles.content}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 20} // Offset ajustado para iOS
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 20}
       >
         <ScrollView
           contentContainerStyle={styles.scrollViewContent}
@@ -57,19 +57,23 @@ const LoginScreen = () => {
 
           <Text style={styles.appTitle}>Gestión de Citas Jera</Text>
 
-            <Input title={'Usuario'} onSubmitEditing={() => password.current.focus()} />
+          <Input
+            title={'Usuario'}
+            ref={usernameRef} // Conecta la referencia al Input
+            onSubmitEditing={() => password.current.focus()}
+          />
 
-            <Input
-              secureTextEntry={hide}
-              handleAction={() => setHide(!hide)}
-              ref={password}
-              title={'Contraseña'}
-              icon={hide ? 'eye' : 'eye-slash'}
-            />
+          <Input
+            secureTextEntry={hide}
+            handleAction={() => setHide(!hide)}
+            ref={password}
+            title={'Contraseña'}
+            icon={hide ? 'eye' : 'eye-slash'}
+          />
 
-            <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
-              <Text style={styles.loginButtonText}>Iniciar Sesión</Text>
-            </TouchableOpacity>
+          <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
+            <Text style={styles.loginButtonText}>Iniciar Sesión</Text>
+          </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -78,14 +82,14 @@ const LoginScreen = () => {
 
 const styles = StyleSheet.create({
   decorativeHeader: {
-    height: 40,
+    height: '10%',
     backgroundColor: Colors.PRIMARYCOLOR,
     width: '100%',
   },
 
   container: {
     flex: 1,
-    backgroundColor: Colors.WHITEBACKGROUND
+    backgroundColor: Colors.BACKGROUND,
   },
   content: {
     flex: 1,
@@ -113,34 +117,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 20,
     textAlign: 'center',
-    color: Colors.PRIMARYCOLOR,
-  },
-  formContainer: {
-    width: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  inputContainer: {
-    width: '100%',
-    backgroundColor: 'white',
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 12,
-    marginBottom: 15,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 5
-  },
-  input: {
-    fontSize: 16,
-    color: '#333',
-  },
-  eyeIcon: {
-    position: 'absolute',
-    right: 10,
-    top: '50%',
+    color: Colors.TEXT,
   },
   loginButton: {
     backgroundColor: Colors.PRIMARYCOLOR,
@@ -157,7 +134,7 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   loginButtonText: {
-    color: 'white',
+    color: Colors.TEXTWHITE,
     fontSize: 18,
     fontWeight: 'bold',
   },

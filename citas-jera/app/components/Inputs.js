@@ -22,8 +22,6 @@ const Input = forwardRef(({ title = '', icon = '', handleAction = () => {}, ...r
   }, [focus, value]);
 
   const handleAnimated = () => {
-    // Si el valor está vacío y no está enfocado, la animación se resetea
-    // Si tiene texto, se mantiene animado, sin importar el foco
     Animated.timing(animation, {
       toValue: focus || value !== '' ? 1 : 0,
       duration: 300,
@@ -48,16 +46,22 @@ const Input = forwardRef(({ title = '', icon = '', handleAction = () => {}, ...r
   };
 
   const handleBlur = () => {
-    // Solo se cambia el foco si el valor está vacío
     if (value.trim() === '') {
       setInitialState({ ...initialState, focus: false });
     }
   };
 
+  useEffect(() => {
+    if (ref) {
+      ref.current = {
+        getValue: () => value, // Devuelve el valor actual
+      };
+    }
+  }, [ref, value]);
+
   return (
     <View style={[styles.inputContainer]}>
       <TextInput
-        ref={ref}
         value={value}
         style={[styles.input]}
         selectionColor={Colors.SECONDARYCOLOR}
@@ -65,7 +69,7 @@ const Input = forwardRef(({ title = '', icon = '', handleAction = () => {}, ...r
         onChangeText={(text) => setInitialState({ ...initialState, value: text })}
         onFocus={handleFocus}
         onBlur={handleBlur}
-        placeholderTextColor={Colors.GRAY}
+        placeholderTextColor={Colors.ACCENT}
         {...rest}
       />
       {icon && (
@@ -74,7 +78,7 @@ const Input = forwardRef(({ title = '', icon = '', handleAction = () => {}, ...r
         </TouchableOpacity>
       )}
       <Animated.View style={[styles.titleBox, animatedStyles]} pointerEvents={'none'}>
-        <Animated.Text style={[styles.title, { color: focus || value ? Colors.SECONDARYCOLOR : Colors.GRAY }]}>
+        <Animated.Text style={[styles.title, { color: focus || value ? Colors.SECONDARYCOLOR : Colors.TEXT }]}>
           {title}
         </Animated.Text>
       </Animated.View>
@@ -88,7 +92,7 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: Colors.WHITEBACKGROUND,
+    backgroundColor: Colors.BACKGROUND,
     borderWidth: 1.5,
     borderColor: Colors.SECONDARYCOLOR,
     borderRadius: 10,
@@ -115,7 +119,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderRadius: 22.5,
-    backgroundColor: Colors.LIGHTGRAY,
+    backgroundColor: Colors.BACKGROUND,
     marginRight: 10,
   },
   titleBox: {
@@ -123,7 +127,7 @@ const styles = StyleSheet.create({
     width: 'auto',
     paddingHorizontal: 2,
     paddingVertical: 0.5,
-    backgroundColor: Colors.WHITEBACKGROUND,
+    backgroundColor: Colors.BACKGROUND,
     position: 'absolute',
     justifyContent: 'center',
     alignItems: 'center',
@@ -132,7 +136,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 16,
     fontWeight: '400',
-    color: Colors.SECONDARYCOLOR,
+    color: Colors.TEXT,
   },
 });
 
