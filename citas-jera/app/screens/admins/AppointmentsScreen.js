@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, FlatList, TouchableOpacity, StyleSheet, Modal } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Modal, ScrollView } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
+import { Calendar, CalendarList, Agenda, LocaleConfig } from 'react-native-calendars';
 import Header from '@components/HeaderAdmin.js';
 import Colors from '@styles/colors';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -9,7 +10,7 @@ const AppointmentsScreen = () => {
     const [filter, setFilter] = useState('all');
     const [searchQuery, setSearchQuery] = useState('');
     const [appointments, setAppointments] = useState([
-        { id: '1', employee: 'Juan Pérez', date: '2023-06-15', category: 'psychology', phone: '123-456-7890' },
+        { id: '1', employee: 'Juan Pérez', date: '2024-12-31', category: 'psychology', phone: '123-456-7890' },
         { id: '2', employee: 'Ana López', date: '2023-06-16', category: 'nutrition', phone: '098-765-4321' },
     ]);
     const [isAddModalVisible, setIsAddModalVisible] = useState(false);
@@ -20,11 +21,22 @@ const AppointmentsScreen = () => {
         clientPhone: '',
     });
     const [showDatePicker, setShowDatePicker] = useState(false);
+    const [selectedDate, setSelectedDate] = useState('');
 
     const [employees, setEmployees] = useState([
         { id: 1, name: 'Juan Pérez', phone: '123-456-7890' },
         { id: 2, name: 'Ana López', phone: '098-765-4321' }
     ]);
+
+    const [markedDates, setMarkedDates] = useState({});
+
+    useEffect(() => {
+        const marked = {};
+        appointments.forEach(appointment => {
+            marked[appointment.date] = { marked: true, dotColor: appointment.category === 'psychology' ? Colors.PRIMARYCOLOR : Colors.SECONDARYCOLOR };
+        });
+        setMarkedDates(marked);
+    }, [appointments]);
 
     const addNewEmployee = (employeeName, employeePhone) => {
         const newEmployee = {
@@ -32,37 +44,17 @@ const AppointmentsScreen = () => {
             name: employeeName,
             phone: employeePhone
         };
-
         setEmployees(prevEmployees => [...prevEmployees, newEmployee]);
     };
 
-
-    const filteredAppointments = appointments.filter(appointment => {
-        const matchesFilter = filter === 'all' || appointment.category === filter;
-        const matchesSearch = appointment.employee.toLowerCase().includes(searchQuery.toLowerCase())
-        return matchesFilter && matchesSearch;
-    });
-
-    const renderAppointment = ({ item }) => (
-        <View style={styles.appointmentItem}>
-            <Text style={styles.appointmentText}>{item.employee}</Text>
-            <Text style={styles.appointmentText}>{item.date} - {item.category}</Text>
-            <Text style={styles.appointmentText}>Teléfono: {item.phone}</Text>
-        </View>
-    );
-
     const handleEmployeeChange = (employeeName) => {
         const selectedEmployee = employees.find(emp => emp.name === employeeName);
-    
-        // Actualiza el estado correctamente con el teléfono del empleado
         setNewAppointment({
             ...newAppointment,
             employee: employeeName,
-            clientPhone: selectedEmployee ? selectedEmployee.phone : '',  // Asignamos el teléfono aquí
+            clientPhone: selectedEmployee ? selectedEmployee.phone : '',
         });
     };
-    
-
 
     const addAppointment = () => {
         if (
@@ -72,34 +64,44 @@ const AppointmentsScreen = () => {
             newAppointment.clientPhone
         ) {
             const newAppointmentObj = { ...newAppointment, id: Date.now().toString() };
-    
-            // Actualiza el estado de las citas
             setAppointments(prevAppointments => [...prevAppointments, newAppointmentObj]);
-    
-            // Limpiar el formulario
             setNewAppointment({
                 employee: '',
                 category: '',
                 date: '',
-                clientPhone: ''  // Asegúrate de limpiar también el teléfono
+                clientPhone: ''
             });
-    
             setIsAddModalVisible(false);
         } else {
             console.log("Todos los campos son necesarios");
         }
     };
-    
-
 
     const handleDateChange = (event, selectedDate) => {
         const currentDate = selectedDate || newAppointment.date;
         setShowDatePicker(false);
-
-        // Formatea la fecha como YYYY-MM-DD
         setNewAppointment({ ...newAppointment, date: currentDate.toISOString().split('T')[0] });
     };
 
+    const onDayPress = (day) => {
+        setSelectedDate(day.dateString);
+    };
+
+    const renderAppointmentsForSelectedDate = () => {
+        const appointmentsForDay = appointments.filter(a => a.date === selectedDate);
+        return (
+            <View style={styles.appointmentsList}>
+                <Text style={styles.selectedDateText}>Citas para {selectedDate}</Text>
+                {appointmentsForDay.map(appointment => (
+                    <View key={appointment.id} style={styles.appointmentItem}>
+                        <Text style={styles.appointmentText}>{appointment.employee}</Text>
+                        <Text style={styles.appointmentText}>{appointment.category}</Text>
+                        <Text style={styles.appointmentText}>Teléfono: {appointment.phone}</Text>
+                    </View>
+                ))}
+            </View>
+        );
+    };
 
     return (
         <>
@@ -127,83 +129,91 @@ const AppointmentsScreen = () => {
                         <Text style={styles.filterText}>Nutrición</Text>
                     </TouchableOpacity>
                 </View>
-                <TextInput
-                    style={styles.searchInput}
-                    placeholder="Buscar por empleado o cliente"
-                    value={searchQuery}
-                    onChangeText={setSearchQuery}
-                />
-                <TouchableOpacity style={styles.addButton} onPress={() => setIsAddModalVisible(true)}>
-                    <Text style={styles.addButtonText}>Añadir Cita</Text>
-                </TouchableOpacity>
-                <FlatList
-                    data={filteredAppointments}
-                    renderItem={renderAppointment}
-                    keyExtractor={item => item.id}
-                />
-                <Modal
-                    animationType="slide"
-                    transparent={true}
-                    visible={isAddModalVisible}
-                    onRequestClose={() => setIsAddModalVisible(false)}
-                >
-                    <View style={styles.centeredView}>
-                        <View style={styles.modalView}>
-                            <Picker
-                                selectedValue={newAppointment.employee}
-                                style={styles.picker}
-                                onValueChange={handleEmployeeChange}
-                            >
-                                <Picker.Item label="Seleccionar empleado" value="" />
-                                {employees.map(emp => (
-                                    <Picker.Item key={emp.id} label={emp.name} value={emp.name} />
-                                ))}
-                            </Picker>
-                            <Picker
-                                selectedValue={newAppointment.category}
-                                style={styles.picker}
-                                onValueChange={(itemValue) => setNewAppointment({ ...newAppointment, category: itemValue })}
-                            >
-                                <Picker.Item label="Seleccionar categoría" value="" />
-                                <Picker.Item label="Psicología" value="psychology" />
-                                <Picker.Item label="Nutrición" value="nutrition" />
-                            </Picker>
-                            <TouchableOpacity onPress={() => setShowDatePicker(true)}>
+                <ScrollView showsVerticalScrollIndicator={false}>
+                    <Calendar
+                        onDayPress={onDayPress}
+                        markedDates={markedDates}
+                        theme={{
+                            backgroundColor: Colors.BACKGROUND,
+                            calendarBackground: Colors.BACKGROUND,
+                            textSectionTitleColor: Colors.TEXT,
+                            selectedDayBackgroundColor: Colors.PRIMARYCOLOR,
+                            selectedDayTextColor: Colors.TEXTWHITE,
+                            todayTextColor: Colors.PRIMARYCOLOR,
+                            dayTextColor: Colors.TEXT,
+                            textDisabledColor: '#d9e1e8',
+                            dotColor: Colors.PRIMARYCOLOR,
+                            selectedDotColor: Colors.TEXTWHITE,
+                            arrowColor: Colors.PRIMARYCOLOR,
+                            monthTextColor: Colors.TEXT,
+                            indicatorColor: Colors.PRIMARYCOLOR,
+                        }}
+                    />
+                    {selectedDate && renderAppointmentsForSelectedDate()}
+                    <TouchableOpacity style={styles.addButton} onPress={() => setIsAddModalVisible(true)}>
+                        <Text style={styles.addButtonText}>Añadir Cita</Text>
+                    </TouchableOpacity>
+                    <Modal
+                        animationType="slide"
+                        transparent={true}
+                        visible={isAddModalVisible}
+                        onRequestClose={() => setIsAddModalVisible(false)}
+                    >
+                        <View style={styles.centeredView}>
+                            <View style={styles.modalView}>
+                                <Picker
+                                    selectedValue={newAppointment.employee}
+                                    style={styles.picker}
+                                    onValueChange={handleEmployeeChange}
+                                >
+                                    <Picker.Item label="Seleccionar empleado" value="" />
+                                    {employees.map(emp => (
+                                        <Picker.Item key={emp.id} label={emp.name} value={emp.name} />
+                                    ))}
+                                </Picker>
+                                <Picker
+                                    selectedValue={newAppointment.category}
+                                    style={styles.picker}
+                                    onValueChange={(itemValue) => setNewAppointment({ ...newAppointment, category: itemValue })}
+                                >
+                                    <Picker.Item label="Seleccionar categoría" value="" />
+                                    <Picker.Item label="Psicología" value="psychology" />
+                                    <Picker.Item label="Nutrición" value="nutrition" />
+                                </Picker>
+                                <TouchableOpacity onPress={() => setShowDatePicker(true)}>
+                                    <TextInput
+                                        style={styles.input}
+                                        placeholder="Fecha (YYYY-MM-DD)"
+                                        value={newAppointment.date}
+                                        editable={false}
+                                    />
+                                </TouchableOpacity>
+                                {showDatePicker && (
+                                    <DateTimePicker
+                                        value={newAppointment.date ? new Date(newAppointment.date) : new Date()}
+                                        mode="date"
+                                        display="spinner"
+                                        onChange={handleDateChange}
+                                    />
+                                )}
                                 <TextInput
                                     style={styles.input}
-                                    placeholder="Fecha (YYYY-MM-DD)"
-                                    value={newAppointment.date}
-                                    editable={false} // No editable, solo mostrará la fecha seleccionada
+                                    placeholder="Teléfono del cliente"
+                                    value={newAppointment.clientPhone}
+                                    editable={false}
                                 />
-                            </TouchableOpacity>
-
-                            {showDatePicker && (
-                                <DateTimePicker
-                                    value={newAppointment.date ? new Date(newAppointment.date) : new Date()}
-                                    mode="date"
-                                    display="spinner"
-                                    onChange={handleDateChange}
-                                />
-                            )}
-                            <TextInput
-    style={styles.input}
-    placeholder="Teléfono del cliente"
-    value={newAppointment.clientPhone}
-    editable={false}  // Solo lectura para mostrar el teléfono
-/>
-
-
-
-                            <TouchableOpacity style={[styles.modalButton, { backgroundColor: Colors.SUCCESS }]} onPress={addAppointment}>
-                                <Text style={styles.modalButtonText}>Añadir Cita</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity style={[styles.modalButton, { backgroundColor: Colors.ERROR }]} onPress={() => setIsAddModalVisible(false)}>
-                                <Text style={styles.modalButtonText}>Cancelar</Text>
-                            </TouchableOpacity>
+                                <TouchableOpacity style={[styles.modalButton, { backgroundColor: Colors.SUCCESS }]} onPress={addAppointment}>
+                                    <Text style={styles.modalButtonText}>Añadir Cita</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity style={[styles.modalButton, { backgroundColor: Colors.ERROR }]} onPress={() => setIsAddModalVisible(false)}>
+                                    <Text style={styles.modalButtonText}>Cancelar</Text>
+                                </TouchableOpacity>
+                            </View>
                         </View>
-                    </View>
-                </Modal>
+                    </Modal>
+                </ScrollView>
             </View>
+
         </>
     );
 };
@@ -237,33 +247,30 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         color: Colors.TEXTWHITE,
     },
-    searchInput: {
-        height: 45,
-        borderColor: Colors.TEXT,
-        borderWidth: 1,
-        borderRadius: 25,
-        paddingLeft: 20,
-        marginBottom: 20,
-        fontSize: 16,
+    appointmentsList: {
+        marginTop: 20,
+    },
+    selectedDateText: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        marginBottom: 10,
+        color: Colors.TEXT,
     },
     appointmentItem: {
         backgroundColor: '#FFF',
         padding: 15,
         marginBottom: 15,
         borderRadius: 10,
-        
     },
     appointmentText: {
         fontSize: 16,
         color: Colors.TEXT,
-
     },
     addButton: {
         backgroundColor: Colors.PRIMARYCOLOR,
         paddingVertical: 15,
         borderRadius: 50,
-        marginBottom: 20,
-        Color: '#000',
+        marginTop: 20,
     },
     addButtonText: {
         color: Colors.TEXTWHITE,
@@ -282,7 +289,6 @@ const styles = StyleSheet.create({
         borderRadius: 20,
         padding: 25,
         alignItems: 'center',
-        Color: '#000'
     },
     input: {
         height: 45,
@@ -295,12 +301,11 @@ const styles = StyleSheet.create({
         fontSize: 16,
     },
     picker: {
-
         width: 250,
         marginBottom: 15,
         backgroundColor: Colors.BACKGROUND,
         borderRadius: 25,
-        color: Colors.TEXT, // Para cambiar el color del texto en el Picker
+        color: Colors.TEXT,
     },
     modalButton: {
         width: '50%',
@@ -317,3 +322,4 @@ const styles = StyleSheet.create({
 });
 
 export default AppointmentsScreen;
+

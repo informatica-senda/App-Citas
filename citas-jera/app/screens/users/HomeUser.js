@@ -1,18 +1,19 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, StatusBar, Platform } from 'react-native'; // Importar Platform
+import React, { useState, useEffect } from 'react';
+import { View, StyleSheet, StatusBar, Platform, Text, TouchableOpacity } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
+import { Calendar } from 'react-native-calendars';
 import Header from '@components/HeaderUser';
-import AppointmentList from '@components/AppointmentList';
 import AppointmentModal from '@components/AppointmentModal';
-import Colors from '@styles/colors';  // Importar los colores personalizados
+import Colors from '@styles/colors';
+
 
 const Tab = createBottomTabNavigator();
 
 const generateAppointments = () => {
   const appointments = [];
   const baseDate = new Date('2023-06-01');
-  
+
   for (let i = 0; i < 50; i++) {
     const date = new Date(baseDate);
     date.setDate(baseDate.getDate() + i);
@@ -30,40 +31,118 @@ const generateAppointments = () => {
   return appointments;
 };
 
+// Función para formatear la fecha en formato dd/mm/yyyy
+const formatDate = (date) => {
+  const day = String(date.getDate()).padStart(2, '0'); // Añadir 0 si es un solo dígito
+  const month = String(date.getMonth() + 1).padStart(2, '0'); // Mes comienza desde 0
+  const year = date.getFullYear();
+
+  return `${day}/${month}/${year}`;
+};
+
+
 const HomeUser = () => {
   const [user, setUser] = useState({ name: 'Juan' });
   const [appointments, setAppointments] = useState(generateAppointments());
   const [selectedAppointment, setSelectedAppointment] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
+  const [selectedDate, setSelectedDate] = useState('');
+  const [psychologyMarkedDates, setPsychologyMarkedDates] = useState({});
+  const [nutritionMarkedDates, setNutritionMarkedDates] = useState({});
+
+  useEffect(() => {
+    const psychologyMarked = {};
+    const nutritionMarked = {};
+    appointments.forEach(appointment => {
+      if (appointment.category === 'psychology') {
+        psychologyMarked[appointment.date] = { marked: true, dotColor: Colors.PSICOLOGIA };
+      } else {
+        nutritionMarked[appointment.date] = { marked: true, dotColor: Colors.NUTRICIÓN };
+      }
+    });
+    setPsychologyMarkedDates(psychologyMarked);
+    setNutritionMarkedDates(nutritionMarked);
+  }, [appointments]);
 
   const handleSelectAppointment = (appointment) => {
     setSelectedAppointment(appointment);
     setModalVisible(true);
   };
 
-  const PsychologyScreen = () => (
-    <View style={styles.headerPsicologia}>
-      <Header userName={user.name} screenName={'Psicología'} />
-      <View style={styles.container}>
-        <AppointmentList 
-          appointments={appointments.filter(app => app.category === 'psychology')} 
-          onSelectAppointment={handleSelectAppointment}
-        />
+  const renderAppointmentsForSelectedDate = (category) => {
+    const appointmentsForDay = appointments.filter(a => a.date === selectedDate && a.category === category);
+    const today = new Date().toISOString().split('T')[0];
+    return (
+      <View style={styles.appointmentsList}>
+        <Text style={styles.selectedDateText}>
+          {selectedDate === today ? `Citas para hoy` : `Citas para ${formatDate(new Date(selectedDate))}`}
+        </Text>
+        {appointmentsForDay.length > 0 ? (
+          appointmentsForDay.map(appointment => (
+            <TouchableOpacity
+              key={appointment.id}
+              style={styles.appointmentItem}
+              onPress={() => handleSelectAppointment(appointment)}
+            >
+              <Text style={styles.appointmentText}>{appointment.title}</Text>
+            </TouchableOpacity>
+          ))
+        ) : (
+          <Text style={styles.noAppointmentsText}>No hay citas para esta fecha</Text>
+        )}
       </View>
-    </View>
-  );
+    );
+  };
 
-  const NutritionScreen = () => (
-    <View style={styles.headerNutricion}>
-      <Header userName={user.name} screenName={'Nutrición'} />
-      <View style={styles.container}>
-        <AppointmentList 
-          appointments={appointments.filter(app => app.category === 'nutrition')} 
-          onSelectAppointment={handleSelectAppointment}
-        />
+  const CalendarScreen = ({ category }) => {
+    const markedDates = category === 'psychology' ? psychologyMarkedDates : nutritionMarkedDates;
+
+    return (
+      <View style={styles[`header${category}`]}>
+        <Header userName={user.name} screenName={category === 'psychology' ? 'Psicología' : 'Nutrición'} />
+        <View style={styles.container}>
+          <TouchableOpacity style={styles[`button${category}`]} title='Hoy' onPress={() => {
+            const today = new Date().toISOString().split('T')[0];
+            setSelectedDate(today);
+          }} >
+            <Text style={styles.text}>Hoy</Text>
+          </TouchableOpacity>
+
+          <Calendar
+            current={selectedDate || new Date().toISOString().split('T')[0]}
+            onDayPress={(day) => setSelectedDate(day.dateString)}
+            markedDates={{
+              ...markedDates,
+              [selectedDate]: {
+                ...(markedDates[selectedDate] || {}),
+                selected: true,
+                selectedColor: Colors[category.toUpperCase()],
+              }
+            }}
+            theme={{
+              backgroundColor: Colors.BACKGROUND,
+              calendarBackground: Colors.BACKGROUND,
+              textSectionTitleColor: Colors.TEXT,
+              selectedDayBackgroundColor: Colors[category.toUpperCase()],
+              selectedDayTextColor: Colors.PRIMARYCOLOR,
+              todayTextColor: Colors[category.toUpperCase()],
+              dayTextColor: Colors.TEXT,
+              textDisabledColor: '#d9e1e8',
+              dotColor: Colors[category.toUpperCase()],
+              selectedDotColor: Colors.TEXTWHITE,
+              arrowColor: Colors[category.toUpperCase()],
+              monthTextColor: Colors.TEXT,
+              indicatorColor: Colors[category.toUpperCase()],
+            }}
+          />
+          {selectedDate && renderAppointmentsForSelectedDate(category)}
+        </View>
       </View>
-    </View>
-  );
+    );
+  };
+
+  const PsychologyScreen = () => <CalendarScreen category="psychology" />;
+  const NutritionScreen = () => <CalendarScreen category="nutrition" />;
 
   return (
     <>
@@ -83,7 +162,7 @@ const HomeUser = () => {
           },
           tabBarActiveTintColor: Colors.PRIMARYCOLOR,
           tabBarInactiveTintColor: Colors.SECONDARYCOLOR,
-          tabBarStyle: Platform.OS === 'web' ? styles.webTabBar : styles.mobileTabBar, // Estilos condicionales
+          tabBarStyle: Platform.OS === 'web' ? styles.webTabBar : styles.mobileTabBar,
           tabBarLabelStyle: styles.tabBarLabel,
         })}
       >
@@ -101,14 +180,32 @@ const HomeUser = () => {
   );
 };
 
-// Estilos condicionales
+
 const styles = StyleSheet.create({
-  headerPsicologia: {
+  headerpsychology: {
     paddingTop: '10%',
     flex: 1,
     backgroundColor: Colors.PSICOLOGIA,
   },
-  headerNutricion: {
+  buttonpsychology:{
+    backgroundColor: Colors.PSICOLOGIA,
+    padding: 10,
+    borderRadius: 8,
+    marginBottom: 10
+    },
+    buttonnutrition:{
+      backgroundColor: Colors.NUTRICIÓN,
+      padding: 10,
+      borderRadius: 8,
+      marginBottom: 10
+      },
+    text:{
+    color: Colors.TEXTWHITE,
+    textAlign: 'center',
+    fontSize: 16,
+    fontWeight: 'bold'
+    },
+  headernutrition: {
     paddingTop: '10%',
     flex: 1,
     backgroundColor: Colors.NUTRICIÓN,
@@ -116,7 +213,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.BACKGROUND,
-    padding: 0,
+    padding: 10,
   },
   webTabBar: {
     backgroundColor: Colors.BACKGROUND,
@@ -134,6 +231,39 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
+  appointmentsList: {
+    marginTop: 20,
+  },
+  selectedDateText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    color: Colors.TEXT,
+  },
+  appointmentItem: {
+    backgroundColor: Colors.TEXTWHITE,
+    padding: 15,
+    marginBottom: 10,
+    borderRadius: 8,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.23,
+    shadowRadius: 2.62,
+    elevation: 4,
+  },
+  appointmentText: {
+    fontSize: 16,
+    color: Colors.TEXT,
+  },
+  noAppointmentsText: {
+    fontSize: 16,
+    color: Colors.TEXT,
+    fontStyle: 'italic',
+  },
 });
 
 export default HomeUser;
+
