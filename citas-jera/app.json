@@ -4,18 +4,18 @@
     "slug": "AppSendaCitas",
     "version": "1.0.0",
     "newArchEnabled": true,
-    "scheme": "app-senda-citas", // Add this line to set the URI scheme
+    "scheme": "app-senda-citas",
     "plugins": [
       "expo-font",
       "@react-native-google-signin/google-signin",
       "@react-native-firebase/app",
       "@react-native-firebase/auth",
       "@react-native-firebase/crashlytics"
-    ]
-  },
-  "splash": {
-    "image": "./assets/splash.png", // Ruta de tu logo o imagen splash
-    // Ajusta la imagen (puede ser "contain" o "cover")
-    "backgroundColor": "#ffffff" // Color de fondo mientras carga el splash
+    ],
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    }
   }
 }

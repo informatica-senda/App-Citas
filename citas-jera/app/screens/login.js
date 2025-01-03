@@ -28,9 +28,9 @@ const LoginScreen = () => {
   const handleLogin = () => {
     const username = usernameRef.current?.getValue(); // Obtiene el valor del Input
     if (username === '1') {
-      navigation.navigate('HomeAdmin');
+      navigation.replace('HomeAdmin');
     } else {
-      navigation.navigate('HomeUser');
+      navigation.replace('HomeUser');
     }
   };
 

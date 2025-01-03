@@ -3,9 +3,11 @@ import { View, StyleSheet, StatusBar, Platform, Text, TouchableOpacity } from 'r
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
 import { Calendar } from 'react-native-calendars';
+import { useNavigation } from '@react-navigation/native';
 import Header from '@components/HeaderUser';
 import AppointmentModal from '@components/AppointmentModal';
 import Colors from '@styles/colors';
+import LoginScreen from '../login';
 
 
 const Tab = createBottomTabNavigator();
@@ -42,6 +44,7 @@ const formatDate = (date) => {
 
 
 const HomeUser = () => {
+  const navigation = useNavigation();
   const [user, setUser] = useState({ name: 'Juan' });
   const [appointments, setAppointments] = useState(generateAppointments());
   const [selectedAppointment, setSelectedAppointment] = useState(null);
@@ -144,6 +147,17 @@ const HomeUser = () => {
   const PsychologyScreen = () => <CalendarScreen category="psychology" />;
   const NutritionScreen = () => <CalendarScreen category="nutrition" />;
 
+  const HandleLogOut = ({ navigation }) => {
+    useEffect(() => {
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'LoginScreen' }],
+      });
+    }, [navigation]); // El efecto solo se ejecuta cuando el objeto `navigation` cambia
+  
+    return null; // No se necesita ningún render en este componente
+  };
+
   return (
     <>
       <StatusBar translucent={true} backgroundColor={'transparent'} />
@@ -157,7 +171,9 @@ const HomeUser = () => {
             } else if (route.name === 'Nutrición') {
               iconName = focused ? 'nutrition' : 'nutrition-outline';
               return <Ionicons name={iconName} size={size} color={color} />;
-            }
+            } else if (route.name === 'Exit') {
+              iconName = focused ? 'exit' : 'exit-outline';
+              return <Ionicons name={iconName} size={size} color={color} />;}
             return null;
           },
           tabBarActiveTintColor: Colors.PRIMARYCOLOR,
@@ -168,6 +184,7 @@ const HomeUser = () => {
       >
         <Tab.Screen name="Psicología" component={PsychologyScreen} options={{ headerShown: false }} />
         <Tab.Screen name="Nutrición" component={NutritionScreen} options={{ headerShown: false }} />
+        <Tab.Screen name="Exit" component={HandleLogOut} options={{ headerShown: false }} />
       </Tab.Navigator>
       {selectedAppointment && (
         <AppointmentModal

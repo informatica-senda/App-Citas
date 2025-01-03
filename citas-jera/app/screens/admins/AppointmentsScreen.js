@@ -1,18 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Modal, ScrollView } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
-import { Calendar, CalendarList, Agenda, LocaleConfig } from 'react-native-calendars';
+import { Calendar, LocaleConfig } from 'react-native-calendars';
 import Header from '@components/HeaderAdmin.js';
 import Colors from '@styles/colors';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import AppointmentModalAdmin from '@components/AppointmentModalAdmin'; // Importamos el modal
 
 const AppointmentsScreen = () => {
     const [filter, setFilter] = useState('all');
     const [searchQuery, setSearchQuery] = useState('');
     const [appointments, setAppointments] = useState([
-        { id: '1', employee: 'Juan Pérez', date: '2024-12-31', category: 'psychology', phone: '123-456-7890' },
-        { id: '2', employee: 'Ana López', date: '2023-06-16', category: 'nutrition', phone: '098-765-4321' },
+        { id: '1', employee: 'Juan Pérez', date: '2024-12-31', time: '14:00:00', category: 'psychology', phone: '123-456-7890', title: 'Cita de Psicología',  },
+        { id: '2', employee: 'Ana López', date: '2023-06-16', time: '14:00:00',category: 'nutrition', phone: '098-765-4321', title: 'Cita de Nutrición' },
     ]);
+    const [selectedDate, setSelectedDate] = useState('');
     const [isAddModalVisible, setIsAddModalVisible] = useState(false);
     const [newAppointment, setNewAppointment] = useState({
         employee: '',
@@ -21,14 +23,12 @@ const AppointmentsScreen = () => {
         clientPhone: '',
     });
     const [showDatePicker, setShowDatePicker] = useState(false);
-    const [selectedDate, setSelectedDate] = useState('');
-
     const [employees, setEmployees] = useState([
         { id: 1, name: 'Juan Pérez', phone: '123-456-7890' },
         { id: 2, name: 'Ana López', phone: '098-765-4321' }
     ]);
-
     const [markedDates, setMarkedDates] = useState({});
+    const [selectedAppointment, setSelectedAppointment] = useState(null); // Estado para la cita seleccionada
 
     useEffect(() => {
         const marked = {};
@@ -37,51 +37,6 @@ const AppointmentsScreen = () => {
         });
         setMarkedDates(marked);
     }, [appointments]);
-
-    const addNewEmployee = (employeeName, employeePhone) => {
-        const newEmployee = {
-            id: employees.length + 1,
-            name: employeeName,
-            phone: employeePhone
-        };
-        setEmployees(prevEmployees => [...prevEmployees, newEmployee]);
-    };
-
-    const handleEmployeeChange = (employeeName) => {
-        const selectedEmployee = employees.find(emp => emp.name === employeeName);
-        setNewAppointment({
-            ...newAppointment,
-            employee: employeeName,
-            clientPhone: selectedEmployee ? selectedEmployee.phone : '',
-        });
-    };
-
-    const addAppointment = () => {
-        if (
-            newAppointment.employee &&
-            newAppointment.category &&
-            newAppointment.date &&
-            newAppointment.clientPhone
-        ) {
-            const newAppointmentObj = { ...newAppointment, id: Date.now().toString() };
-            setAppointments(prevAppointments => [...prevAppointments, newAppointmentObj]);
-            setNewAppointment({
-                employee: '',
-                category: '',
-                date: '',
-                clientPhone: ''
-            });
-            setIsAddModalVisible(false);
-        } else {
-            console.log("Todos los campos son necesarios");
-        }
-    };
-
-    const handleDateChange = (event, selectedDate) => {
-        const currentDate = selectedDate || newAppointment.date;
-        setShowDatePicker(false);
-        setNewAppointment({ ...newAppointment, date: currentDate.toISOString().split('T')[0] });
-    };
 
     const onDayPress = (day) => {
         setSelectedDate(day.dateString);
@@ -93,11 +48,15 @@ const AppointmentsScreen = () => {
             <View style={styles.appointmentsList}>
                 <Text style={styles.selectedDateText}>Citas para {selectedDate}</Text>
                 {appointmentsForDay.map(appointment => (
-                    <View key={appointment.id} style={styles.appointmentItem}>
+                    <TouchableOpacity 
+                        key={appointment.id} 
+                        style={styles.appointmentItem} 
+                        onPress={() => setSelectedAppointment(appointment)} // Al presionar, abrir el modal
+                    >
                         <Text style={styles.appointmentText}>{appointment.employee}</Text>
                         <Text style={styles.appointmentText}>{appointment.category}</Text>
                         <Text style={styles.appointmentText}>Teléfono: {appointment.phone}</Text>
-                    </View>
+                    </TouchableOpacity>
                 ))}
             </View>
         );
@@ -150,70 +109,15 @@ const AppointmentsScreen = () => {
                         }}
                     />
                     {selectedDate && renderAppointmentsForSelectedDate()}
-                    <TouchableOpacity style={styles.addButton} onPress={() => setIsAddModalVisible(true)}>
-                        <Text style={styles.addButtonText}>Añadir Cita</Text>
-                    </TouchableOpacity>
-                    <Modal
-                        animationType="slide"
-                        transparent={true}
-                        visible={isAddModalVisible}
-                        onRequestClose={() => setIsAddModalVisible(false)}
-                    >
-                        <View style={styles.centeredView}>
-                            <View style={styles.modalView}>
-                                <Picker
-                                    selectedValue={newAppointment.employee}
-                                    style={styles.picker}
-                                    onValueChange={handleEmployeeChange}
-                                >
-                                    <Picker.Item label="Seleccionar empleado" value="" />
-                                    {employees.map(emp => (
-                                        <Picker.Item key={emp.id} label={emp.name} value={emp.name} />
-                                    ))}
-                                </Picker>
-                                <Picker
-                                    selectedValue={newAppointment.category}
-                                    style={styles.picker}
-                                    onValueChange={(itemValue) => setNewAppointment({ ...newAppointment, category: itemValue })}
-                                >
-                                    <Picker.Item label="Seleccionar categoría" value="" />
-                                    <Picker.Item label="Psicología" value="psychology" />
-                                    <Picker.Item label="Nutrición" value="nutrition" />
-                                </Picker>
-                                <TouchableOpacity onPress={() => setShowDatePicker(true)}>
-                                    <TextInput
-                                        style={styles.input}
-                                        placeholder="Fecha (YYYY-MM-DD)"
-                                        value={newAppointment.date}
-                                        editable={false}
-                                    />
-                                </TouchableOpacity>
-                                {showDatePicker && (
-                                    <DateTimePicker
-                                        value={newAppointment.date ? new Date(newAppointment.date) : new Date()}
-                                        mode="date"
-                                        display="spinner"
-                                        onChange={handleDateChange}
-                                    />
-                                )}
-                                <TextInput
-                                    style={styles.input}
-                                    placeholder="Teléfono del cliente"
-                                    value={newAppointment.clientPhone}
-                                    editable={false}
-                                />
-                                <TouchableOpacity style={[styles.modalButton, { backgroundColor: Colors.SUCCESS }]} onPress={addAppointment}>
-                                    <Text style={styles.modalButtonText}>Añadir Cita</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity style={[styles.modalButton, { backgroundColor: Colors.ERROR }]} onPress={() => setIsAddModalVisible(false)}>
-                                    <Text style={styles.modalButtonText}>Cancelar</Text>
-                                </TouchableOpacity>
-                            </View>
-                        </View>
-                    </Modal>
                 </ScrollView>
             </View>
 
+            {/* Modal de cita seleccionada */}
+            <AppointmentModalAdmin 
+                appointment={selectedAppointment} 
+                visible={!!selectedAppointment} 
+                onClose={() => setSelectedAppointment(null)} 
+            />
         </>
     );
 };
@@ -266,60 +170,6 @@ const styles = StyleSheet.create({
         fontSize: 16,
         color: Colors.TEXT,
     },
-    addButton: {
-        backgroundColor: Colors.PRIMARYCOLOR,
-        paddingVertical: 15,
-        borderRadius: 50,
-        marginTop: 20,
-    },
-    addButtonText: {
-        color: Colors.TEXTWHITE,
-        textAlign: 'center',
-        fontWeight: 'bold',
-        fontSize: 18,
-    },
-    centeredView: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    },
-    modalView: {
-        backgroundColor: Colors.TEXTWHITE,
-        borderRadius: 20,
-        padding: 25,
-        alignItems: 'center',
-    },
-    input: {
-        height: 45,
-        width: 250,
-        borderColor: Colors.TEXT,
-        borderWidth: 1,
-        borderRadius: 25,
-        paddingLeft: 20,
-        marginBottom: 15,
-        fontSize: 16,
-    },
-    picker: {
-        width: 250,
-        marginBottom: 15,
-        backgroundColor: Colors.BACKGROUND,
-        borderRadius: 25,
-        color: Colors.TEXT,
-    },
-    modalButton: {
-        width: '50%',
-        paddingVertical: 15,
-        borderRadius: 50,
-        marginTop: 10
-    },
-    modalButtonText: {
-        color: Colors.TEXTWHITE,
-        textAlign: 'center',
-        fontWeight: 'bold',
-        fontSize: 18,
-    },
 });
 
 export default AppointmentsScreen;
-
