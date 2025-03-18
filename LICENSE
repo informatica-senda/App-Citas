@@ -1,21 +1,15 @@
-MIT License
+Derechos de autor (c) 2024 Senda Gestión S.L.
 
-Copyright (c) 2024 informatica-senda
+Se concede permiso, sin cargo, a cualquier persona que obtenga una copia de este software y de los archivos de documentación asociados (el "Software"), para usar el Software exclusivamente en los términos que se establecen en la presente licencia. El uso, reproducción, modificación, fusión, publicación, distribución, sublicencia y/o venta de copias del Software están expresamente prohibidos, salvo bajo autorización escrita previa de Senda Gestión S.L. 
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+Las siguientes condiciones deberán cumplirse para que cualquier persona pueda usar el Software:
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+1. **Mención del aviso de derechos de autor**: El aviso de derechos de autor y esta licencia deberán incluirse en todas las copias o porciones sustanciales del Software.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+2. **Restricciones**: No se permite el uso, distribución ni modificación del Software sin el permiso expreso de Senda Gestión S.L. Queda prohibido el acceso al código fuente, su distribución y/o la sublicencia a terceros sin autorización.
+
+El SOFTWARE SE PROPORCIONA "TAL CUAL", SIN GARANTÍA DE NINGÚN TIPO, EXPRESA O IMPLÍCITA, INCLUYENDO PERO NO LIMITADO A LAS GARANTÍAS DE COMERCIABILIDAD, APTITUD PARA UN FIN PARTICULAR Y NO INFRACCIÓN. EN NINGÚN CASO, LOS AUTORES O LOS TITULARES DE LOS DERECHOS DE AUTOR SERÁN RESPONSABLES DE CUALQUIER RECLAMO, DAÑO O CUALQUIER OTRA RESPONSABILIDAD, YA SEA EN UNA ACCIÓN DE CONTRATO, AGRAVIO O DE OTRO TIPO, QUE SURJA DE O EN CONEXIÓN CON EL SOFTWARE O EL USO O CUALQUIER OTRA GESTIÓN EN EL SOFTWARE.
+
+La distribución de este Software solo será permitida a través de plataformas autorizadas, bajo los términos establecidos por Senda Gestión S.L.
+
+Este Software está protegido por las leyes de propiedad intelectual de España, así como por tratados internacionales, y no se permite su uso fuera de los términos establecidos en esta licencia.
