@@ -89,7 +89,7 @@ const Input = forwardRef(({ title = '', icon = '', handleAction = () => {}, ...r
 const styles = StyleSheet.create({
   inputContainer: {
     height: 60,
-    width: '100%',
+    alignSelf: 'stretch',
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: Colors.BACKGROUND,
@@ -109,7 +109,7 @@ const styles = StyleSheet.create({
     height: '100%',
     paddingHorizontal: 15,
     fontSize: 16,
-    color: Colors.TEXT,
+    color: Colors.PRIMARYCOLOR,
     borderTopLeftRadius: 10,
     borderBottomLeftRadius: 10,
   },

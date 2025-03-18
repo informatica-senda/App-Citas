@@ -1,16 +1,26 @@
 {
   "expo": {
-    "name": "AppSendaCitas",
-    "slug": "AppSendaCitas",
+    "name": "SendaServicioEmpleados",
+    "slug": "SendaServicioEmpleados",
     "version": "1.0.0",
     "newArchEnabled": true,
     "scheme": "app-senda-citas",
     "plugins": [
+      
       "expo-font",
       "@react-native-google-signin/google-signin",
-      "@react-native-firebase/app",
-      "@react-native-firebase/auth",
-      "@react-native-firebase/crashlytics"
+      [
+      "expo-build-properties",
+      {
+        "android": {
+          "minSdkVersion": 24,
+          "compileSdkVersion": 35
+        },
+        "ios": {
+          "deploymentTarget": "15.1"
+        }
+      }
+    ]
     ],
     "splash": {
       "image": "./assets/splash.png",

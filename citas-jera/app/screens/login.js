@@ -55,7 +55,7 @@ const LoginScreen = () => {
             />
           </View>
 
-          <Text style={styles.appTitle}>App Jera Avanza</Text>
+          <Text style={styles.appTitle}>Gestión de Citas Jera</Text>
 
           <Input
             title={'Usuario'}
@@ -99,7 +99,6 @@ const styles = StyleSheet.create({
   },
   scrollViewContent: {
     flexGrow: 1,
-    width: width - 40,
     justifyContent: 'center',
     alignItems: 'center',
     paddingBottom: 20,
@@ -109,9 +108,9 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   logo: {
-    marginTop: -150,
-    width: 200,
-    height: 200,
+    marginTop: -20,
+    width: 100,
+    height: 100,
   },
   appTitle: {
     fontSize: 28,
