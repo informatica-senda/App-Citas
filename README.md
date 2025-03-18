@@ -20,7 +20,7 @@ Antes de ejecutar la aplicación, asegúrate de tener instalado lo siguiente:
 - **Node.js**: [Descargar Node.js](https://nodejs.org/)
 - **Expo CLI**: Si no tienes Expo CLI instalado, puedes instalarlo globalmente utilizando el siguiente comando:
   
-npm install -g expo-cli
+*npm install -g expo-cli*
 
   
 **🚀 Comandos para Ejecutar la Aplicación**
@@ -31,6 +31,7 @@ Una vez que hayas clonado el repositorio, navega al directorio del proyecto y ej
 *npm install*
 
 O si usas Yarn:
+
 *yarn install*
 
 Iniciar la aplicación en modo de desarrollo:
