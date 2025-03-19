@@ -1,10 +1,10 @@
 {
   "expo": {
-    "name": "SendaServicioEmpleados",
+    "name": "Senda Servicio Empleados",
     "slug": "SendaServicioEmpleados",
     "version": "1.0.0",
     "newArchEnabled": true,
-    "scheme": "app-senda-citas",
+    "scheme": "senda-servicio-empleados",
     "plugins": [
       
       "expo-font",

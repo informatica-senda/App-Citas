@@ -1,23 +1,32 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, FlatList, TouchableOpacity, StyleSheet, Modal } from 'react-native';
-import Header from '@components/HeaderAdmin.js';
-import Colors from '@styles/colors';
+import React, { useState } from 'react'; // Importa React y el hook useState para manejar el estado del componente
+import { View, Text, TextInput, FlatList, TouchableOpacity, StyleSheet, Modal } from 'react-native'; // Importa componentes esenciales de React Native
+import Header from '@components/HeaderAdmin.js'; // Importa el componente de encabezado personalizado para la pantalla
+import Colors from '@styles/colors'; // Importa la paleta de colores predefinida
 
 const EmployeesScreen = () => {
+  // Estado para manejar la búsqueda de empleados
   const [searchQuery, setSearchQuery] = useState('');
+  
+  // Estado que almacena la lista de empleados existentes
   const [employees, setEmployees] = useState([
     { id: '1', name: 'Juan Pérez', code: 'JP001', phone: '123-456-7890' },
     { id: '2', name: 'Ana López', code: 'AL002', phone: '098-765-4321' },
-    // Añade más empleados aquí
+    // Se pueden agregar más empleados aquí
   ]);
+
+  // Estado para manejar la visibilidad del modal de agregar empleados
   const [modalVisible, setModalVisible] = useState(false);
+  
+  // Estado para almacenar los datos del nuevo empleado que se va a agregar
   const [newEmployee, setNewEmployee] = useState({ name: '', code: '', phone: '' });
 
+  // Filtra la lista de empleados según el texto ingresado en la búsqueda
   const filteredEmployees = employees.filter(employee =>
     employee.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     employee.code.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  // Función que renderiza cada empleado en la lista
   const renderEmployee = ({ item }) => (
     <View style={styles.employeeItem}>
       <Text style={styles.employeeText}>{item.name} - {item.code}</Text>
@@ -25,34 +34,47 @@ const EmployeesScreen = () => {
     </View>
   );
 
+  // Función para agregar un nuevo empleado a la lista
   const addEmployee = () => {
     if (newEmployee.name && newEmployee.code && newEmployee.phone) {
-      setEmployees([...employees, { ...newEmployee, id: Date.now().toString() }]);
-      setNewEmployee({ name: '', code: '', phone: '' });
-      setModalVisible(false);
+      setEmployees([...employees, { ...newEmployee, id: Date.now().toString() }]); // Agrega el nuevo empleado con un ID único
+      //Los puntos ... forman parte del operador de propagación y se usan para copiar y expandir arrays y objetos de forma segura y eficiente.
+      //Copian en un nuevo array todos los valores del anterior, en
+      setNewEmployee({ name: '', code: '', phone: '' }); // Reinicia el formulario del modal
+      setModalVisible(false); // Cierra el modal
     }
   };
 
   return (
     <>
+      {/* Encabezado de la pantalla */}
       <View style={styles.headerCitas}>
         <Header header_text={'Lista de empleados'} />
       </View>
+      
+      {/* Contenedor principal de la pantalla */}
       <View style={styles.container}>
+        {/* Campo de búsqueda de empleados */}
         <TextInput
           style={styles.searchInput}
           placeholder="Buscar por nombre o código"
           value={searchQuery}
           onChangeText={setSearchQuery}
         />
+        
+        {/* Botón para abrir el modal de agregar empleados */}
         <TouchableOpacity style={styles.addButton} onPress={() => setModalVisible(true)}>
           <Text style={styles.addButtonText}>Añadir Empleado</Text>
         </TouchableOpacity>
+        
+        {/* Lista de empleados filtrada según la búsqueda */}
         <FlatList
           data={filteredEmployees}
           renderItem={renderEmployee}
           keyExtractor={item => item.id}
         />
+        
+        {/* Modal para añadir un nuevo empleado */}
         <Modal
           animationType="slide"
           transparent={true}
@@ -61,6 +83,7 @@ const EmployeesScreen = () => {
         >
           <View style={styles.centeredView}>
             <View style={styles.modalView}>
+              {/* Campos de entrada para registrar un nuevo empleado */}
               <TextInput
                 style={styles.input}
                 placeholder="Nombre del empleado"
@@ -80,9 +103,13 @@ const EmployeesScreen = () => {
                 onChangeText={(text) => setNewEmployee({ ...newEmployee, phone: text })}
                 keyboardType="phone-pad"
               />
+              
+              {/* Botón para confirmar la adición del nuevo empleado */}
               <TouchableOpacity style={styles.modalButton} onPress={addEmployee}>
                 <Text style={styles.modalButtonText}>Añadir</Text>
               </TouchableOpacity>
+              
+              {/* Botón para cerrar el modal sin agregar empleado */}
               <TouchableOpacity style={styles.modalButton} onPress={() => setModalVisible(false)}>
                 <Text style={styles.modalButtonText}>Cancelar</Text>
               </TouchableOpacity>
@@ -94,6 +121,7 @@ const EmployeesScreen = () => {
   );
 };
 
+// Estilos de la pantalla
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -130,7 +158,7 @@ const styles = StyleSheet.create({
     padding: 15,
     marginBottom: 10,
     borderRadius: 15,
-      },
+  },
   employeeText: {
     fontSize: 16,
     color: '#333',
