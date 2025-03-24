@@ -1,4 +1,3 @@
-// Importamos las bibliotecas y componentes necesarios para la aplicación
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, StatusBar, Platform, Text, TouchableOpacity } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -10,15 +9,9 @@ import AppointmentModal from '@components/AppointmentModal';
 import Colors from '@styles/colors';
 import LoginScreen from '../login';
 
-// Creamos el navegador de pestañas para la aplicación
+
 const Tab = createBottomTabNavigator();
 
-/**
- * Función que genera una lista de citas ficticias para simular la carga de datos en la aplicación.
- * - Se generan 50 citas a partir de una fecha base ('2023-06-01').
- * - Cada cita se asigna aleatoriamente a una de dos categorías: 'psychology' o 'nutrition'.
- * - Se devuelve un array de objetos con los datos de cada cita.
- */
 const generateAppointments = () => {
   const appointments = [];
   const baseDate = new Date('2023-06-01');
@@ -40,52 +33,29 @@ const generateAppointments = () => {
   return appointments;
 };
 
-/**
- * Función para formatear una fecha en el formato "dd/mm/yyyy".
- * - Extrae el día, mes y año de un objeto Date.
- * - Añade un '0' delante si el día o mes es de un solo dígito.
- * - Retorna la fecha en el formato adecuado.
- */
+// Función para formatear la fecha en formato dd/mm/yyyy
 const formatDate = (date) => {
-  const day = String(date.getDate()).padStart(2, '0');
-  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0'); // Añadir 0 si es un solo dígito
+  const month = String(date.getMonth() + 1).padStart(2, '0'); // Mes comienza desde 0
   const year = date.getFullYear();
 
   return `${day}/${month}/${year}`;
 };
 
-// Componente principal de la pantalla de usuario
+
 const HomeUser = () => {
   const navigation = useNavigation();
-
-  // Estado que almacena la información del usuario actual
   const [user, setUser] = useState({ name: 'Juan' });
-  
-  // Lista de citas generadas aleatoriamente para simular datos en la aplicación
   const [appointments, setAppointments] = useState(generateAppointments());
-  
-  // Estado que almacena la cita seleccionada para ser mostrada en un modal
   const [selectedAppointment, setSelectedAppointment] = useState(null);
-  
-  // Estado que controla la visibilidad del modal de detalles de la cita
   const [modalVisible, setModalVisible] = useState(false);
-  
-  // Estado que guarda la fecha seleccionada en el calendario
   const [selectedDate, setSelectedDate] = useState('');
-  
-  // Estados que almacenan las fechas marcadas en el calendario para cada categoría de citas
   const [psychologyMarkedDates, setPsychologyMarkedDates] = useState({});
   const [nutritionMarkedDates, setNutritionMarkedDates] = useState({});
 
-  /**
-   * useEffect que se ejecuta cuando cambia la lista de citas.
-   * - Recorre todas las citas y asigna un color diferente en el calendario según la categoría.
-   * - Almacena estas fechas en estados separados para ser utilizados en el calendario.
-   */
   useEffect(() => {
     const psychologyMarked = {};
     const nutritionMarked = {};
-    
     appointments.forEach(appointment => {
       if (appointment.category === 'psychology') {
         psychologyMarked[appointment.date] = { marked: true, dotColor: Colors.PSICOLOGIA };
@@ -93,41 +63,23 @@ const HomeUser = () => {
         nutritionMarked[appointment.date] = { marked: true, dotColor: Colors.NUTRICIÓN };
       }
     });
-    
     setPsychologyMarkedDates(psychologyMarked);
     setNutritionMarkedDates(nutritionMarked);
   }, [appointments]);
 
-  /**
-   * Función que maneja la selección de una cita por parte del usuario.
-   * - Guarda la cita seleccionada en el estado correspondiente.
-   * - Muestra el modal con la información de la cita seleccionada.
-   */
   const handleSelectAppointment = (appointment) => {
     setSelectedAppointment(appointment);
     setModalVisible(true);
   };
 
-  /**
-   * Función que renderiza la lista de citas para una fecha seleccionada, filtradas por categoría.
-   * - Muestra las citas en una lista con botones interactivos para seleccionarlas.
-   * - Indica si no hay citas disponibles para la fecha elegida.
-   */
   const renderAppointmentsForSelectedDate = (category) => {
-    // Filtramos las citas para la fecha seleccionada y la categoría especificada
     const appointmentsForDay = appointments.filter(a => a.date === selectedDate && a.category === category);
-    
-    // Obtenemos la fecha de hoy en formato ISO
     const today = new Date().toISOString().split('T')[0];
-    
     return (
       <View style={styles.appointmentsList}>
-        {/* Encabezado que muestra la fecha seleccionada */}
         <Text style={styles.selectedDateText}>
-          {selectedDate === today ? 'Citas para hoy' : `Citas para ${formatDate(new Date(selectedDate))}`}
+          {selectedDate === today ? `Citas para hoy` : `Citas para ${formatDate(new Date(selectedDate))}`}
         </Text>
-        
-        {/* Si hay citas, las mostramos en la lista */}
         {appointmentsForDay.length > 0 ? (
           appointmentsForDay.map(appointment => (
             <TouchableOpacity
@@ -145,10 +97,91 @@ const HomeUser = () => {
     );
   };
 
+  const CalendarScreen = ({ category }) => {
+    const markedDates = category === 'psychology' ? psychologyMarkedDates : nutritionMarkedDates;
+
+    return (
+      <View style={styles[`header${category}`]}>
+        <Header userName={user.name} screenName={category === 'psychology' ? 'Psicología' : 'Nutrición'} />
+        <View style={styles.container}>
+          <TouchableOpacity style={styles[`button${category}`]} title='Hoy' onPress={() => {
+            const today = new Date().toISOString().split('T')[0];
+            setSelectedDate(today);
+          }} >
+            <Text style={styles.text}>Hoy</Text>
+          </TouchableOpacity>
+
+          <Calendar
+            current={selectedDate || new Date().toISOString().split('T')[0]}
+            onDayPress={(day) => setSelectedDate(day.dateString)}
+            markedDates={{
+              ...markedDates,
+              [selectedDate]: {
+                ...(markedDates[selectedDate] || {}),
+                selected: true,
+                selectedColor: Colors[category.toUpperCase()],
+              }
+            }}
+            theme={{
+              backgroundColor: Colors.BACKGROUND,
+              calendarBackground: Colors.BACKGROUND,
+              textSectionTitleColor: Colors.TEXT,
+              selectedDayBackgroundColor: Colors[category.toUpperCase()],
+              selectedDayTextColor: Colors.PRIMARYCOLOR,
+              todayTextColor: Colors[category.toUpperCase()],
+              dayTextColor: Colors.TEXT,
+              textDisabledColor: '#d9e1e8',
+              dotColor: Colors[category.toUpperCase()],
+              selectedDotColor: Colors.TEXTWHITE,
+              arrowColor: Colors[category.toUpperCase()],
+              monthTextColor: Colors.TEXT,
+              indicatorColor: Colors[category.toUpperCase()],
+            }}
+          />
+          {selectedDate && renderAppointmentsForSelectedDate(category)}
+        </View>
+      </View>
+    );
+  };
+
+  const PsychologyScreen = () => <CalendarScreen category="psychology" />;
+  const NutritionScreen = () => <CalendarScreen category="nutrition" />;
+
+  const HandleLogOut = ({ navigation }) => {
+    useEffect(() => {
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'LoginScreen' }],
+      });
+    }, [navigation]); // El efecto solo se ejecuta cuando el objeto `navigation` cambia
+  
+    return null; // No se necesita ningún render en este componente
+  };
+
   return (
     <>
       <StatusBar translucent={true} backgroundColor={'transparent'} />
-      <Tab.Navigator>
+      <Tab.Navigator
+        screenOptions={({ route }) => ({
+          tabBarIcon: ({ focused, color, size }) => {
+            let iconName;
+            if (route.name === 'Psicología') {
+              iconName = focused ? 'brain' : 'brain';
+              return <FontAwesome5 name={iconName} size={size} color={color} />;
+            } else if (route.name === 'Nutrición') {
+              iconName = focused ? 'nutrition' : 'nutrition-outline';
+              return <Ionicons name={iconName} size={size} color={color} />;
+            } else if (route.name === 'Exit') {
+              iconName = focused ? 'exit' : 'exit-outline';
+              return <Ionicons name={iconName} size={size} color={color} />;}
+            return null;
+          },
+          tabBarActiveTintColor: Colors.PRIMARYCOLOR,
+          tabBarInactiveTintColor: Colors.SECONDARYCOLOR,
+          tabBarStyle: Platform.OS === 'web' ? styles.webTabBar : styles.mobileTabBar,
+          tabBarLabelStyle: styles.tabBarLabel,
+        })}
+      >
         <Tab.Screen name="Psicología" component={PsychologyScreen} options={{ headerShown: false }} />
         <Tab.Screen name="Nutrición" component={NutritionScreen} options={{ headerShown: false }} />
         <Tab.Screen name="Exit" component={HandleLogOut} options={{ headerShown: false }} />
@@ -163,5 +196,90 @@ const HomeUser = () => {
     </>
   );
 };
+
+
+const styles = StyleSheet.create({
+  headerpsychology: {
+    paddingTop: '10%',
+    flex: 1,
+    backgroundColor: Colors.PSICOLOGIA,
+  },
+  buttonpsychology:{
+    backgroundColor: Colors.PSICOLOGIA,
+    padding: 10,
+    borderRadius: 8,
+    marginBottom: 10
+    },
+    buttonnutrition:{
+      backgroundColor: Colors.NUTRICIÓN,
+      padding: 10,
+      borderRadius: 8,
+      marginBottom: 10
+      },
+    text:{
+    color: Colors.TEXTWHITE,
+    textAlign: 'center',
+    fontSize: 16,
+    fontWeight: 'bold'
+    },
+  headernutrition: {
+    paddingTop: '10%',
+    flex: 1,
+    backgroundColor: Colors.NUTRICIÓN,
+  },
+  container: {
+    flex: 1,
+    backgroundColor: Colors.BACKGROUND,
+    padding: 10,
+  },
+  webTabBar: {
+    backgroundColor: Colors.BACKGROUND,
+    borderTopWidth: 0,
+    paddingTop: 5,
+    height: '10%',
+  },
+  mobileTabBar: {
+    backgroundColor: Colors.BACKGROUND,
+    borderTopWidth: 0,
+    paddingTop: 5,
+    height: '9%',
+  },
+  tabBarLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  appointmentsList: {
+    marginTop: 20,
+  },
+  selectedDateText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    color: Colors.TEXT,
+  },
+  appointmentItem: {
+    backgroundColor: Colors.TEXTWHITE,
+    padding: 15,
+    marginBottom: 10,
+    borderRadius: 8,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.23,
+    shadowRadius: 2.62,
+    elevation: 4,
+  },
+  appointmentText: {
+    fontSize: 16,
+    color: Colors.TEXT,
+  },
+  noAppointmentsText: {
+    fontSize: 16,
+    color: Colors.TEXT,
+    fontStyle: 'italic',
+  },
+});
 
 export default HomeUser;

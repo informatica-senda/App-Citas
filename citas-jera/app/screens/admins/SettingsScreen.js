@@ -15,6 +15,8 @@ const SettingsScreen = ({ navigation }) => {
   // Estado para almacenar el contenido dinámico del modal
   const [modalContent, setModalContent] = useState('');
 
+  const [logoutVisible, setLogoutVisible] = useState(false);
+
   /**
    * Función que muestra los responsables de las citas en un modal.
    * - Agrega nombres y correos de los responsables de Psicología y Nutrición.
@@ -31,7 +33,6 @@ const SettingsScreen = ({ navigation }) => {
     );
     setModalVisible(true);
   };
-
   /**
    * Función que muestra una guía de uso en un modal con instrucciones sobre cómo utilizar la aplicación.
    */
@@ -47,13 +48,14 @@ const SettingsScreen = ({ navigation }) => {
     setModalVisible(true);
   };
 
+
   return (
     <>
       {/* Encabezado de la pantalla de Ajustes */}
       <View style={styles.headerCitas}>
         <Header header_text={'Ajustes'} />
       </View>
-      
+
       {/* Botones de opciones dentro de la pantalla de Ajustes */}
       <View style={styles.container}>
         <TouchableOpacity style={styles.button} onPress={showResponsibles}>
@@ -63,33 +65,31 @@ const SettingsScreen = ({ navigation }) => {
           <Text style={styles.buttonText}>Ayuda</Text>
         </TouchableOpacity>
       </View>
-      
+
       {/* Botón para cerrar sesión */}
       <View style={styles.cerrarSesion}>
-        <TouchableOpacity style={styles.logoutButton} onPress={() => { navigation.navigate('LoginScreen'); }}>
+        <TouchableOpacity style={styles.logoutButton} onPress={() => {setLogoutVisible(true)}}>
           <Text style={styles.buttonTextCerrarSesion}>Cerrar Sesión</Text>
         </TouchableOpacity>
-        
+
         {/* Modal para mostrar información dinámica */}
-        <Modal
-          animationType="slide"
-          transparent={true}
-          visible={modalVisible}
-          onRequestClose={() => setModalVisible(false)}
-        >
-          <View style={styles.centeredView}>
-            <View style={styles.modalView}>
-              {modalContent}
-              <TouchableOpacity
-                style={styles.buttonClose}
-                onPress={() => setModalVisible(false)}
-              >
-                <Text style={styles.buttonTextCerrarSesion}>Cerrar</Text>
+      </View>
+
+      <Modal visible={logoutVisible} transparent={true} animationType="fade">
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <Text style={styles.loadingText}>Deseas salir?</Text>
+            <View style={styles.modalButtons}>
+              <TouchableOpacity style={styles.modalButton} onPress={() => setLogoutVisible(false)}>
+                <Text style={styles.modalButtonText}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.modalButton} onPress={() => navigation.replace('LoginScreen')}>
+                <Text style={styles.modalButtonText}>Salir</Text>
               </TouchableOpacity>
             </View>
           </View>
-        </Modal>
-      </View>
+        </View>
+      </Modal>
     </>
   );
 };

@@ -3,6 +3,7 @@
 # dependencies
 node_modules/
 desktop.init
+.env
 
 
 # Expo

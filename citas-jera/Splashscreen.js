@@ -19,6 +19,7 @@ export default function SplashScreenWrapper({ children }) {
       try {
         // Simula un retraso artificial para demostración (puedes eliminarlo en producción)
         await new Promise(resolve => setTimeout(resolve, 2000));
+        
       } catch (e) {
         console.warn(e);
       } finally {

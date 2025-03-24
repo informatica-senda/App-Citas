@@ -5,10 +5,24 @@
     "version": "1.0.0",
     "newArchEnabled": true,
     "scheme": "senda-servicio-empleados",
+    "ios": {
+      "googleServicesFile": "./GoogleService-Info.plist",
+      "bundleIdentifier": "com.sendagestion.servicioempleadosenda",
+      "supportsTablet": true
+    },
+    "android": {
+      "googleServicesFile": "./google-services.json",
+      "package": "com.sendagestion.servicioempleadosenda",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#FFFFFF"
+      }
+    },
     "plugins": [
       
       "expo-font",
-      "@react-native-google-signin/google-signin",
+      "@react-native-firebase/app",
+      "@react-native-firebase/auth",
       [
       "expo-build-properties",
       {
@@ -17,7 +31,8 @@
           "compileSdkVersion": 35
         },
         "ios": {
-          "deploymentTarget": "15.1"
+          "deploymentTarget": "15.1",
+          "useFrameworks": "static"
         }
       }
     ]
