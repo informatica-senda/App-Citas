@@ -8,6 +8,7 @@ import Header from '@components/HeaderUser';
 import AppointmentModal from '@components/AppointmentModal';
 import Colors from '@styles/colors';
 import LoginScreen from '../login';
+import LogoutConfirmation from '../../components/LogoutConfirmation';
 
 
 const Tab = createBottomTabNavigator();
@@ -146,17 +147,15 @@ const HomeUser = () => {
 
   const PsychologyScreen = () => <CalendarScreen category="psychology" />;
   const NutritionScreen = () => <CalendarScreen category="nutrition" />;
+  const Exit = () => <LogoutConfirmation style={styles.buttonText} onCancel={HandleCancel} onLogout={HandleLogOut} />;
 
-  const HandleLogOut = ({ navigation }) => {
-    useEffect(() => {
-      navigation.reset({
-        index: 0,
-        routes: [{ name: 'LoginScreen' }],
-      });
-    }, [navigation]); // El efecto solo se ejecuta cuando el objeto `navigation` cambia
-  
-    return null; // No se necesita ningún render en este componente
+  const HandleLogOut = () => {
+    navigation.replace('LoginScreen')
   };
+
+  const HandleCancel = () => {
+    navigation.replace('HomeUser');
+  }
 
   return (
     <>
@@ -184,7 +183,7 @@ const HomeUser = () => {
       >
         <Tab.Screen name="Psicología" component={PsychologyScreen} options={{ headerShown: false }} />
         <Tab.Screen name="Nutrición" component={NutritionScreen} options={{ headerShown: false }} />
-        <Tab.Screen name="Exit" component={HandleLogOut} options={{ headerShown: false }} />
+        <Tab.Screen name="Exit" component={Exit} options={{ headerShown: false }} />
       </Tab.Navigator>
       {selectedAppointment && (
         <AppointmentModal
