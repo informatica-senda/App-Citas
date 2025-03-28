@@ -37,13 +37,19 @@ const LoginScreen = () => {
     const passwordComp = password.current?.getValue();
 
     if (username && passwordComp) {
+      
       try {
         setIsLoading(true);
+        console.log("hola");
         const response = await signInWithEmailAndPassword(auth, username, passwordComp);
+        console.log(response);
         if (response) {
           // Obtener el documento del usuario desde Firestore
           const userDocRef = doc(db, "users", response.user.uid);
           const userDocSnap = await getDoc(userDocRef);
+
+          console.log(userDocRef);
+          console.log(userDocSnap);
 
           if (userDocSnap.exists()) {
             const userData = userDocSnap.data();
@@ -58,6 +64,7 @@ const LoginScreen = () => {
         }
       } catch (e) {
         setIsLoading(false);
+        console.log(e)
         e = "[FirebaseError: Firebase: Error (auth/invalid-email).]" ? alert("Usuario o contraseña incorrectos") : alert("Ha ocurrido un error");
       }
     } else {
