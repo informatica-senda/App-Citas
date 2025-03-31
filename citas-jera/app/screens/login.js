@@ -4,28 +4,31 @@ import { useNavigation } from '@react-navigation/native';
 import Input from '@components/Inputs.js';
 import Colors from '@styles/colors.js';
 import { signInWithEmailAndPassword } from 'firebase/auth';
-import { db ,auth} from '../../firebaseConfig.js';
+import {db, auth} from '../../firebaseConfig.js';
 import { doc, getDoc } from 'firebase/firestore';
-
+ 
+ 
 // Obtenemos las dimensiones de la pantalla del dispositivo
 const { width, height } = Dimensions.get('window');
-
+ 
+ 
+ 
 // Componente principal de la pantalla de inicio de sesión
 const LoginScreen = () => {
-
+ 
   const [isLoading, setIsLoading] = useState(false); // Estado para controlar la visibilidad del modal de carga
-
+ 
   const navigation = useNavigation(); // Hook para manejar la navegación entre pantallas
-
+ 
   // Referencias para los campos de entrada (usuario y contraseña)
   const password = useRef();
   const usernameRef = useRef();
   const phoneNumberRef = useRef();
   const workerIdRef = useRef();
-
+ 
   // Estado que controla la visibilidad de la contraseña en el campo de entrada
   const [hide, setHide] = useState(true);
-
+ 
   /**
    * Función que maneja el proceso de inicio de sesión.
    * - Obtiene el valor ingresado en el campo de usuario.
@@ -35,22 +38,18 @@ const LoginScreen = () => {
   const handleLogin = async () => {
     const username = usernameRef.current?.getValue();
     const passwordComp = password.current?.getValue();
-
+ 
     if (username && passwordComp) {
-      
+     
       try {
+       
         setIsLoading(true);
-        console.log("hola");
         const response = await signInWithEmailAndPassword(auth, username, passwordComp);
-        console.log(response);
         if (response) {
           // Obtener el documento del usuario desde Firestore
           const userDocRef = doc(db, "users", response.user.uid);
           const userDocSnap = await getDoc(userDocRef);
-
-          console.log(userDocRef);
-          console.log(userDocSnap);
-
+ 
           if (userDocSnap.exists()) {
             const userData = userDocSnap.data();
             setIsLoading(false);
@@ -64,23 +63,22 @@ const LoginScreen = () => {
         }
       } catch (e) {
         setIsLoading(false);
-        console.log(e)
-        e = "[FirebaseError: Firebase: Error (auth/invalid-email).]" ? alert("Usuario o contraseña incorrectos") : alert("Ha ocurrido un error");
+        e = "[FirebaseError: Firebase: Error (auth/invalid-email).]" ? alert("No hay autenticación") : alert("Ha ocurrido un error");
       }
     } else {
       alert("Introduce el usuario y la contraseña");
     }
   };
-
+ 
   return (
     // SafeAreaView asegura que el contenido no se solape con áreas no seguras de la pantalla (notch, barra de estado, etc.)
     <SafeAreaView style={styles.container}>
       {/* Barra decorativa superior */}
       <View style={styles.decorativeHeader} />
-
+ 
       {/* Personalización de la barra de estado */}
       <StatusBar translucent={true} backgroundColor={'transparent'} />
-
+ 
       {/* Contenedor principal con manejo del teclado para evitar solapamiento en dispositivos iOS */}
       <KeyboardAvoidingView
         style={styles.content}
@@ -100,18 +98,18 @@ const LoginScreen = () => {
               resizeMode="contain"
             />
           </View>
-
+ 
           {/* Título de la aplicación */}
           <Text style={styles.appTitle}>Servicio de Atención al Empleado</Text>
-
+ 
           {/* Campo de entrada para el usuario */}
           <Input
             title={'Usuario'}
             ref={usernameRef} // Asigna la referencia al campo de usuario
-            onSubmitEditing={() => password.current.focus()} // Al presionar "Enter", cambia al campo de contraseña
+            //onSubmitEditing={() => password.current.focus()} // Al presionar "Enter", cambia al campo de contraseña
           />
-
-
+ 
+ 
           {/* Campo de entrada para la contraseña con opción de ocultar/mostrar texto */}
           <Input
             secureTextEntry={hide} // Determina si el texto se oculta
@@ -120,12 +118,12 @@ const LoginScreen = () => {
             title={'Contraseña'}
             icon={hide ? 'eye' : 'eye-slash'} // Icono cambia según la visibilidad
           />
-
+ 
           {/* Botón de inicio de sesión */}
           <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
             <Text style={styles.loginButtonText}>Iniciar Sesión</Text>
           </TouchableOpacity>
-
+ 
           <Modal visible={isLoading} transparent={true} animationType="fade">
             <View style={styles.modalContainer}>
               <View style={styles.modalContent}>
@@ -139,8 +137,8 @@ const LoginScreen = () => {
     </SafeAreaView>
   );
 };
-
-
+ 
+ 
 // Definición de estilos para la pantalla de inicio de sesión
 const styles = StyleSheet.create({
   // Barra decorativa superior con color primario
@@ -149,7 +147,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.PRIMARYCOLOR,
     width: '100%',
   },
-
+ 
   // Contenedor principal con fondo personalizado
   container: {
     flex: 1,
@@ -162,7 +160,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
   },
-
+ 
   // Estilos para el contenido desplazable dentro de ScrollView
   scrollViewContent: {
     flexGrow: 1,
@@ -170,20 +168,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingBottom: 20,
   },
-
+ 
   // Encabezado con el logo de la aplicación
   header: {
     alignItems: 'center',
     marginBottom: 20,
   },
-
+ 
   // Estilo del logo
   logo: {
     marginTop: -20,
     width: 100,
     height: 100,
   },
-
+ 
   // Estilos del título de la aplicación
   appTitle: {
     fontSize: 28,
@@ -192,7 +190,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     color: Colors.TEXT,
   },
-
+ 
   // Botón de inicio de sesión con estilos personalizados
   loginButton: {
     backgroundColor: Colors.PRIMARYCOLOR,
@@ -208,7 +206,7 @@ const styles = StyleSheet.create({
     elevation: 8,
     marginTop: 20,
   },
-
+ 
   // Texto del botón de inicio de sesión
   loginButtonText: {
     color: Colors.TEXTWHITE,
@@ -232,56 +230,56 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
 });
-
+ 
 export default LoginScreen;
-
+ 
 /**
  * ---------------------funcion de subida masiva de usuarios--------------------------------------
- * 
+ *
  * const registerUsersFromJson = async () => {
     try {
-
+ 
       setIsLoading(true);
       // Permitir al usuario seleccionar un archivo JSON
       const result = await DocumentPicker.getDocumentAsync({
         type: 'application/json',
-
+ 
       });
-
+ 
       if (result.canceled) {
         alert("Selección de archivo cancelada");
         setIsLoading(false);
         return;
       }
-
+ 
       // Leer el contenido del archivo
       const fileUri = result.assets[0].uri;
       const fileContent = await FileSystem.readAsStringAsync(fileUri);
       const users = JSON.parse(fileContent);
-
+ 
       // Validar que el JSON contiene datos
       if (!Array.isArray(users) || users.length === 0) {
         alert("El archivo JSON está vacío o mal formateado");
         setIsLoading(false);
         return;
       }
-
+ 
       // Registrar cada usuario
       for (const userData of users) {
         try {
           let { email, password, phoneNumber, workerId, role } = userData;
-
+ 
           if (!email || !password) {
             console.warn(`Usuario omitido por datos incompletos: ${JSON.stringify(userData)}`);
             continue;
           }
-
+ 
           // Forzar el valor de role a "user"
           role = "user";
-
+ 
           const userCredential = await createUserWithEmailAndPassword(auth, email, password);
           const user = userCredential.user;
-
+ 
           try {
             await setDoc(doc(db, "users", user.uid), {
               email,
@@ -290,7 +288,7 @@ export default LoginScreen;
               role,
               createdAt: new Date(),
             });
-
+ 
             console.log(`Usuario registrado: ${email}`);
           } catch (firestoreError) {
             console.error(`Error al guardar en Firestore para ${email}:`, firestoreError.message);
@@ -302,13 +300,13 @@ export default LoginScreen;
       }
       setIsLoading(false);
       alert("Registro masivo completado");
-      
+     
     } catch (error) {
       console.error("Error al procesar el archivo JSON:", error.message);
       alert("Hubo un problema al procesar el archivo.");
     }
   };
-
+ 
   ----------------modal de carga--------------------------
   <Modal visible={isLoading} transparent={true} animationType="fade">
             <View style={styles.modalContainer}>
@@ -318,9 +316,9 @@ export default LoginScreen;
               </View>
             </View>
           </Modal>
-
-
-
+ 
+ 
+ 
  -------------------- estilos del modal-----------------------------
   modalContainer: {
     flex: 1,
@@ -339,3 +337,4 @@ export default LoginScreen;
     fontSize: 16,
   },
  */
+ 

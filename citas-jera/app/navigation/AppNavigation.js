@@ -6,6 +6,7 @@ import { useFonts, Inter_400Regular, Inter_700Bold, Inter_500Medium, Inter_600Se
 // Importamos las pantallas de la aplicación desde sus respectivas rutas
 // Estas pantallas serán utilizadas dentro de nuestro sistema de navegación
 import LoginScreen from '@screens/login.js';
+import UserDoc from '@screens/users/UserDoc.js';
 import HomeUser from '@screens/users/HomeUser.js';
 import HomeAdmin from '@screens/admins/HomeAdmin.js';
 
@@ -35,6 +36,7 @@ function AppNavigator() {
         El prop "component" indica cuál será el componente que se renderizará para esa pantalla.
         El prop "options" nos permite modificar configuraciones de la pantalla, en este caso ocultamos el header predeterminado.
       */}
+      
       <Stack.Screen
         name="LoginScreen"
         component={LoginScreen}
@@ -48,6 +50,11 @@ function AppNavigator() {
       <Stack.Screen
         name="HomeAdmin"
         component={HomeAdmin}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="UserDoc"
+        component={UserDoc}
         options={{ headerShown: false }}
       />
       

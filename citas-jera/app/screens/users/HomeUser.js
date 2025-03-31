@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, StatusBar, Platform, Text, TouchableOpacity } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
+import { Ionicons, FontAwesome5, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Calendar } from 'react-native-calendars';
 import { useNavigation } from '@react-navigation/native';
 import Header from '@components/HeaderUser';
 import AppointmentModal from '@components/AppointmentModal';
 import Colors from '@styles/colors';
 import LoginScreen from '../login';
+import UserDoc from '@screens/users/UserDoc';
 import LogoutConfirmation from '../../components/LogoutConfirmation';
+import SetAppointmentDateModal from '@components/SetAppointmentDateModal';
 
 
 const Tab = createBottomTabNavigator();
@@ -53,6 +55,7 @@ const HomeUser = () => {
   const [selectedDate, setSelectedDate] = useState('');
   const [psychologyMarkedDates, setPsychologyMarkedDates] = useState({});
   const [nutritionMarkedDates, setNutritionMarkedDates] = useState({});
+  const [showDateModal, setShowDateModal] = useState(false);
 
   useEffect(() => {
     const psychologyMarked = {};
@@ -71,6 +74,16 @@ const HomeUser = () => {
   const handleSelectAppointment = (appointment) => {
     setSelectedAppointment(appointment);
     setModalVisible(true);
+  };
+
+  // Función para abrir el modal de "Pedir Cita"
+  const openDateModal = () => {
+    setShowDateModal(true);
+  };
+
+  // Función para cerrar el modal de "Pedir Cita"
+  const closeDateModal = () => {
+    setShowDateModal(false);
   };
 
   const renderAppointmentsForSelectedDate = (category) => {
@@ -161,30 +174,44 @@ const HomeUser = () => {
     <>
       <StatusBar translucent={true} backgroundColor={'transparent'} />
       <Tab.Navigator
-        screenOptions={({ route }) => ({
-          tabBarIcon: ({ focused, color, size }) => {
-            let iconName;
-            if (route.name === 'Psicología') {
-              iconName = focused ? 'brain' : 'brain';
-              return <FontAwesome5 name={iconName} size={size} color={color} />;
-            } else if (route.name === 'Nutrición') {
-              iconName = focused ? 'nutrition' : 'nutrition-outline';
-              return <Ionicons name={iconName} size={size} color={color} />;
-            } else if (route.name === 'Exit') {
-              iconName = focused ? 'exit' : 'exit-outline';
-              return <Ionicons name={iconName} size={size} color={color} />;}
-            return null;
-          },
-          tabBarActiveTintColor: Colors.PRIMARYCOLOR,
-          tabBarInactiveTintColor: Colors.SECONDARYCOLOR,
-          tabBarStyle: Platform.OS === 'web' ? styles.webTabBar : styles.mobileTabBar,
-          tabBarLabelStyle: styles.tabBarLabel,
-        })}
-      >
-        <Tab.Screen name="Psicología" component={PsychologyScreen} options={{ headerShown: false }} />
-        <Tab.Screen name="Nutrición" component={NutritionScreen} options={{ headerShown: false }} />
-        <Tab.Screen name="Exit" component={Exit} options={{ headerShown: false }} />
-      </Tab.Navigator>
+  screenOptions={({ route }) => ({
+    tabBarIcon: ({ focused, color, size }) => {
+      let iconName;
+      if (route.name === 'Psicología') {
+        iconName = focused ? 'brain' : 'brain';
+        return <FontAwesome5 name={iconName} size={size} color={color} />;
+      } else if (route.name === 'Nutrición') {
+        iconName = focused ? 'nutrition' : 'nutrition-outline';
+        return <Ionicons name={iconName} size={size} color={color} />;
+      } else if (route.name === 'Cerrar App') {
+        iconName = focused ? 'exit' : 'exit-outline';
+        return <Ionicons name={iconName} size={size} color={color} />;
+      } else if (route.name === 'Documentos') {
+        iconName = focused ? 'file-document-multiple' : 'file-document-multiple-outline';
+        return <MaterialCommunityIcons name={iconName} size={size} color={color} />;
+      }
+      return null;
+    },
+    tabBarActiveTintColor: Colors.PRIMARYCOLOR,
+    tabBarInactiveTintColor: Colors.SECONDARYCOLOR,
+    tabBarStyle: Platform.OS === 'web' ? styles.webTabBar : styles.mobileTabBar,
+    tabBarLabelStyle: styles.tabBarLabel,
+  })}
+>
+  <Tab.Screen name="Psicología" component={PsychologyScreen} options={{ headerShown: false }} />
+  <Tab.Screen name="Nutrición" component={NutritionScreen} options={{ headerShown: false }} />
+  <Tab.Screen name="Documentos" component={UserDoc} options={{ headerShown: false }} />
+  <Tab.Screen name="Cerrar App" component={Exit} options={{ headerShown: false }} />
+  
+</Tab.Navigator>
+      
+      {/* Modal para pedir cita usando el componente importado */}
+      <SetAppointmentDateModal
+        visible={showDateModal}
+        onClose={closeDateModal}
+        //onConfirm={handleCreateAppointment}  // Pasamos la función para manejar la confirmación
+      />
+
       {selectedAppointment && (
         <AppointmentModal
           appointment={selectedAppointment}
@@ -198,6 +225,22 @@ const HomeUser = () => {
 
 
 const styles = StyleSheet.create({
+  fab: {
+    position: 'absolute',
+    bottom: 100,
+    right: 20,
+    backgroundColor: Colors.PRIMARYCOLOR,
+    padding: 15,
+    borderRadius: 50,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 5,
+  },
+  fabText: {
+    color: 'white',
+    fontSize: 12,
+    marginTop: 5,
+  },
   headerpsychology: {
     paddingTop: '10%',
     flex: 1,
