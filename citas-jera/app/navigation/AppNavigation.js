@@ -8,7 +8,9 @@ import { useFonts, Inter_400Regular, Inter_700Bold, Inter_500Medium, Inter_600Se
 import LoginScreen from '@screens/login.js';
 import UserDoc from '@screens/users/UserDoc.js';
 import HomeUser from '@screens/users/HomeUser.js';
-import HomeAdmin from '@screens/admins/HomeAdmin.js';
+import HomeManager from '@screens/manager/HomeManager.js';
+import HomeTeacher from '@screens/teacher/HomeTeacher.js';
+import EmployeeDetailScreen from '@screens/teacher/EmployeeDetailScreen.js';
 
 // Creamos una instancia del stack navigator, que nos permitirá manejar la navegación entre distintas pantallas
 // Stack Navigator es una forma de navegación donde las pantallas se apilan unas sobre otras
@@ -21,7 +23,7 @@ function AppNavigator() {
    * Se utiliza useState para manejar este estado de manera dinámica en caso de necesitar cambios futuros.
    * 'LoginScreen' es la pantalla por defecto en la que el usuario comienza la aplicación.
    */
-  const [initialRoute, setInitialRoute] = useState('LoginScreen');
+  const [initialRoute, setInitialRoute] = useState('HomeTeacher');
 
   return (
     /**
@@ -41,6 +43,15 @@ function AppNavigator() {
         name="LoginScreen"
         component={LoginScreen}
         options={{ headerShown: false }}
+      /><Stack.Screen
+      name="EmployeeDetailScreen"
+      component={EmployeeDetailScreen}
+      options={{ headerShown: false }}
+    />
+      <Stack.Screen
+        name="HomeTeacher"
+        component={HomeTeacher}
+        options={{ headerShown: false }}
       />
       <Stack.Screen
         name="HomeUser"
@@ -48,8 +59,8 @@ function AppNavigator() {
         options={{ headerShown: false }}
       />
       <Stack.Screen
-        name="HomeAdmin"
-        component={HomeAdmin}
+        name="HomeManager"
+        component={HomeManager}
         options={{ headerShown: false }}
       />
       <Stack.Screen

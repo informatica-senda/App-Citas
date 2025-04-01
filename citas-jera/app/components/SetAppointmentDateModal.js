@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   View, 
   Text, 
@@ -6,27 +6,155 @@ import {
   TouchableOpacity, 
   StyleSheet, 
   Platform,
-  SafeAreaView
+  SafeAreaView,
+  Alert
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { format } from 'date-fns';
+import { format, isAfter, startOfDay, getDay, isSameDay, isBefore } from 'date-fns';
 import { es } from 'date-fns/locale';
 
-export const SetAppointmentDateModal = () => {
-  const [date, setDate] = useState(new Date());
-  const [showModal, setShowModal] = useState(false);
+// Modificamos el componente para recibir props que controlen la visibilidad del modal
+export const SetAppointmentDateModal = ({ visible, onClose, onConfirm }) => {
+  // Inicializar con la fecha actual
+  const now = new Date();
+  const [date, setDate] = useState(now);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [mode, setMode] = useState('date');
+  const [isWeekendSelected, setIsWeekendSelected] = useState(false);
+  const [isPastTimeSelected, setIsPastTimeSelected] = useState(false);
+  const [isPastDateSelected, setIsPastDateSelected] = useState(false);
+
+  // Función para verificar si una fecha es fin de semana (sábado o domingo)
+  const isWeekend = (date) => {
+    const day = getDay(date);
+    // 0 es domingo, 6 es sábado
+    return day === 0 || day === 6;
+  };
+
+  // Función para verificar si la hora seleccionada ya ha pasado (solo para el día actual)
+  const isPastTime = (selectedDate) => {
+    const now = new Date();
+    
+    // Solo verificamos si es el día actual
+    if (isSameDay(selectedDate, now)) {
+      // Comparamos solo las horas y minutos
+      return selectedDate.getHours() < now.getHours() || 
+             (selectedDate.getHours() === now.getHours() && 
+              selectedDate.getMinutes() < now.getMinutes());
+    }
+    
+    return false;
+  };
+
+  // Función para verificar si la fecha seleccionada es pasada
+  const isPastDate = (selectedDate) => {
+    const today = startOfDay(new Date());
+    const selectedDay = startOfDay(selectedDate);
+    return isBefore(selectedDay, today);
+  };
+
+  // Verificar si la fecha actual es fin de semana o tiempo pasado cada vez que cambia
+  useEffect(() => {
+    setIsWeekendSelected(isWeekend(date));
+    setIsPastTimeSelected(isPastTime(date));
+    setIsPastDateSelected(isPastDate(date));
+  }, [date]);
+
+  // Reiniciar el estado cuando el modal se abre
+  useEffect(() => {
+    if (visible) {
+      setDate(new Date());
+      setIsWeekendSelected(false);
+      setIsPastTimeSelected(false);
+      setIsPastDateSelected(false);
+    }
+  }, [visible]);
 
   const handleConfirm = () => {
-    // Aquí puedes manejar la fecha y hora seleccionadas
-    console.log("Fecha y hora seleccionadas:", date);
-    setShowModal(false);
+    // Verificar si es fin de semana antes de confirmar
+    if (isWeekendSelected) {
+      Alert.alert(
+        "Fecha no válida", 
+        "No se pueden seleccionar fines de semana (sábado o domingo)."
+      );
+      return;
+    }
+    
+    // Verificar si es una hora pasada del día actual
+    if (isPastTimeSelected) {
+      Alert.alert(
+        "Hora no válida", 
+        "No se puede seleccionar una hora que ya ha pasado para el día de hoy."
+      );
+      return;
+    }
+    
+    // Verificar si es una fecha pasada
+    if (isPastDateSelected) {
+      Alert.alert(
+        "Fecha no válida", 
+        "No se pueden seleccionar fechas pasadas."
+      );
+      return;
+    }
+    
+    // Llamar a la función onConfirm pasada como prop con la fecha seleccionada
+    if (onConfirm) {
+      onConfirm(date);
+    }
+    
+    // Cerrar el modal
+    if (onClose) {
+      onClose();
+    }
   };
 
   const onDateTimeChange = (event, selectedDate) => {
-    const currentDate = selectedDate || date;
+    if (!selectedDate) {
+      if (Platform.OS === 'android') {
+        setShowDatePicker(false);
+        setShowTimePicker(false);
+      }
+      return;
+    }
+    
+    const currentDate = selectedDate;
+    
+    // Si es selección de fecha, realizar validaciones
+    if (mode === 'date') {
+      // Verificar si la fecha es fin de semana
+      if (isWeekend(currentDate)) {
+        if (Platform.OS === 'android') {
+          setShowDatePicker(false);
+          Alert.alert(
+            "Fecha no válida", 
+            "No se pueden seleccionar fines de semana (sábado o domingo)."
+          );
+        }
+        // En iOS, actualizamos la fecha pero marcamos que es fin de semana
+        setDate(currentDate);
+        setIsWeekendSelected(true);
+        return;
+      }
+    }
+    
+    // Si es selección de hora, verificar que no sea una hora pasada del día actual
+    if (mode === 'time') {
+      if (isPastTime(currentDate) && isSameDay(currentDate, now)) {
+        if (Platform.OS === 'android') {
+          setShowTimePicker(false);
+          Alert.alert(
+            "Hora no válida", 
+            "No se puede seleccionar una hora que ya ha pasado para el día de hoy."
+          );
+        }
+        // En iOS, actualizamos la hora pero marcamos que es una hora pasada
+        setDate(currentDate);
+        setIsPastTimeSelected(true);
+        return;
+      }
+    }
     
     if (Platform.OS === 'android') {
       setShowDatePicker(false);
@@ -34,6 +162,9 @@ export const SetAppointmentDateModal = () => {
     }
     
     setDate(currentDate);
+    setIsWeekendSelected(isWeekend(currentDate));
+    setIsPastTimeSelected(isPastTime(currentDate));
+    setIsPastDateSelected(isPastDate(currentDate));
   };
 
   const showPicker = (currentMode) => {
@@ -55,172 +186,152 @@ export const SetAppointmentDateModal = () => {
     return `${dateString} a las ${timeString}`;
   };
 
-  return (
-    <SafeAreaView style={styles.container}>
-      {/* Botón flotante con signo + */}
-      
-      <TouchableOpacity 
-        style={styles.floatingButton} 
-        onPress={() => setShowModal(true)}
-      >
-        {Platform.OS === 'ios' &&
-        <Text style={styles.iosPlusSign}>+</Text>}
-        {Platform.OS === 'android' &&
-        <Text style={styles.androidPlusSign}>+</Text>}
-      </TouchableOpacity>
+  // Función para obtener el nombre del día de la semana
+  const getDayName = (date) => {
+    return format(date, "EEEE", { locale: es });
+  };
 
-      {/* Modal para iOS y Android */}
-      <Modal
-        visible={showModal}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setShowModal(false)}
-      >
-        <View style={styles.centeredView}>
-          <View style={styles.modalView}>
-            <Text style={styles.modalTitle}>Seleccionar fecha y hora</Text>
-            
-            {/* DatePicker para iOS */}
-            {Platform.OS === 'ios' && (
-              <View style={styles.iosPickerContainer}>
-                <Text style={styles.pickerLabel}>Fecha:</Text>
-                <DateTimePicker
-                  value={date}
-                  mode="date"
-                  display="spinner"
-                  onChange={onDateTimeChange}
-                  locale="es"
-                  style={styles.datePicker}
-                />
-                
-                <Text style={styles.pickerLabel}>Hora:</Text>
-                <DateTimePicker
-                  value={date}
-                  mode="time"
-                  display="spinner"
-                  onChange={onDateTimeChange}
-                  locale="es"
-                  style={styles.datePicker}
-                />
-              </View>
-            )}
-            
-            {/* Para Android, mostramos botones que abren los DatePicker nativos */}
-            {Platform.OS === 'android' && !showDatePicker && !showTimePicker && (
-              <View style={styles.androidPickerContainer}>
-                <TouchableOpacity 
-                  style={styles.dateButton} 
-                  onPress={() => showPicker('date')}
-                >
-                  <Text style={styles.dateButtonText}>
-                    Fecha: {format(date, "PPP", { locale: es })}
-                  </Text>
-                </TouchableOpacity>
-                
-                <TouchableOpacity 
-                  style={styles.dateButton} 
-                  onPress={() => showPicker('time')}
-                >
-                  <Text style={styles.dateButtonText}>
-                    Hora: {format(date, "HH:mm", { locale: es })}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            )}
-            
-            {/* DatePicker para Android como diálogo */}
-            {Platform.OS === 'android' && showDatePicker && (
+  // Función para determinar si el botón de confirmar debe estar deshabilitado
+  const isConfirmDisabled = () => {
+    return isWeekendSelected || isPastTimeSelected || isPastDateSelected;
+  };
+
+  return (
+    <Modal
+      visible={visible}
+      transparent={true}
+      animationType="slide"
+      onRequestClose={onClose}
+    >
+      <View style={styles.centeredView}>
+        <View style={styles.modalView}>
+          <Text style={styles.modalTitle}>Seleccionar fecha y hora</Text>
+          
+          {/* Mensaje informativo sobre restricciones */}
+          <Text style={styles.infoText}>
+            No se pueden confirmar fechas pasadas, fines de semana, ni horas que ya han pasado del día actual.
+          </Text>
+          
+          {/* DatePicker para iOS */}
+          {Platform.OS === 'ios' && (
+            <View style={styles.iosPickerContainer}>
+              <Text style={styles.pickerLabel}>Fecha:</Text>
               <DateTimePicker
                 value={date}
                 mode="date"
-                display="default"
+                display="spinner"
                 onChange={onDateTimeChange}
                 locale="es"
+                style={styles.datePicker}
+                // Eliminamos minimumDate para permitir fechas pasadas
               />
-            )}
-            
-            {/* TimePicker para Android como diálogo */}
-            {Platform.OS === 'android' && showTimePicker && (
+              
+              <Text style={styles.pickerLabel}>Hora:</Text>
               <DateTimePicker
                 value={date}
                 mode="time"
-                display="default"
+                display="spinner"
                 onChange={onDateTimeChange}
                 locale="es"
+                style={styles.datePicker}
+                minuteInterval={15} // Intervalos de 15 minutos para facilitar la selección
               />
-            )}
-            
-            {/* Fecha y hora seleccionadas */}
-            <View style={styles.selectedDateTimeContainer}>
-              <Text style={styles.selectedDateTime}>
-                {formatDateTime()}
-              </Text>
             </View>
-            
-            {/* Botones de acción */}
-            <View style={styles.buttonContainer}>
-              <TouchableOpacity
-                style={[styles.actionButton, styles.cancelButton]}
-                onPress={() => setShowModal(false)}
+          )}
+          
+          {/* Para Android, mostramos botones que abren los DatePicker nativos */}
+          {Platform.OS === 'android' && !showDatePicker && !showTimePicker && (
+            <View style={styles.androidPickerContainer}>
+              <TouchableOpacity 
+                style={styles.dateButton} 
+                onPress={() => showPicker('date')}
               >
-                <Text style={styles.cancelButtonText}>Cancelar</Text>
+                <Text style={styles.dateButtonText}>
+                  Fecha: {format(date, "PPP", { locale: es })} ({getDayName(date)})
+                </Text>
               </TouchableOpacity>
               
-              <TouchableOpacity
-                style={[styles.actionButton, styles.confirmButton]}
-                onPress={handleConfirm}
+              <TouchableOpacity 
+                style={styles.dateButton} 
+                onPress={() => showPicker('time')}
               >
-                <Text style={styles.confirmButtonText}>Confirmar</Text>
+                <Text style={styles.dateButtonText}>
+                  Hora: {format(date, "HH:mm", { locale: es })}
+                </Text>
               </TouchableOpacity>
             </View>
+          )}
+          
+          {/* DatePicker para Android como diálogo */}
+          {Platform.OS === 'android' && showDatePicker && (
+            <DateTimePicker
+              value={date}
+              mode="date"
+              display="default"
+              onChange={onDateTimeChange}
+              locale="es"
+              // Eliminamos minimumDate para permitir fechas pasadas
+            />
+          )}
+          
+          {/* TimePicker para Android como diálogo */}
+          {Platform.OS === 'android' && showTimePicker && (
+            <DateTimePicker
+              value={date}
+              mode="time"
+              display="default"
+              onChange={onDateTimeChange}
+              locale="es"
+            />
+          )}
+          
+          {/* Fecha y hora seleccionadas */}
+          <View style={styles.selectedDateTimeContainer}>
+            <Text style={styles.selectedDateTime}>
+              {formatDateTime()} ({getDayName(date)})
+            </Text>         
+          </View>
+          
+          
+          
+          {/* Botones de acción */}
+          <View style={styles.buttonContainer}>
+            <TouchableOpacity
+              style={[styles.actionButton, styles.cancelButton]}
+              onPress={onClose}
+            >
+              <Text style={styles.cancelButtonText}>Cancelar</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={[
+                styles.actionButton, 
+                styles.confirmButton,
+                isConfirmDisabled() && styles.disabledButton
+              ]}
+              onPress={handleConfirm}
+              disabled={isConfirmDisabled()}
+            >
+              <Text style={styles.confirmButtonText}>Confirmar</Text>
+            </TouchableOpacity>
           </View>
         </View>
-      </Modal>
-    </SafeAreaView>
+      </View>
+    </Modal>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    position: 'relative',
-  },
-  floatingButton: {
-    position: 'absolute',
-    right: 20,
-    bottom: 140, // Ajusta este valor según la altura de tu navigation tab
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#007bff',
-    justifyContent: 'center',
-    alignItems: 'center',
-   
-    elevation: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    zIndex: 999,
-  },
-  iosPlusSign: {
-    fontSize: 30,
-    color: 'white',
-    alignSelf: 'center',
-    fontWeight: 'bold',
-    //marginTop: -2, // Ajuste fino para centrar visualmente el signo +
-  },
-  androidPlusSign: {
-    fontSize: 30,
-    color: 'white',
-    alignSelf: 'center',
-    fontWeight: 'bold',
-    //marginTop: 'auto', // Ajuste fino para centrar visualmente el signo +
-  },
   centeredView: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
   modalView: {
     backgroundColor: 'white',
@@ -240,8 +351,15 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    marginBottom: 15,
+    marginBottom: 10,
     color: '#333',
+  },
+  infoText: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 15,
+    textAlign: 'center',
+    fontStyle: 'italic',
   },
   iosPickerContainer: {
     width: '100%',
@@ -290,6 +408,20 @@ const styles = StyleSheet.create({
     color: '#333',
     fontWeight: '500',
   },
+  errorContainer: {
+    marginTop: 10,
+    padding: 8,
+    backgroundColor: '#ffebee',
+    borderRadius: 8,
+    width: '100%',
+    borderWidth: 1,
+    borderColor: '#ffcdd2',
+  },
+  errorText: {
+    fontSize: 14,
+    color: '#d32f2f',
+    textAlign: 'center',
+  },
   buttonContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -310,6 +442,10 @@ const styles = StyleSheet.create({
   confirmButton: {
     backgroundColor: '#007bff',
   },
+  disabledButton: {
+    backgroundColor: '#cccccc',
+    opacity: 0.7,
+  },
   cancelButtonText: {
     color: '#333',
     fontSize: 16,
@@ -320,4 +456,5 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
 });
+
 export default SetAppointmentDateModal;

@@ -10,7 +10,8 @@ import Colors from '@styles/colors';
 import LoginScreen from '../login';
 import UserDoc from '@screens/users/UserDoc';
 import LogoutConfirmation from '../../components/LogoutConfirmation';
-import SetAppointmentDateModal from '@components/SetAppointmentDateModal';
+import ServiceSelectionModal from '@components/RequestServiceModal';
+import SetAppointmentDateModal from '../../components/SetAppointmentDateModal';
 
 
 const Tab = createBottomTabNavigator();
@@ -56,6 +57,8 @@ const HomeUser = () => {
   const [psychologyMarkedDates, setPsychologyMarkedDates] = useState({});
   const [nutritionMarkedDates, setNutritionMarkedDates] = useState({});
   const [showDateModal, setShowDateModal] = useState(false);
+  // Nuevo estado para el modal de selección de servicio
+  const [serviceModalVisible, setServiceModalVisible] = useState(false);
 
   useEffect(() => {
     const psychologyMarked = {};
@@ -86,6 +89,19 @@ const HomeUser = () => {
     setShowDateModal(false);
   };
 
+  // Función para abrir el modal de selección de servicio
+  const openServiceModal = () => {
+    setServiceModalVisible(true);
+  };
+
+  // Función para manejar la confirmación de selección de servicio
+  const handleServiceConfirm = (serviceType) => {
+    console.log(`Servicio seleccionado: ${serviceType}`);
+    // Aquí puedes añadir la lógica para procesar la selección del servicio
+    // Por ejemplo, navegar a una pantalla específica o mostrar otro modal
+    setServiceModalVisible(false);
+  };
+
   const renderAppointmentsForSelectedDate = (category) => {
     const appointmentsForDay = appointments.filter(a => a.date === selectedDate && a.category === category);
     const today = new Date().toISOString().split('T')[0];
@@ -107,6 +123,7 @@ const HomeUser = () => {
         ) : (
           <Text style={styles.noAppointmentsText}>No hay citas para esta fecha</Text>
         )}
+        
       </View>
     );
   };
@@ -118,6 +135,14 @@ const HomeUser = () => {
       <View style={styles[`header${category}`]}>
         <Header userName={user.name} screenName={category === 'psychology' ? 'Psicología' : 'Nutrición'} />
         <View style={styles.container}>
+          {/* Botón "Solicitar servicio" */}
+          <TouchableOpacity 
+            style={styles.requestServiceButton}
+            onPress={openServiceModal}
+          >
+            <Text style={styles.requestServiceButtonText}>Solicitar servicio</Text>
+          </TouchableOpacity>
+          
           <TouchableOpacity style={styles[`button${category}`]} title='Hoy' onPress={() => {
             const today = new Date().toISOString().split('T')[0];
             setSelectedDate(today);
@@ -174,44 +199,35 @@ const HomeUser = () => {
     <>
       <StatusBar translucent={true} backgroundColor={'transparent'} />
       <Tab.Navigator
-  screenOptions={({ route }) => ({
-    tabBarIcon: ({ focused, color, size }) => {
-      let iconName;
-      if (route.name === 'Psicología') {
-        iconName = focused ? 'brain' : 'brain';
-        return <FontAwesome5 name={iconName} size={size} color={color} />;
-      } else if (route.name === 'Nutrición') {
-        iconName = focused ? 'nutrition' : 'nutrition-outline';
-        return <Ionicons name={iconName} size={size} color={color} />;
-      } else if (route.name === 'Cerrar App') {
-        iconName = focused ? 'exit' : 'exit-outline';
-        return <Ionicons name={iconName} size={size} color={color} />;
-      } else if (route.name === 'Documentos') {
-        iconName = focused ? 'file-document-multiple' : 'file-document-multiple-outline';
-        return <MaterialCommunityIcons name={iconName} size={size} color={color} />;
-      }
-      return null;
-    },
-    tabBarActiveTintColor: Colors.PRIMARYCOLOR,
-    tabBarInactiveTintColor: Colors.SECONDARYCOLOR,
-    tabBarStyle: Platform.OS === 'web' ? styles.webTabBar : styles.mobileTabBar,
-    tabBarLabelStyle: styles.tabBarLabel,
-  })}
->
-  <Tab.Screen name="Psicología" component={PsychologyScreen} options={{ headerShown: false }} />
-  <Tab.Screen name="Nutrición" component={NutritionScreen} options={{ headerShown: false }} />
-  <Tab.Screen name="Documentos" component={UserDoc} options={{ headerShown: false }} />
-  <Tab.Screen name="Cerrar App" component={Exit} options={{ headerShown: false }} />
-  
-</Tab.Navigator>
-      
-      {/* Modal para pedir cita usando el componente importado */}
-      <SetAppointmentDateModal
-        visible={showDateModal}
-        onClose={closeDateModal}
-        //onConfirm={handleCreateAppointment}  // Pasamos la función para manejar la confirmación
-      />
-
+        screenOptions={({ route }) => ({
+          tabBarIcon: ({ focused, color, size }) => {
+            let iconName;
+            if (route.name === 'Psicología') {
+              iconName = focused ? 'brain' : 'brain';
+              return <FontAwesome5 name={iconName} size={size} color={color} />;
+            } else if (route.name === 'Nutrición') {
+              iconName = focused ? 'nutrition' : 'nutrition-outline';
+              return <Ionicons name={iconName} size={size} color={color} />;
+            } else if (route.name === 'Cerrar App') {
+              iconName = focused ? 'exit' : 'exit-outline';
+              return <Ionicons name={iconName} size={size} color={color} />;
+            } else if (route.name === 'Documentos') {
+              iconName = focused ? 'file-document-multiple' : 'file-document-multiple-outline';
+              return <MaterialCommunityIcons name={iconName} size={size} color={color} />;
+            }
+            return null;
+          },
+          tabBarActiveTintColor: Colors.PRIMARYCOLOR,
+          tabBarInactiveTintColor: Colors.SECONDARYCOLOR,
+          tabBarStyle: Platform.OS === 'web' ? styles.webTabBar : styles.mobileTabBar,
+          tabBarLabelStyle: styles.tabBarLabel,
+        })}
+      >
+        <Tab.Screen name="Psicología" component={PsychologyScreen} options={{ headerShown: false }} />
+        <Tab.Screen name="Nutrición" component={NutritionScreen} options={{ headerShown: false }} />
+        <Tab.Screen name="Documentos" component={UserDoc} options={{ headerShown: false }} />
+        <Tab.Screen name="Cerrar App" component={Exit} options={{ headerShown: false }} />
+      </Tab.Navigator>
       {selectedAppointment && (
         <AppointmentModal
           appointment={selectedAppointment}
@@ -219,6 +235,13 @@ const HomeUser = () => {
           onClose={() => setModalVisible(false)}
         />
       )}
+
+      {/* Modal de selección de servicio */}
+      <ServiceSelectionModal
+        visible={serviceModalVisible}
+        onClose={() => setServiceModalVisible(false)}
+        onConfirm={handleServiceConfirm}
+      />
     </>
   );
 };
@@ -251,19 +274,19 @@ const styles = StyleSheet.create({
     padding: 10,
     borderRadius: 8,
     marginBottom: 10
-    },
-    buttonnutrition:{
-      backgroundColor: Colors.NUTRICIÓN,
-      padding: 10,
-      borderRadius: 8,
-      marginBottom: 10
-      },
-    text:{
+  },
+  buttonnutrition:{
+    backgroundColor: Colors.NUTRICIÓN,
+    padding: 10,
+    borderRadius: 8,
+    marginBottom: 10
+  },
+  text:{
     color: Colors.TEXTWHITE,
     textAlign: 'center',
     fontSize: 16,
     fontWeight: 'bold'
-    },
+  },
   headernutrition: {
     paddingTop: '10%',
     flex: 1,
@@ -321,6 +344,19 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: Colors.TEXT,
     fontStyle: 'italic',
+  },
+  // Estilos para el botón "Solicitar servicio"
+  requestServiceButton: {
+    backgroundColor: Colors.PRIMARYCOLOR,
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 15,
+    alignItems: 'center',
+  },
+  requestServiceButtonText: {
+    color: Colors.TEXTWHITE,
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });
 

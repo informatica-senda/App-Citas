@@ -54,7 +54,7 @@ const LoginScreen = () => {
             const userData = userDocSnap.data();
             setIsLoading(false);
             // Redirigir según el rol del usuario
-            navigation.replace(userData.role === 'admin' ? 'HomeAdmin' : 'HomeUser');
+            navigation.replace(userData.role === 'admin' ? 'HomeManager' : 'HomeUser');
             alert("Inicio de seisón correcto");
           } else {
             setIsLoading(false);
