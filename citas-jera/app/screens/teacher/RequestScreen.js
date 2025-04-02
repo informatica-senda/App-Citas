@@ -7,46 +7,79 @@ import {
   StyleSheet, 
   Modal, 
   Alert,
-  TextInput
+  TextInput,
+  Platform
 } from 'react-native';
-import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
+import { Ionicons, FontAwesome5, MaterialCommunityIcons } from '@expo/vector-icons';
 import Colors from '@styles/colors';
 import Header from '@components/HeaderAdmin.js';
-import AppointmentCalendarScreen from '@components/AppoimentCalendarScreen';
 
-// Datos de ejemplo para las solicitudes
+// Datos de ejemplo para las solicitudes con fecha y hora
 const initialRequestsData = [
   {
     id: '1',
     name: 'María García',
     service: 'Psicología',
+    date: '2024-12-15',
+    time: '10:30',
+    phone: '123-456-7890',
+    status: 'pending'
   },
   {
     id: '2',
     name: 'Juan Rodríguez',
     service: 'Nutrición',
+    date: '2024-12-16',
+    time: '14:00',
+    phone: '987-654-3210',
+    status: 'pending'
   },
   {
     id: '3',
     name: 'Ana Martínez',
     service: 'Psicología',
+    date: '2024-12-18',
+    time: '09:15',
+    phone: '555-123-4567',
+    status: 'pending'
   },
   {
     id: '4',
     name: 'Carlos López',
     service: 'Nutrición',
+    date: '2024-12-20',
+    time: '16:45',
+    phone: '777-888-9999',
+    status: 'pending'
   },
   {
     id: '5',
     name: 'Laura Sánchez',
     service: 'Psicología',
+    date: '2024-12-22',
+    time: '11:00',
+    phone: '333-222-1111',
+    status: 'pending'
   },
   {
     id: '6',
     name: 'Pedro Fernández',
     service: 'Nutrición',
+    date: '2024-12-23',
+    time: '15:30',
+    phone: '444-555-6666',
+    status: 'pending'
   },
 ];
+
+// Función para formatear la fecha en formato dd/mm/yyyy
+const formatDate = (dateString) => {
+  const date = new Date(dateString);
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const year = date.getFullYear();
+  return `${day}/${month}/${year}`;
+};
 
 const RequestScreen = ({ navigation }) => {
   // Estados para manejar las solicitudes y los modales
@@ -54,9 +87,9 @@ const RequestScreen = ({ navigation }) => {
   const [filteredRequests, setFilteredRequests] = useState(initialRequestsData);
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [showActionModal, setShowActionModal] = useState(false);
-  const [showCalendar, setShowCalendar] = useState(false);
   const [activeFilter, setActiveFilter] = useState('Todos');
   const [searchText, setSearchText] = useState('');
+  const [confirmLoading, setConfirmLoading] = useState(false);
 
   // Efecto para filtrar las solicitudes cuando cambia el filtro o el texto de búsqueda
   useEffect(() => {
@@ -74,6 +107,13 @@ const RequestScreen = ({ navigation }) => {
         request.name.toLowerCase().includes(searchLower)
       );
     }
+    
+    // Ordenar por fecha y hora
+    result.sort((a, b) => {
+      const dateA = new Date(`${a.date}T${a.time}`);
+      const dateB = new Date(`${b.date}T${b.time}`);
+      return dateA - dateB;
+    });
     
     setFilteredRequests(result);
   }, [requestsData, activeFilter, searchText]);
@@ -103,32 +143,36 @@ const RequestScreen = ({ navigation }) => {
     }
   };
 
-  // Función para confirmar una solicitud
+  // Función para confirmar una solicitud directamente
   const handleConfirm = () => {
-    setShowActionModal(false);
-    setShowCalendar(true);
-  };
-
-  // Función para manejar la selección de fecha
-  const handleDateConfirm = (date) => {
     if (selectedRequest) {
-      // Aquí podrías guardar la cita con la fecha seleccionada
-      console.log(`Cita confirmada para ${selectedRequest.name} el ${date.toLocaleString()}`);
+      setConfirmLoading(true);
       
-      // Eliminar la solicitud de la lista
-      const updatedRequests = requestsData.filter(
-        request => request.id !== selectedRequest.id
-      );
-      setRequestsData(updatedRequests);
-      
-      // Mostrar confirmación
-      Alert.alert(
-        "Cita programada",
-        `Se ha programado una cita para ${selectedRequest.name} el ${date.toLocaleString()}.`
-      );
-      
-      setSelectedRequest(null);
-      setShowCalendar(false);
+      // Simulamos una pequeña carga
+      setTimeout(() => {
+        // Actualizar el estado de la solicitud a confirmada
+        const updatedRequests = requestsData.map(request => 
+          request.id === selectedRequest.id 
+            ? { ...request, status: 'confirmed' } 
+            : request
+        );
+        
+        setRequestsData(updatedRequests);
+        setConfirmLoading(false);
+        setShowActionModal(false);
+        
+        // Mostrar confirmación
+        Alert.alert(
+          "Cita confirmada",
+          `Se ha confirmado la cita para ${selectedRequest.name} el ${formatDate(selectedRequest.date)} a las ${selectedRequest.time}.`,
+          [
+            { 
+              text: "OK", 
+              onPress: () => setSelectedRequest(null) 
+            }
+          ]
+        );
+      }, 800);
     }
   };
 
@@ -146,7 +190,16 @@ const RequestScreen = ({ navigation }) => {
       <View style={styles.requestContent}>
         <View style={styles.requestHeader}>
           <Text style={styles.requestName}>{item.name}</Text>
+          <View style={[
+            styles.statusBadge,
+            item.status === 'confirmed' ? styles.confirmedBadge : styles.pendingBadge
+          ]}>
+            <Text style={styles.statusText}>
+              {item.status === 'confirmed' ? 'Confirmada' : 'Pendiente'}
+            </Text>
+          </View>
         </View>
+        
         <View style={styles.serviceContainer}>
           {item.service === 'Psicología' ? (
             <FontAwesome5 name="brain" size={18} color={Colors.PRIMARYCOLOR} />
@@ -155,23 +208,27 @@ const RequestScreen = ({ navigation }) => {
           )}
           <Text style={styles.requestService}>{item.service}</Text>
         </View>
+        
+        <View style={styles.detailsContainer}>
+          <View style={styles.detailItem}>
+            <Ionicons name="calendar" size={16} color="#666" />
+            <Text style={styles.detailText}>{formatDate(item.date)}</Text>
+          </View>
+          
+          <View style={styles.detailItem}>
+            <Ionicons name="time-outline" size={16} color="#666" />
+            <Text style={styles.detailText}>{item.time}</Text>
+          </View>
+          
+          <View style={styles.detailItem}>
+            <Ionicons name="call-outline" size={16} color="#666" />
+            <Text style={styles.detailText}>{item.phone}</Text>
+          </View>
+        </View>
       </View>
     </TouchableOpacity>
   );
 
-  // Si el calendario está visible, renderizamos solo el calendario a pantalla completa
-  if (showCalendar && selectedRequest) {
-    return (
-      <AppointmentCalendarScreen
-        onClose={() => setShowCalendar(false)}
-        onConfirm={handleDateConfirm}
-        patientName={selectedRequest.name}
-        service={selectedRequest.service}
-      />
-    );
-  }
-
-  // De lo contrario, renderizamos la pantalla normal de solicitudes
   return (
     <>
       {/* Encabezado de la pantalla */}
@@ -180,6 +237,14 @@ const RequestScreen = ({ navigation }) => {
       </View>
       
       <View style={styles.container}>
+        {/* Título de la sección */}
+        <View style={styles.titleContainer}>
+          <Text style={styles.screenTitle}>Gestión de Solicitudes</Text>
+          <View style={styles.countBadge}>
+            <Text style={styles.countText}>{filteredRequests.length}</Text>
+          </View>
+        </View>
+        
         {/* Barra de búsqueda */}
         <View style={styles.searchContainer}>
           <Ionicons name="search" size={20} color={Colors.SECONDARYCOLOR} style={styles.searchIcon} />
@@ -206,6 +271,12 @@ const RequestScreen = ({ navigation }) => {
             ]}
             onPress={() => handleFilterChange('Todos')}
           >
+            <MaterialCommunityIcons
+              name="filter-variant"
+              size={16}
+              color={activeFilter === 'Todos' ? 'white' : Colors.PRIMARYCOLOR}
+              style={styles.filterIcon}
+            />
             <Text
               style={[
                 styles.filterButtonText,
@@ -273,6 +344,7 @@ const RequestScreen = ({ navigation }) => {
           />
         ) : (
           <View style={styles.emptyContainer}>
+            <MaterialCommunityIcons name="clipboard-text-outline" size={64} color="#ccc" />
             <Text style={styles.emptyText}>
               {searchText 
                 ? `No se encontraron solicitudes para "${searchText}"`
@@ -293,37 +365,77 @@ const RequestScreen = ({ navigation }) => {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
-            <Text style={styles.modalTitle}>Solicitud de {selectedRequest?.name}</Text>
-            <Text style={styles.modalSubtitle}>
-              Servicio: {selectedRequest?.service}
-            </Text>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Solicitud de Cita</Text>
+              <TouchableOpacity onPress={() => setShowActionModal(false)}>
+                <Ionicons name="close" size={24} color="#999" />
+              </TouchableOpacity>
+            </View>
             
-            <Text style={styles.modalText}>
-              ¿Qué deseas hacer con esta solicitud?
-            </Text>
+            <View style={styles.modalContent}>
+              <Text style={styles.patientName}>{selectedRequest?.name}</Text>
+              
+              <View style={styles.modalServiceContainer}>
+                {selectedRequest?.service === 'Psicología' ? (
+                  <FontAwesome5 name="brain" size={18} color={Colors.PRIMARYCOLOR} />
+                ) : (
+                  <Ionicons name="nutrition" size={20} color={Colors.PRIMARYCOLOR} />
+                )}
+                <Text style={styles.modalService}>{selectedRequest?.service}</Text>
+              </View>
+              
+              <View style={styles.modalDetailsContainer}>
+                <View style={styles.modalDetailRow}>
+                  <View style={styles.modalDetailItem}>
+                    <Ionicons name="calendar" size={18} color="#666" />
+                    <Text style={styles.modalDetailText}>
+                      {selectedRequest ? formatDate(selectedRequest.date) : ''}
+                    </Text>
+                  </View>
+                  
+                  <View style={styles.modalDetailItem}>
+                    <Ionicons name="time-outline" size={18} color="#666" />
+                    <Text style={styles.modalDetailText}>{selectedRequest?.time}</Text>
+                  </View>
+                </View>
+                
+                <View style={styles.modalDetailRow}>
+                  <View style={styles.modalDetailItem}>
+                    <Ionicons name="call-outline" size={18} color="#666" />
+                    <Text style={styles.modalDetailText}>{selectedRequest?.phone}</Text>
+                  </View>
+                </View>
+              </View>
+              
+              <Text style={styles.modalQuestion}>
+                ¿Qué deseas hacer con esta solicitud?
+              </Text>
+            </View>
             
             <View style={styles.modalButtonsContainer}>
               <TouchableOpacity
                 style={[styles.modalButton, styles.denyButton]}
                 onPress={handleDeny}
               >
+                <Ionicons name="close-circle" size={20} color="#ff6b6b" style={styles.buttonIcon} />
                 <Text style={styles.denyButtonText}>Denegar</Text>
               </TouchableOpacity>
               
               <TouchableOpacity
                 style={[styles.modalButton, styles.confirmButton]}
                 onPress={handleConfirm}
+                disabled={confirmLoading}
               >
-                <Text style={styles.confirmButtonText}>Confirmar</Text>
+                {confirmLoading ? (
+                  <Text style={styles.confirmButtonText}>Procesando...</Text>
+                ) : (
+                  <>
+                    <Ionicons name="checkmark-circle" size={20} color="white" style={styles.buttonIcon} />
+                    <Text style={styles.confirmButtonText}>Confirmar</Text>
+                  </>
+                )}
               </TouchableOpacity>
             </View>
-            
-            <TouchableOpacity
-              style={styles.cancelButton}
-              onPress={() => setShowActionModal(false)}
-            >
-              <Text style={styles.cancelButtonText}>Cancelar</Text>
-            </TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -337,8 +449,32 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.BACKGROUND,
   },
   headerCitas: {
-    paddingTop: '10%',
+    paddingTop: Platform.OS === 'android' ? '10%' : 0,
     backgroundColor: Colors.PRIMARYCOLOR,
+  },
+  titleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 8,
+  },
+  screenTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  countBadge: {
+    backgroundColor: Colors.PRIMARYCOLOR,
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    marginLeft: 10,
+  },
+  countText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: 'bold',
   },
   // Estilos para la barra de búsqueda
   searchContainer: {
@@ -347,7 +483,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     borderRadius: 10,
     margin: 16,
-    marginBottom: 8,
+    marginTop: 8,
+    marginBottom: 12,
     paddingHorizontal: 12,
     paddingVertical: 8,
     shadowColor: '#000',
@@ -370,7 +507,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    marginBottom: 8,
+    marginBottom: 12,
   },
   filterButton: {
     flexDirection: 'row',
@@ -384,6 +521,11 @@ const styles = StyleSheet.create({
     flex: 1,
     marginHorizontal: 4,
     justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 1,
+    elevation: 1,
   },
   activeFilterButton: {
     backgroundColor: Colors.PRIMARYCOLOR,
@@ -403,7 +545,7 @@ const styles = StyleSheet.create({
   // Estilos para la lista
   listContainer: {
     padding: 16,
-    paddingTop: 8,
+    paddingTop: 4,
   },
   requestItem: {
     backgroundColor: 'white',
@@ -429,14 +571,49 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     color: Colors.TEXTCOLOR,
+    flex: 1,
+  },
+  statusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  pendingBadge: {
+    backgroundColor: '#FFF3CD',
+  },
+  confirmedBadge: {
+    backgroundColor: '#D4EDDA',
+  },
+  statusText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#856404',
   },
   serviceContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginBottom: 12,
   },
   requestService: {
     fontSize: 15,
     color: Colors.PRIMARYCOLOR,
+    marginLeft: 6,
+    fontWeight: '500',
+  },
+  detailsContainer: {
+    backgroundColor: '#f9f9f9',
+    borderRadius: 8,
+    padding: 12,
+  },
+  detailItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 16,
+    marginBottom: 4,
+  },
+  detailText: {
+    fontSize: 14,
+    color: '#666',
     marginLeft: 6,
   },
   emptyContainer: {
@@ -449,6 +626,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: Colors.SECONDARYCOLOR,
     textAlign: 'center',
+    marginTop: 16,
   },
   // Estilos para el modal de acciones
   modalOverlay: {
@@ -460,9 +638,7 @@ const styles = StyleSheet.create({
   modalContainer: {
     backgroundColor: 'white',
     borderRadius: 15,
-    padding: 20,
-    width: '80%',
-    alignItems: 'center',
+    width: '85%',
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -471,40 +647,84 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
     elevation: 5,
+    overflow: 'hidden',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+    paddingHorizontal: 20,
+    paddingVertical: 15,
   },
   modalTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    marginBottom: 5,
-    color: Colors.TEXTCOLOR,
+    color: Colors.PRIMARYCOLOR,
   },
-  modalSubtitle: {
+  modalContent: {
+    padding: 20,
+  },
+  patientName: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 8,
+    color: '#333',
+  },
+  modalServiceContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  modalService: {
     fontSize: 16,
     color: Colors.PRIMARYCOLOR,
-    marginBottom: 15,
+    marginLeft: 8,
+    fontWeight: '500',
   },
-  modalText: {
+  modalDetailsContainer: {
+    backgroundColor: '#f9f9f9',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 16,
+  },
+  modalDetailRow: {
+    flexDirection: 'row',
+    marginBottom: 8,
+  },
+  modalDetailItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 16,
+    flex: 1,
+  },
+  modalDetailText: {
+    fontSize: 14,
+    color: '#666',
+    marginLeft: 8,
+  },
+  modalQuestion: {
     fontSize: 16,
-    marginBottom: 20,
     textAlign: 'center',
-    color: Colors.TEXTCOLOR,
+    color: '#555',
+    marginTop: 8,
   },
   modalButtonsContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    width: '100%',
-    marginBottom: 15,
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
   },
   modalButton: {
-    padding: 12,
-    borderRadius: 10,
-    width: '48%',
+    flex: 1,
+    padding: 16,
     alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
   },
   denyButton: {
-    backgroundColor: '#f8f8f8',
-    borderWidth: 1,
-    borderColor: '#ff6b6b',
+    borderRightWidth: 1,
+    borderRightColor: '#eee',
   },
   confirmButton: {
     backgroundColor: Colors.PRIMARYCOLOR,
@@ -519,12 +739,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '500',
   },
-  cancelButton: {
-    padding: 10,
-  },
-  cancelButtonText: {
-    color: Colors.SECONDARYCOLOR,
-    fontSize: 14,
+  buttonIcon: {
+    marginRight: 8,
   },
 });
 

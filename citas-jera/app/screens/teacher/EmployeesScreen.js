@@ -79,18 +79,6 @@ const EmployeesScreen = () => {
   // Estado para manejar la visibilidad del modal de agregar empleados
   const [modalVisible, setModalVisible] = useState(false);
   
-  // Estado para almacenar los datos del nuevo empleado que se va a agregar
-  const [newEmployee, setNewEmployee] = useState({ 
-    name: '', 
-    code: '', 
-    phone: '', 
-    role: '',
-    email: '',
-    department: '',
-    startDate: '',
-    address: ''
-  });
-  
   // Estado para indicar si los datos están cargando (para demostración)
   const [isLoading, setIsLoading] = useState(false);
 
@@ -130,30 +118,6 @@ const EmployeesScreen = () => {
     </TouchableOpacity>
   );
 
-  // Función para agregar un nuevo empleado a la lista
-  const addEmployee = () => {
-    if (newEmployee.name && newEmployee.code && newEmployee.phone) {
-      setIsLoading(true);
-      
-      // Simular retraso de llamada a API
-      setTimeout(() => {
-        setEmployees([...employees, { ...newEmployee, id: Date.now().toString() }]);
-        setNewEmployee({ 
-          name: '', 
-          code: '', 
-          phone: '', 
-          role: '',
-          email: '',
-          department: '',
-          startDate: '',
-          address: ''
-        });
-        setModalVisible(false);
-        setIsLoading(false);
-      }, 600);
-    }
-  };
-
   // Función para renderizar el estado vacío
   const renderEmptyList = () => (
     <View style={styles.emptyContainer}>
@@ -171,7 +135,7 @@ const EmployeesScreen = () => {
       
       {/* Encabezado de la pantalla */}
       <View style={styles.headerCitas}>
-        <Header header_text={'Lista de empleados'} />
+        <Header header_text={'Pacientes'} />
       </View>
       
       {/* Contenedor principal de la pantalla */}
@@ -193,16 +157,6 @@ const EmployeesScreen = () => {
           )}
         </View>
         
-        {/* Botón para abrir el modal de agregar empleados */}
-        <TouchableOpacity 
-          style={styles.addButton} 
-          onPress={() => setModalVisible(true)}
-          activeOpacity={0.8}
-        >
-          <Feather name="user-plus" size={18} color="#fff" style={styles.buttonIcon} />
-          <Text style={styles.addButtonText}>Añadir Empleado</Text>
-        </TouchableOpacity>
-        
         {/* Lista de empleados filtrada según la búsqueda */}
         <FlatList
           data={filteredEmployees}
@@ -212,116 +166,6 @@ const EmployeesScreen = () => {
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={renderEmptyList}
         />
-        
-        {/* Modal para añadir un nuevo empleado */}
-        <Modal
-          animationType="slide"
-          transparent={true}
-          visible={modalVisible}
-          onRequestClose={() => setModalVisible(false)}
-        >
-          <KeyboardAvoidingView
-            behavior={Platform.OS === "ios" ? "padding" : "height"}
-            style={{ flex: 1 }}
-          >
-            <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-              <View style={styles.centeredView}>
-                <View style={styles.modalView}>
-                  <Text style={styles.modalTitle}>Nuevo Empleado</Text>
-                  
-                  <ScrollView style={styles.formScrollView}>
-                    {/* Campos de entrada para registrar un nuevo empleado */}
-                    <View style={styles.inputContainer}>
-                      <Text style={styles.inputLabel}>Nombre</Text>
-                      <TextInput
-                        style={styles.input}
-                        placeholder="Nombre completo"
-                        value={newEmployee.name}
-                        onChangeText={(text) => setNewEmployee({ ...newEmployee, name: text })}
-                      />
-                    </View>
-                    
-                    <View style={styles.inputContainer}>
-                      <Text style={styles.inputLabel}>Código</Text>
-                      <TextInput
-                        style={styles.input}
-                        placeholder="Código de empleado"
-                        value={newEmployee.code}
-                        onChangeText={(text) => setNewEmployee({ ...newEmployee, code: text })}
-                      />
-                    </View>
-                    
-                    <View style={styles.inputContainer}>
-                      <Text style={styles.inputLabel}>Cargo</Text>
-                      <TextInput
-                        style={styles.input}
-                        placeholder="Cargo o puesto"
-                        value={newEmployee.role}
-                        onChangeText={(text) => setNewEmployee({ ...newEmployee, role: text })}
-                      />
-                    </View>
-                    
-                    <View style={styles.inputContainer}>
-                      <Text style={styles.inputLabel}>Teléfono</Text>
-                      <TextInput
-                        style={styles.input}
-                        placeholder="Número de teléfono"
-                        value={newEmployee.phone}
-                        onChangeText={(text) => setNewEmployee({ ...newEmployee, phone: text })}
-                        keyboardType="phone-pad"
-                      />
-                    </View>
-                    
-                    <View style={styles.inputContainer}>
-                      <Text style={styles.inputLabel}>Email</Text>
-                      <TextInput
-                        style={styles.input}
-                        placeholder="Correo electrónico"
-                        value={newEmployee.email}
-                        onChangeText={(text) => setNewEmployee({ ...newEmployee, email: text })}
-                        keyboardType="email-address"
-                      />
-                    </View>
-                    
-                    <View style={styles.inputContainer}>
-                      <Text style={styles.inputLabel}>Departamento</Text>
-                      <TextInput
-                        style={styles.input}
-                        placeholder="Departamento"
-                        value={newEmployee.department}
-                        onChangeText={(text) => setNewEmployee({ ...newEmployee, department: text })}
-                      />
-                    </View>
-                    
-                    <View style={styles.buttonContainer}>
-                      {/* Botón para confirmar la adición del nuevo empleado */}
-                      <TouchableOpacity 
-                        style={[styles.modalButton, styles.addModalButton]} 
-                        onPress={addEmployee}
-                        disabled={isLoading}
-                      >
-                        {isLoading ? (
-                          <ActivityIndicator size="small" color="#fff" />
-                        ) : (
-                          <Text style={styles.modalButtonText}>Añadir</Text>
-                        )}
-                      </TouchableOpacity>
-                      
-                      {/* Botón para cerrar el modal sin agregar empleado */}
-                      <TouchableOpacity 
-                        style={[styles.modalButton, styles.cancelModalButton]} 
-                        onPress={() => setModalVisible(false)}
-                        disabled={isLoading}
-                      >
-                        <Text style={styles.cancelButtonText}>Cancelar</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </ScrollView>
-                </View>
-              </View>
-            </TouchableWithoutFeedback>
-          </KeyboardAvoidingView>
-        </Modal>
       </View>
     </View>
   );

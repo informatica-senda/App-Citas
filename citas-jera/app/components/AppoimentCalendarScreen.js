@@ -18,28 +18,74 @@ const AppointmentCalendarScreen = ({ onClose, onConfirm, patientName, service })
   const [selectedDate, setSelectedDate] = useState(null);
   const [selectedTime, setSelectedTime] = useState(null);
   const [markedDates, setMarkedDates] = useState({});
+  const [availableTimesForSelectedDate, setAvailableTimesForSelectedDate] = useState([]);
+  
+  // Array de horarios disponibles para citas
+  const availableTimeSlots = [ '17:00', '18:00'];
+  
+  // Array de días disponibles para citas (0 = domingo, 1 = lunes, ..., 6 = sábado)
+  const availableDays = [2, 3]; // Martes, Miércoles
+  
+  // Mapeo de números de día a nombres en español
+  const dayNumberToName = {
+    0: 'Domingo',
+    1: 'Lunes',
+    2: 'Martes',
+    3: 'Miércoles',
+    4: 'Jueves',
+    5: 'Viernes',
+    6: 'Sábado'
+  };
+  
+  // Array de citas ya reservadas (fecha y hora)
+  const bookedAppointments = [
+    { date: '2025-04-15', time: '17:00' },
+    { date: '2025-04-15', time: '18:00' },
+    { date: '2025-04-16', time: '16:30' },
+    { date: '2025-04-16', time: '17:30' },
+    { date: '2023-06-14', time: '16:30' },
+    { date: '2023-06-21', time: '16:30' },
+    { date: '2023-06-21', time: '17:30' },
+    { date: '2023-06-27', time: '17:30' },
+    { date: '2023-07-04', time: '16:30' },
+  ];
   
   // Calcular la fecha mínima (3 días después de hoy)
   const today = new Date();
   const minDate = addDays(today, 3);
-
-
-
-
-
-  
   const minDateString = format(minDate, 'yyyy-MM-dd');
   
-  // Función para verificar si una fecha es martes (2) o miércoles (3)
-  const isTuesdayOrWednesday = (date) => {
+  // Función para verificar si un día de la semana está disponible
+  const isDayAvailable = (date) => {
     const day = getDay(date);
-    return day === 2 || day === 3; // 2 es martes, 3 es miércoles
+    return availableDays.includes(day);
   };
   
-  // Función para verificar si una fecha es válida (martes o miércoles y después de minDate)
+  // Función para verificar si una fecha es válida (día disponible y después de minDate)
   const isValidDate = (date) => {
-    return isTuesdayOrWednesday(date) && 
+    return isDayAvailable(date) && 
            (isAfter(date, minDate) || isSameDay(date, minDate));
+  };
+  
+  // Función para verificar si una fecha tiene todos los horarios reservados
+  const isFullyBooked = (dateString) => {
+    const bookedTimes = bookedAppointments
+      .filter(appointment => appointment.date === dateString)
+      .map(appointment => appointment.time);
+    
+    // Si todos los horarios disponibles están reservados, la fecha está completamente ocupada
+    const availableTimes = getAvailableTimesForDate(dateString);
+    return availableTimes.length === 0;
+  };
+  
+  // Función para obtener los horarios disponibles para una fecha
+  const getAvailableTimesForDate = (dateString) => {
+    const bookedTimes = bookedAppointments
+      .filter(appointment => appointment.date === dateString)
+      .map(appointment => appointment.time);
+    
+    // Filtrar los horarios que no están reservados
+    return availableTimeSlots.filter(time => !bookedTimes.includes(time));
   };
   
   // Función para generar las fechas marcadas en el calendario
@@ -64,13 +110,27 @@ const AppointmentCalendarScreen = ({ onClose, onConfirm, patientName, service })
         const dateString = format(currentDate, 'yyyy-MM-dd');
         
         if (isValidDate(currentDate)) {
-          // Es un día disponible (martes o miércoles después de minDate)
-          marked[dateString] = {
-            ...marked[dateString],
-            marked: true,
-            dotColor: Colors.PRIMARYCOLOR,
-            activeOpacity: 1,
-          };
+          // Verificar si la fecha está completamente reservada
+          if (isFullyBooked(dateString)) {
+            // Fecha completamente reservada
+            marked[dateString] = {
+              ...marked[dateString],
+              disabled: true,
+              disableTouchEvent: true,
+              textColor: '#d9e1e8',
+              // Opcional: marcar con un punto rojo para indicar que está reservado
+              marked: true,
+              dotColor: 'red',
+            };
+          } else {
+            // Es un día disponible (día en availableDays después de minDate)
+            marked[dateString] = {
+              ...marked[dateString],
+              marked: true,
+              dotColor: Colors.PRIMARYCOLOR,
+              activeOpacity: 1,
+            };
+          }
         } else {
           // No es un día disponible
           marked[dateString] = {
@@ -95,10 +155,14 @@ const AppointmentCalendarScreen = ({ onClose, onConfirm, patientName, service })
   const handleDateSelect = (date) => {
     const selectedDateObj = parseISO(date.dateString);
     
-    // Solo procesar la selección si es un día válido
-    if (isValidDate(selectedDateObj)) {
+    // Solo procesar la selección si es un día válido y no está completamente reservado
+    if (isValidDate(selectedDateObj) && !isFullyBooked(date.dateString)) {
       setSelectedDate(date.dateString);
       setSelectedTime(null); // Resetear la hora seleccionada
+      
+      // Actualizar los horarios disponibles para esta fecha
+      const availableTimes = getAvailableTimesForDate(date.dateString);
+      setAvailableTimesForSelectedDate(availableTimes);
     }
     // No mostrar alertas si el día no es válido, simplemente ignorar la selección
   };
@@ -134,15 +198,28 @@ const AppointmentCalendarScreen = ({ onClose, onConfirm, patientName, service })
     return format(date, "EEEE d 'de' MMMM 'de' yyyy", { locale: es });
   };
   
-  // Función para determinar si es martes o miércoles
+  // Función para obtener el nombre del día de la semana
   const getDayName = (dateString) => {
     if (!dateString) return '';
     
     const date = new Date(dateString);
     const day = getDay(date);
     
-    return day === 2 ? 'Martes' : 'Miércoles';
+    return dayNumberToName[day];
   };
+  
+  // Generar texto de días disponibles para las instrucciones
+  const getAvailableDaysText = () => {
+    return availableDays.map(day => dayNumberToName[day]).join(', ');
+  };
+  
+  // Actualizar los horarios disponibles cuando cambia la fecha seleccionada
+  useEffect(() => {
+    if (selectedDate) {
+      const availableTimes = getAvailableTimesForDate(selectedDate);
+      setAvailableTimesForSelectedDate(availableTimes);
+    }
+  }, [selectedDate]);
   
   return (
     <View style={styles.mainContainer}>
@@ -174,12 +251,12 @@ const AppointmentCalendarScreen = ({ onClose, onConfirm, patientName, service })
         <View style={styles.instructionsContainer}>
           <Text style={styles.instructionsTitle}>Selecciona una fecha y hora</Text>
           <Text style={styles.instructionsText}>
-            • Solo puedes seleccionar martes o miércoles{'\n'}
+            • Solo puedes seleccionar: {getAvailableDaysText()}{'\n'}
             • Solo puedes seleccionar fechas a partir de 3 días después de hoy{'\n'}
-            • Horarios disponibles: 16:30 o 17:30
+            • Las fechas con punto rojo están completamente reservadas
           </Text>
           <Text style={styles.instructionsNote}>
-            Los días disponibles están marcados con un punto
+            Los días disponibles están marcados con un punto verde
           </Text>
         </View>
         
@@ -224,39 +301,32 @@ const AppointmentCalendarScreen = ({ onClose, onConfirm, patientName, service })
             </Text>
             
             <View style={styles.timeButtonsContainer}>
-              <TouchableOpacity
-                style={[
-                  styles.timeButton,
-                  selectedTime === '16:30' && styles.selectedTimeButton
-                ]}
-                onPress={() => handleTimeSelect('16:30')}
-              >
-                <Text
-                  style={[
-                    styles.timeButtonText,
-                    selectedTime === '16:30' && styles.selectedTimeText
-                  ]}
-                >
-                  16:30
+              {/* Mostrar todos los horarios disponibles */}
+              {availableTimesForSelectedDate.length > 0 ? (
+                availableTimesForSelectedDate.map((time) => (
+                  <TouchableOpacity
+                    key={time}
+                    style={[
+                      styles.timeButton,
+                      selectedTime === time && styles.selectedTimeButton
+                    ]}
+                    onPress={() => handleTimeSelect(time)}
+                  >
+                    <Text
+                      style={[
+                        styles.timeButtonText,
+                        selectedTime === time && styles.selectedTimeText
+                      ]}
+                    >
+                      {time}
+                    </Text>
+                  </TouchableOpacity>
+                ))
+              ) : (
+                <Text style={styles.noTimesText}>
+                  No hay horarios disponibles para esta fecha
                 </Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity
-                style={[
-                  styles.timeButton,
-                  selectedTime === '17:30' && styles.selectedTimeButton
-                ]}
-                onPress={() => handleTimeSelect('17:30')}
-              >
-                <Text
-                  style={[
-                    styles.timeButtonText,
-                    selectedTime === '17:30' && styles.selectedTimeText
-                  ]}
-                >
-                  17:30
-                </Text>
-              </TouchableOpacity>
+              )}
             </View>
           </View>
         )}
@@ -402,15 +472,18 @@ const styles = StyleSheet.create({
   timeButtonsContainer: {
     flexDirection: 'row',
     justifyContent: 'space-around',
+    flexWrap: 'wrap',
   },
   timeButton: {
     backgroundColor: '#f8f9fa',
     borderRadius: 10,
     padding: 15,
-    width: '45%',
+    width: '30%',
     alignItems: 'center',
     borderWidth: 1,
     borderColor: '#e9ecef',
+    marginBottom: 10,
+    marginHorizontal: '1.5%',
   },
   selectedTimeButton: {
     backgroundColor: Colors.PRIMARYCOLOR,
@@ -423,6 +496,14 @@ const styles = StyleSheet.create({
   },
   selectedTimeText: {
     color: 'white',
+  },
+  noTimesText: {
+    fontSize: 16,
+    color: Colors.SECONDARYCOLOR,
+    fontStyle: 'italic',
+    textAlign: 'center',
+    width: '100%',
+    marginTop: 10,
   },
   bottomPadding: {
     height: 40, // Espacio adicional al final del ScrollView

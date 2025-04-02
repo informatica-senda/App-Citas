@@ -18,8 +18,12 @@ import {
 import { Feather, MaterialIcons } from '@expo/vector-icons'; // Asumiendo que tienes Expo instalado
 import Header from '@components/HeaderAdmin.js';
 import Colors from '@styles/colors';
+import { useNavigation } from '@react-navigation/native'; // Importamos el hook de navegación
 
 const EmployeesScreen = () => {
+
+  const navigation = useNavigation(); // Hook para manejar la navegación
+
   // Estado para manejar la búsqueda de empleados
   const [searchQuery, setSearchQuery] = useState('');
   
@@ -46,11 +50,17 @@ const EmployeesScreen = () => {
     employee.code.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  // Función para navegar a la pantalla de detalle del empleado
+  const navigateToEmployeeDetail = (employee) => {
+    navigation.navigate('EmployeeDetailScreen', { employee });
+  };
+
   // Función que renderiza cada empleado en la lista
   const renderEmployee = ({ item }) => (
     <TouchableOpacity 
       style={styles.employeeItem}
-      onPress={() => {/* Manejar selección de empleado */}}
+      onPress={() => navigateToEmployeeDetail(item)}
+      activeOpacity={0.7}
     >
       <View style={styles.employeeContent}>
         <View style={styles.avatarContainer}>

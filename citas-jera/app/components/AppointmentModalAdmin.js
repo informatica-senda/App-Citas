@@ -1,20 +1,20 @@
 import React from 'react';
-import { View, Text, Modal, StyleSheet, TouchableOpacity, Linking } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { View, Text, Modal, StyleSheet, TouchableOpacity, Platform } from 'react-native';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import Colors from '@styles/colors.js';
 
-const AppointmentModalAdmin = ({ appointment, visible, onClose }) => {
+const AppointmentModalAdmin = ({ appointment, visible, onClose, onDelete, onModify }) => {
   const handleDelete = () => {
     if (onDelete) {
-      onDelete(appointment.id); // Se pasa el id de la cita para eliminarla
-      onClose(); // Cerrar el modal después de la eliminación
+      onDelete(appointment.id);
+      onClose();
     }
   };
 
   const handleModify = () => {
     if (onModify) {
-      onModify(appointment); // Se pasa la cita completa para modificarla
-      onClose(); // Cerrar el modal después de la modificación
+      onModify(appointment);
+      onClose();
     }
   };
   
@@ -23,12 +23,22 @@ const AppointmentModalAdmin = ({ appointment, visible, onClose }) => {
   // Asignar el nombre del encargado según la categoría de la cita
   const encargado = appointment.category === 'psychology' ? 'Fernando Rodríguez' : 'Julieta Murcia';
   const empleado = appointment.employee;
-  const phoneNumber = appointment.category === 'psychology' ? '+34637645417' : '+34637645418';
-
   
-
-  // Función para modificar la cita
-  
+  // Formatear la fecha para mostrarla en formato más legible
+  const formatDate = (dateString) => {
+    if (!dateString) return '';
+    
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('es-ES', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      });
+    } catch (error) {
+      return dateString;
+    }
+  };
 
   return (
     <Modal
@@ -36,41 +46,109 @@ const AppointmentModalAdmin = ({ appointment, visible, onClose }) => {
       transparent={true}
       visible={visible}
       onRequestClose={onClose}
+      statusBarTranslucent={true}
     >
-      {/* Área externa del modal que detecta el toque */}
       <TouchableOpacity
-        style={styles.centeredView} // Estilo de la vista centralizada
-        activeOpacity={1} // Asegura que el toque se detecte
-        onPress={onClose} // Cierra el modal cuando se toca fuera de él
+        style={styles.overlay}
+        activeOpacity={1}
+        onPress={onClose}
       >
-        <View style={styles.modalView}>
-          {/* Título de la cita */}
-          <Text style={styles.modalTitle}>{appointment.title}</Text>
-
-          {/* Información de la cita */}
-          <View style={styles.infoContainer}>
-            <Text style={styles.modalText}><Text style={styles.label}>Empleado: </Text>{empleado}</Text>
-            <Text style={styles.modalText}><Text style={styles.label}>Servicio: </Text>{appointment.category}</Text>
-            <Text style={styles.modalText}><Text style={styles.label}>Encargado: </Text>{encargado}</Text>
-            <Text style={styles.modalText}><Text style={styles.label}>Fecha: </Text>{appointment.date}</Text>
-            <Text style={styles.modalText}><Text style={styles.label}>Hora: </Text>{appointment.time}</Text>
+        <View style={styles.modalContainer} onStartShouldSetResponder={() => true}>
+          {/* Header con título y botón de cerrar */}
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Detalles de la Cita</Text>
+            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+              <Ionicons name="close" size={24} color="#999" />
+            </TouchableOpacity>
           </View>
-
-          {/* Botones */}
-          <View style={styles.buttonContainer}>
+          
+          {/* Contenido principal */}
+          <View style={styles.modalContent}>
+            {/* Título de la cita */}
+            <Text style={styles.appointmentTitle}>{appointment.title}</Text>
+            
+            {/* Indicador de categoría */}
+            <View style={[
+              styles.categoryBadge,
+              { backgroundColor: appointment.category === 'psychology' ? Colors.PRIMARYCOLOR : Colors.SECONDARYCOLOR }
+            ]}>
+              <Text style={styles.categoryText}>
+                {appointment.category === 'psychology' ? 'Psicología' : 'Nutrición'}
+              </Text>
+            </View>
+            
+            {/* Información de la cita */}
+            <View style={styles.infoSection}>
+              <View style={styles.infoRow}>
+                <View style={styles.infoItem}>
+                  <MaterialCommunityIcons name="account" size={20} color="#666" />
+                  <View style={styles.infoTextContainer}>
+                    <Text style={styles.infoLabel}>Profesional</Text>
+                    <Text style={styles.infoValue}>{empleado}</Text>
+                  </View>
+                </View>
+              </View>
+              
+              <View style={styles.infoRow}>
+                <View style={styles.infoItem}>
+                  <MaterialCommunityIcons name="account-tie" size={20} color="#666" />
+                  <View style={styles.infoTextContainer}>
+                    <Text style={styles.infoLabel}>Encargado</Text>
+                    <Text style={styles.infoValue}>{encargado}</Text>
+                  </View>
+                </View>
+              </View>
+              
+              <View style={styles.infoRow}>
+                <View style={styles.infoItem}>
+                  <MaterialCommunityIcons name="calendar" size={20} color="#666" />
+                  <View style={styles.infoTextContainer}>
+                    <Text style={styles.infoLabel}>Fecha</Text>
+                    <Text style={styles.infoValue}>{formatDate(appointment.date)}</Text>
+                  </View>
+                </View>
+              </View>
+              
+              <View style={styles.infoRow}>
+                <View style={styles.infoItem}>
+                  <MaterialCommunityIcons name="clock-outline" size={20} color="#666" />
+                  <View style={styles.infoTextContainer}>
+                    <Text style={styles.infoLabel}>Hora</Text>
+                    <Text style={styles.infoValue}>{appointment.time}</Text>
+                  </View>
+                </View>
+              </View>
+              
+              {appointment.phone && (
+                <View style={styles.infoRow}>
+                  <View style={styles.infoItem}>
+                    <MaterialCommunityIcons name="phone" size={20} color="#666" />
+                    <View style={styles.infoTextContainer}>
+                      <Text style={styles.infoLabel}>Teléfono</Text>
+                      <Text style={styles.infoValue}>{appointment.phone}</Text>
+                    </View>
+                  </View>
+                </View>
+              )}
+            </View>
+          </View>
+          
+          {/* Botones de acción */}
+          <View style={styles.actionButtons}>
             <TouchableOpacity
-              style={[styles.button, styles.buttonClose]}
+              style={[styles.actionButton, styles.deleteButton]}
               onPress={handleDelete}
             >
-              <Ionicons name="trash" size={20} color={Colors.TEXTWHITE} />
-              <Text style={styles.textStyle}>Eliminar</Text>
+              <MaterialCommunityIcons name="delete-outline" size={22} color="#fff" />
+              <Text style={styles.actionButtonText}>Eliminar</Text>
             </TouchableOpacity>
+            
             <TouchableOpacity
-              style={[styles.button, styles.buttonWhatsApp]}
+              style={[styles.actionButton, styles.editButton]}
               onPress={handleModify}
             >
-              <Ionicons name="create" size={20} color={Colors.TEXTWHITE} />
-              <Text style={styles.textStyle}>Modificar</Text>
+              <MaterialCommunityIcons name="pencil-outline" size={22} color="#fff" />
+              <Text style={styles.actionButtonText}>Modificar</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -80,75 +158,117 @@ const AppointmentModalAdmin = ({ appointment, visible, onClose }) => {
 };
 
 const styles = StyleSheet.create({
-  centeredView: {
+  overlay: {
     flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)', // Fondo oscuro con transparencia
   },
-  modalView: {
-    margin: 20,
-    width: '95%',
-    backgroundColor: Colors.BACKGROUND, // Fondo blanco
-    borderRadius: 25, // Bordes más redondeados
-    padding: 25,
-    alignItems: 'center',
+  modalContainer: {
+    width: '90%',
+    maxWidth: 400,
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
       height: 10,
     },
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.25,
     shadowRadius: 15,
-    elevation: 8, // Sombra más difusa y suave
+    elevation: 10,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
   },
   modalTitle: {
-    marginBottom: 15,
-    textAlign: 'center',
-    fontSize: 24, // Título más grande
-    fontWeight: 'bold', // Negrita para el título
-    color: Colors.TEXT, // Color del texto del título
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: Colors.PRIMARYCOLOR,
   },
-  infoContainer: {
-    width: '100%',
+  closeButton: {
+    padding: 4,
+  },
+  modalContent: {
+    padding: 20,
+  },
+  appointmentTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 12,
+  },
+  categoryBadge: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
     marginBottom: 20,
   },
-  modalText: {
-    textAlign: 'left', // Justificar a la izquierda
-    fontSize: 18, // Texto más grande y legible
-    color: Colors.TEXT, // Color del texto
-    marginBottom: 10,
+  categoryText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 14,
   },
-  label: {
-    fontWeight: 'bold', // Resaltar las etiquetas como Fecha, Encargado, Teléfono
+  infoSection: {
+    backgroundColor: '#f9f9f9',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 8,
   },
-  buttonContainer: {
+  infoRow: {
+    marginBottom: 16,
+  },
+  infoItem: {
     flexDirection: 'row',
-    justifyContent: 'space-evenly',
-    width: '100%',
-    marginTop: 20,
+    alignItems: 'flex-start',
   },
-  button: {
-    borderRadius: 20, // Bordes más suaves en los botones
-    paddingVertical: 8,
-    paddingHorizontal: 15,
-    elevation: 4,
+  infoTextContainer: {
+    marginLeft: 12,
+    flex: 1,
+  },
+  infoLabel: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 2,
+  },
+  infoValue: {
+    fontSize: 16,
+    color: '#333',
+    fontWeight: '500',
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
+  },
+  actionButton: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    marginHorizontal: 8,
     justifyContent: 'center',
+    paddingVertical: 16,
   },
-  buttonClose: {
-    backgroundColor: Colors.ERROR, // Usando el color de error
+  deleteButton: {
+    backgroundColor: '#ff6b6b',
+    borderBottomLeftRadius: 16,
   },
-  buttonWhatsApp: {
-    backgroundColor: Colors.SUCCESS, // Usando el color de éxito
+  editButton: {
+    backgroundColor: Colors.PRIMARYCOLOR,
+    borderBottomRightRadius: 16,
   },
-  textStyle: {
-    color: Colors.TEXTWHITE, // Color del texto en blanco
-    fontWeight: 'bold',
-    fontSize: 16, // Texto más grande y legible
-    marginLeft: 10, // Espacio entre el icono y el texto
+  actionButtonText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 16,
+    marginLeft: 8,
   },
 });
 
