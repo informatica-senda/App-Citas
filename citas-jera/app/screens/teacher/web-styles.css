@@ -64,6 +64,156 @@
   div {
     color: #374151;
   }
+
+  /* Estilos para la barra lateral */
+  .sidebar-item {
+    transition: all 0.2s ease;
+  }
+
+  .sidebar-item:hover {
+    background-color: #f9fafb;
+  }
+
+  .logout-button:hover {
+    background-color: #fee2e2;
+    color: #ef4444;
+  }
+
+  /* Estilos para el scrollbar en el contenido principal */
+  .desktop-content::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .desktop-content::-webkit-scrollbar-track {
+    background: #f1f1f1;
+  }
+
+  .desktop-content::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 4px;
+  }
+
+  .desktop-content::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+  }
+
+  /* Transiciones para la barra lateral */
+  .sidebarContainer {
+    transition: width 0.3s ease-in-out;
+  }
+
+  .sidebarToggleButton {
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .sidebarToggleButton:hover {
+    background-color: #e5e7eb;
+  }
+
+  /* Mejorar contraste en botones de filtro */
+  .filterButton {
+    transition: all 0.2s ease;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .filterButton:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  }
+
+  .filterButton.active {
+    background-color: #f8f9fa !important;
+    border: 1px solid #e5e7eb;
+  }
+
+  /* Indicador de botón activo */
+  .activeIndicator {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    border-radius: 1.5px;
+    animation: slideIn 0.2s ease-out;
+  }
+
+  @keyframes slideIn {
+    from {
+      transform: translateY(3px);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+
+  /* Asegurar que el texto sea legible en botones activos */
+  .filterButton.active .filterText {
+    font-weight: 700 !important;
+    color: #333 !important;
+  }
+
+  /* Estilos para modales en web */
+  .modal-overlay {
+    backdrop-filter: blur(5px);
+    transition: all 0.3s ease;
+  }
+
+  .modal-container {
+    transform: translateY(0);
+    transition: transform 0.3s ease-out;
+  }
+
+  .modal-container.entering {
+    transform: translateY(20px);
+  }
+
+  .modal-container.entered {
+    transform: translateY(0);
+  }
+
+  .modal-button {
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .modal-button:hover {
+    transform: translateY(-1px);
+  }
+
+  .modal-close-button {
+    opacity: 0.7;
+    transition: opacity 0.2s ease;
+  }
+
+  .modal-close-button:hover {
+    opacity: 1;
+    background-color: #f3f4f6;
+    border-radius: 50%;
+  }
+
+  /* Animaciones para iconos en modales */
+  .modal-icon {
+    transition: transform 0.3s ease;
+  }
+
+  .modal-icon:hover {
+    transform: scale(1.05);
+  }
+
+  /* Mejorar apariencia de botones de acción en modales */
+  .modal-action-button {
+    transition: all 0.2s ease;
+  }
+
+  .modal-action-button:hover {
+    filter: brightness(1.05);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  }
 }
 
 /* Ensure the app takes full height on web */
@@ -86,8 +236,9 @@
   transform: translateY(-2px);
 }
 
-
-
-
-
+/* Mejorar la apariencia de las tarjetas */
+.document-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
 

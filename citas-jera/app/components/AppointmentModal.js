@@ -1,8 +1,11 @@
-import { View, Text, Modal, StyleSheet, TouchableOpacity, Linking } from "react-native"
+import { View, Text, Modal, StyleSheet, TouchableOpacity, Linking, Platform } from "react-native"
 import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from "@expo/vector-icons"
 import Colors from "@styles/colors.js"
+import { useResponsive } from "../hooks/use-responsive"
 
 const AppointmentModal = ({ appointment, visible, onClose }) => {
+  const responsive = useResponsive()
+
   // Función para abrir WhatsApp con el número correspondiente
   const handleWhatsAppAccess = () => {
     if (appointment) {
@@ -44,24 +47,35 @@ const AppointmentModal = ({ appointment, visible, onClose }) => {
       onRequestClose={onClose}
       statusBarTranslucent={true}
     >
-      <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={onClose}>
+      <TouchableOpacity
+        style={[styles.overlay, responsive.isDesktop && styles.overlayDesktop]}
+        activeOpacity={1}
+        onPress={onClose}
+      >
         <View
-          style={styles.modalContainer}
+          style={[styles.modalContainer, responsive.isDesktop && styles.modalContainerDesktop]}
           onStartShouldSetResponder={() => true}
           onResponderRelease={(e) => e.stopPropagation()}
         >
           {/* Header con título y botón de cerrar */}
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Detalles de la Cita</Text>
-            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+          <View style={[styles.modalHeader, responsive.isDesktop && styles.modalHeaderDesktop]}>
+            <Text style={[styles.modalTitle, responsive.isDesktop && styles.modalTitleDesktop]}>
+              Detalles de la Cita
+            </Text>
+            <TouchableOpacity
+              onPress={onClose}
+              style={[styles.closeButton, responsive.isDesktop && styles.closeButtonDesktop]}
+            >
               <Ionicons name="close" size={24} color="#999" />
             </TouchableOpacity>
           </View>
 
           {/* Contenido principal */}
-          <View style={styles.modalContent}>
+          <View style={[styles.modalContent, responsive.isDesktop && styles.modalContentDesktop]}>
             {/* Título de la cita */}
-            <Text style={styles.appointmentTitle}>{appointment.title}</Text>
+            <Text style={[styles.appointmentTitle, responsive.isDesktop && styles.appointmentTitleDesktop]}>
+              {appointment.title}
+            </Text>
 
             {/* Indicador de categoría */}
             <View
@@ -70,26 +84,39 @@ const AppointmentModal = ({ appointment, visible, onClose }) => {
                 {
                   backgroundColor: appointment.category === "psychology" ? Colors.PRIMARYCOLOR : Colors.SECONDARYCOLOR,
                 },
+                responsive.isDesktop && styles.categoryBadgeDesktop,
               ]}
             >
               {appointment.category === "psychology" ? (
-                <FontAwesome5 name="brain" size={14} color="#fff" style={styles.categoryIcon} />
+                <FontAwesome5
+                  name="brain"
+                  size={responsive.isDesktop ? 16 : 14}
+                  color="#fff"
+                  style={styles.categoryIcon}
+                />
               ) : (
-                <Ionicons name="nutrition-outline" size={16} color="#fff" style={styles.categoryIcon} />
+                <Ionicons
+                  name="nutrition-outline"
+                  size={responsive.isDesktop ? 18 : 16}
+                  color="#fff"
+                  style={styles.categoryIcon}
+                />
               )}
-              <Text style={styles.categoryText}>
+              <Text style={[styles.categoryText, responsive.isDesktop && styles.categoryTextDesktop]}>
                 {appointment.category === "psychology" ? "Psicología" : "Nutrición"}
               </Text>
             </View>
 
             {/* Información de la cita */}
-            <View style={styles.infoSection}>
+            <View style={[styles.infoSection, responsive.isDesktop && styles.infoSectionDesktop]}>
               <View style={styles.infoRow}>
                 <View style={styles.infoItem}>
-                  <MaterialCommunityIcons name="calendar" size={20} color="#666" />
+                  <MaterialCommunityIcons name="calendar" size={responsive.isDesktop ? 22 : 20} color="#666" />
                   <View style={styles.infoTextContainer}>
-                    <Text style={styles.infoLabel}>Fecha</Text>
-                    <Text style={styles.infoValue}>{formatDate(appointment.date)}</Text>
+                    <Text style={[styles.infoLabel, responsive.isDesktop && styles.infoLabelDesktop]}>Fecha</Text>
+                    <Text style={[styles.infoValue, responsive.isDesktop && styles.infoValueDesktop]}>
+                      {formatDate(appointment.date)}
+                    </Text>
                   </View>
                 </View>
               </View>
@@ -97,10 +124,12 @@ const AppointmentModal = ({ appointment, visible, onClose }) => {
               {appointment.time && (
                 <View style={styles.infoRow}>
                   <View style={styles.infoItem}>
-                    <MaterialCommunityIcons name="clock-outline" size={20} color="#666" />
+                    <MaterialCommunityIcons name="clock-outline" size={responsive.isDesktop ? 22 : 20} color="#666" />
                     <View style={styles.infoTextContainer}>
-                      <Text style={styles.infoLabel}>Hora</Text>
-                      <Text style={styles.infoValue}>{appointment.time}</Text>
+                      <Text style={[styles.infoLabel, responsive.isDesktop && styles.infoLabelDesktop]}>Hora</Text>
+                      <Text style={[styles.infoValue, responsive.isDesktop && styles.infoValueDesktop]}>
+                        {appointment.time}
+                      </Text>
                     </View>
                   </View>
                 </View>
@@ -108,44 +137,50 @@ const AppointmentModal = ({ appointment, visible, onClose }) => {
 
               <View style={styles.infoRow}>
                 <View style={styles.infoItem}>
-                  <MaterialCommunityIcons name="account-tie" size={20} color="#666" />
+                  <MaterialCommunityIcons name="account-tie" size={responsive.isDesktop ? 22 : 20} color="#666" />
                   <View style={styles.infoTextContainer}>
-                    <Text style={styles.infoLabel}>Profesional</Text>
-                    <Text style={styles.infoValue}>{encargado}</Text>
+                    <Text style={[styles.infoLabel, responsive.isDesktop && styles.infoLabelDesktop]}>Profesional</Text>
+                    <Text style={[styles.infoValue, responsive.isDesktop && styles.infoValueDesktop]}>{encargado}</Text>
                   </View>
                 </View>
               </View>
 
               <View style={styles.infoRow}>
                 <View style={styles.infoItem}>
-                  <MaterialCommunityIcons name="phone" size={20} color="#666" />
+                  <MaterialCommunityIcons name="phone" size={responsive.isDesktop ? 22 : 20} color="#666" />
                   <View style={styles.infoTextContainer}>
-                    <Text style={styles.infoLabel}>Teléfono</Text>
-                    <Text style={styles.infoValue}>{phoneNumber}</Text>
+                    <Text style={[styles.infoLabel, responsive.isDesktop && styles.infoLabelDesktop]}>Teléfono</Text>
+                    <Text style={[styles.infoValue, responsive.isDesktop && styles.infoValueDesktop]}>
+                      {phoneNumber}
+                    </Text>
                   </View>
                 </View>
               </View>
             </View>
 
             {/* Nota informativa */}
-            <View style={styles.noteContainer}>
-              <Ionicons name="information-circle-outline" size={20} color={Colors.PRIMARYCOLOR} />
-              <Text style={styles.noteText}>Puedes contactar con tu profesional a través de WhatsApp.</Text>
+            <View style={[styles.noteContainer, responsive.isDesktop && styles.noteContainerDesktop]}>
+              <Ionicons
+                name="information-circle-outline"
+                size={responsive.isDesktop ? 22 : 20}
+                color={Colors.PRIMARYCOLOR}
+              />
+              <Text style={[styles.noteText, responsive.isDesktop && styles.noteTextDesktop]}>
+                Puedes contactar con tu profesional a través de WhatsApp.
+              </Text>
             </View>
           </View>
 
           {/* Botones de acción */}
-          <View style={styles.actionButtons}>
+          <View style={[styles.actionButtons, responsive.isDesktop && styles.actionButtonsDesktop]}>
             <TouchableOpacity
-              style={[
-                styles.actionButton,
-                styles.whatsappButton,
-                { borderBottomLeftRadius: 16, borderBottomRightRadius: 16 },
-              ]}
+              style={[styles.actionButton, styles.whatsappButton, responsive.isDesktop && styles.whatsappButtonDesktop]}
               onPress={handleWhatsAppAccess}
             >
-              <Ionicons name="logo-whatsapp" size={20} color="#fff" />
-              <Text style={styles.actionButtonText}>WhatsApp</Text>
+              <Ionicons name="logo-whatsapp" size={responsive.isDesktop ? 22 : 20} color="#fff" />
+              <Text style={[styles.actionButtonText, responsive.isDesktop && styles.actionButtonTextDesktop]}>
+                WhatsApp
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -160,6 +195,13 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0, 0, 0, 0.6)",
     justifyContent: "center",
     alignItems: "center",
+  },
+  overlayDesktop: {
+    ...Platform.select({
+      web: {
+        backdropFilter: "blur(5px)",
+      },
+    }),
   },
   modalContainer: {
     width: "90%",
@@ -176,6 +218,13 @@ const styles = StyleSheet.create({
     shadowRadius: 15,
     elevation: 10,
   },
+  modalContainerDesktop: {
+    maxWidth: 480,
+    borderRadius: 20,
+    boxShadow: "0 10px 25px rgba(0, 0, 0, 0.2)",
+    transform: "translateY(-20px)",
+    transition: "transform 0.3s ease-out",
+  },
   modalHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -185,22 +234,53 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#eee",
   },
+  modalHeaderDesktop: {
+    paddingVertical: 20,
+    paddingHorizontal: 24,
+    borderBottomColor: "#f0f0f0",
+  },
   modalTitle: {
     fontSize: 18,
     fontWeight: "bold",
     color: Colors.PRIMARYCOLOR,
   },
+  modalTitleDesktop: {
+    fontSize: 22,
+    letterSpacing: "-0.5px",
+  },
   closeButton: {
     padding: 4,
   },
+  closeButtonDesktop: {
+    padding: 6,
+    borderRadius: 20,
+    ...Platform.select({
+      web: {
+        cursor: "pointer",
+        transition: "all 0.2s ease",
+        ":hover": {
+          backgroundColor: "#f3f4f6",
+        },
+      },
+    }),
+  },
   modalContent: {
     padding: 20,
+  },
+  modalContentDesktop: {
+    padding: 24,
   },
   appointmentTitle: {
     fontSize: 22,
     fontWeight: "bold",
     color: "#333",
     marginBottom: 12,
+  },
+  appointmentTitleDesktop: {
+    fontSize: 26,
+    color: "#1a1a1a",
+    marginBottom: 16,
+    letterSpacing: "-0.5px",
   },
   categoryBadge: {
     alignSelf: "flex-start",
@@ -211,6 +291,12 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     marginBottom: 20,
   },
+  categoryBadgeDesktop: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 24,
+    marginBottom: 24,
+  },
   categoryIcon: {
     marginRight: 6,
   },
@@ -219,14 +305,23 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     fontSize: 14,
   },
+  categoryTextDesktop: {
+    fontSize: 15,
+    fontWeight: "500",
+    letterSpacing: "0.3px",
+  },
   infoSection: {
     backgroundColor: "#f9f9f9",
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
   },
-  infoRow: {
-    marginBottom: 16,
+  infoSectionDesktop: {
+    backgroundColor: "#f5f7fa",
+    borderRadius: 14,
+    padding: 20,
+    marginBottom: 20,
+    boxShadow: "0 2px 4px rgba(0, 0, 0, 0.05)",
   },
   infoRow: {
     marginBottom: 16,
@@ -244,10 +339,20 @@ const styles = StyleSheet.create({
     color: "#666",
     marginBottom: 2,
   },
+  infoLabelDesktop: {
+    fontSize: 15,
+    color: "#4b5563",
+    marginBottom: 4,
+  },
   infoValue: {
     fontSize: 16,
     color: "#333",
     fontWeight: "500",
+  },
+  infoValueDesktop: {
+    fontSize: 17,
+    color: "#1f2937",
+    fontWeight: "600",
   },
   noteContainer: {
     flexDirection: "row",
@@ -257,16 +362,31 @@ const styles = StyleSheet.create({
     padding: 12,
     marginBottom: 8,
   },
+  noteContainerDesktop: {
+    backgroundColor: "#ebf5ff",
+    borderRadius: 10,
+    padding: 16,
+    marginBottom: 16,
+    boxShadow: "0 1px 3px rgba(0, 0, 0, 0.05)",
+  },
   noteText: {
     fontSize: 14,
     color: "#555",
     marginLeft: 8,
     flex: 1,
   },
+  noteTextDesktop: {
+    fontSize: 15,
+    color: "#4b5563",
+    lineHeight: 22,
+  },
   actionButtons: {
     flexDirection: "row",
     borderTopWidth: 1,
     borderTopColor: "#eee",
+  },
+  actionButtonsDesktop: {
+    borderTopColor: "#f0f0f0",
   },
   actionButton: {
     flex: 1,
@@ -277,13 +397,32 @@ const styles = StyleSheet.create({
   },
   whatsappButton: {
     backgroundColor: "#25D366",
+    borderBottomLeftRadius: 16,
     borderBottomRightRadius: 16,
+  },
+  whatsappButtonDesktop: {
+    paddingVertical: 18,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+    ...Platform.select({
+      web: {
+        cursor: "pointer",
+        transition: "all 0.2s ease",
+        ":hover": {
+          backgroundColor: "#22c55e",
+        },
+      },
+    }),
   },
   actionButtonText: {
     color: "#fff",
     fontWeight: "600",
     fontSize: 16,
     marginLeft: 8,
+  },
+  actionButtonTextDesktop: {
+    fontSize: 17,
+    letterSpacing: "0.3px",
   },
 })
 

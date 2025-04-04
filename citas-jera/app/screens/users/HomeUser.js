@@ -144,9 +144,14 @@ const AppointmentsScreen = () => {
     // Crear un objeto para almacenar las fechas marcadas
     const marked = {}
 
-    // Agrupar citas por fecha
+    // Agrupar citas por fecha, teniendo en cuenta el filtro activo
     const appointmentsByDate = {}
     appointments.forEach((appointment) => {
+      // Si hay un filtro activo diferente a "all", solo incluir las citas de esa categoría
+      if (activeFilter !== "all" && appointment.category !== activeFilter) {
+        return
+      }
+
       if (!appointmentsByDate[appointment.date]) {
         appointmentsByDate[appointment.date] = []
       }
@@ -164,7 +169,7 @@ const AppointmentsScreen = () => {
         marked[date] = {
           dots: [
             { key: "psychology", color: Colors.PSICOLOGIA },
-            { key: "nutrition", color: Colors.NUTRICIÓN },
+            { key: "NUTRICIÓN", color: Colors.NUTRICIÓN },
           ],
           marked: true,
         }
@@ -258,6 +263,21 @@ const AppointmentsScreen = () => {
     setLogoutModalVisible(false)
   }
 
+  // Función para limpiar la selección de fecha
+  const clearDateSelection = () => {
+    setSelectedDate("")
+  }
+
+  // Función para manejar la selección de fecha en el calendario
+  const handleDayPress = (day) => {
+    // Si la fecha seleccionada es la misma que ya está seleccionada, la deseleccionamos
+    if (day.dateString === selectedDate) {
+      setSelectedDate("")
+    } else {
+      setSelectedDate(day.dateString)
+    }
+  }
+
   // Filtrar citas según el filtro activo y la fecha seleccionada
   const getFilteredAppointments = () => {
     return appointments.filter((appointment) => {
@@ -275,15 +295,28 @@ const AppointmentsScreen = () => {
       return (
         <View style={styles.emptyStateContainer}>
           <Text style={styles.noAppointmentsText}>No hay citas para esta fecha</Text>
+          <TouchableOpacity style={styles.clearFilterButton} onPress={clearDateSelection}>
+            <Text style={styles.clearFilterButtonText}>Ver todas las citas</Text>
+          </TouchableOpacity>
         </View>
       )
     }
 
     return (
       <View style={styles.appointmentsList}>
-        {selectedDate && (
+        {selectedDate ? (
+          <View style={styles.selectedDateHeader}>
+            <Text style={[styles.selectedDateText, responsive.isDesktop && styles.selectedDateTextDesktop]}>
+              Citas para {formatDate(selectedDate)}
+            </Text>
+            <TouchableOpacity style={styles.clearDateButton} onPress={clearDateSelection}>
+              <Ionicons name="close-circle" size={20} color="#666" />
+              <Text style={styles.clearDateButtonText}>Limpiar fecha</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
           <Text style={[styles.selectedDateText, responsive.isDesktop && styles.selectedDateTextDesktop]}>
-            Citas para {formatDate(selectedDate)}
+            Todas las citas
           </Text>
         )}
 
@@ -324,6 +357,13 @@ const AppointmentsScreen = () => {
                 </View>
 
                 <View style={styles.detailItem}>
+                  <Ionicons name="calendar-outline" size={responsive.isDesktop ? 18 : 16} color="#666" />
+                  <Text style={[styles.detailText, responsive.isDesktop && styles.detailTextDesktop]}>
+                    {formatDate(appointment.date)}
+                  </Text>
+                </View>
+
+                <View style={styles.detailItem}>
                   <Ionicons name="person-outline" size={responsive.isDesktop ? 18 : 16} color="#666" />
                   <Text style={[styles.detailText, responsive.isDesktop && styles.detailTextDesktop]}>
                     {appointment.doctor}
@@ -337,6 +377,25 @@ const AppointmentsScreen = () => {
     )
   }
 
+  // Reemplazar los estilos de los botones de filtro activos para mejorar el contraste
+  const getFilterButtonStyle = (filterType) => {
+    const isActive = activeFilter === filterType
+
+    // Usar un enfoque diferente para los botones activos
+    // Mantenemos el texto oscuro pero cambiamos otros elementos visuales
+    return {
+      button: [
+        styles.filterButton,
+        isActive && styles.filterButtonActive,
+        filterType === "psychology" && isActive && styles.filterButtonPsychology,
+        filterType === "nutrition" && isActive && styles.filterButtonNutrition,
+        responsive.isDesktop && styles.filterButtonDesktop,
+      ],
+      text: [styles.filterText, isActive && styles.filterTextActive, responsive.isDesktop && styles.filterTextDesktop],
+      icon: isActive ? "#333" : "#666",
+    }
+  }
+
   return (
     <SafeAreaView style={[styles.safeArea, responsive.isWeb && styles.safeAreaWeb]}>
       <StatusBar translucent backgroundColor="transparent" barStyle="light-content" />
@@ -348,73 +407,37 @@ const AppointmentsScreen = () => {
       <View style={styles.container}>
         {/* Filtros de categoría */}
         <View style={[styles.filterContainer, responsive.isDesktop && styles.filterContainerDesktop]}>
-          <TouchableOpacity
-            style={[
-              styles.filterButton,
-              activeFilter === "all" && styles.activeFilterButton,
-              responsive.isDesktop && styles.filterButtonDesktop,
-            ]}
-            onPress={() => setActiveFilter("all")}
-          >
-            <Text
-              style={[
-                styles.filterText,
-                activeFilter === "all" && styles.activeFilterText,
-                responsive.isDesktop && styles.filterTextDesktop,
-              ]}
-            >
-              Todas
-            </Text>
+          <TouchableOpacity style={getFilterButtonStyle("all").button} onPress={() => setActiveFilter("all")}>
+            {activeFilter === "all" && <View style={styles.activeIndicator} />}
+            <Text style={getFilterButtonStyle("all").text}>Todas</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[
-              styles.filterButton,
-              activeFilter === "psychology" && styles.activeFilterButtonPsychology,
-              responsive.isDesktop && styles.filterButtonDesktop,
-            ]}
+            style={getFilterButtonStyle("psychology").button}
             onPress={() => setActiveFilter("psychology")}
           >
+            {activeFilter === "psychology" && <View style={[styles.activeIndicator, styles.psychologyIndicator]} />}
             <FontAwesome5
               name="brain"
               size={responsive.isDesktop ? 12 : 14}
-              color={activeFilter === "psychology" ? "#fff" : "#333"}
+              color={getFilterButtonStyle("psychology").icon}
               style={styles.filterIcon}
             />
-            <Text
-              style={[
-                styles.filterText,
-                activeFilter === "psychology" && styles.activeFilterText,
-                responsive.isDesktop && styles.filterTextDesktop,
-              ]}
-            >
-              Psicología
-            </Text>
+            <Text style={getFilterButtonStyle("psychology").text}>Psicología</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[
-              styles.filterButton,
-              activeFilter === "nutrition" && styles.activeFilterButtonNutrition,
-              responsive.isDesktop && styles.filterButtonDesktop,
-            ]}
+            style={getFilterButtonStyle("nutrition").button}
             onPress={() => setActiveFilter("nutrition")}
           >
+            {activeFilter === "nutrition" && <View style={[styles.activeIndicator, styles.nutritionIndicator]} />}
             <MaterialCommunityIcons
               name="food-apple"
               size={responsive.isDesktop ? 14 : 16}
-              color={activeFilter === "nutrition" ? "#fff" : "#333"}
+              color={getFilterButtonStyle("nutrition").icon}
               style={styles.filterIcon}
             />
-            <Text
-              style={[
-                styles.filterText,
-                activeFilter === "nutrition" && styles.activeFilterText,
-                responsive.isDesktop && styles.filterTextDesktop,
-              ]}
-            >
-              Nutrición
-            </Text>
+            <Text style={getFilterButtonStyle("nutrition").text}>Nutrición</Text>
           </TouchableOpacity>
         </View>
 
@@ -437,32 +460,44 @@ const AppointmentsScreen = () => {
                 </Text>
               </TouchableOpacity>
 
-              <TouchableOpacity
-                style={[
-                  styles.todayButton,
-                  {
-                    backgroundColor:
-                      activeFilter === "psychology"
-                        ? Colors.PSICOLOGIA
-                        : activeFilter === "nutrition"
-                          ? Colors.NUTRICIÓN
-                          : Colors.PRIMARYCOLOR,
-                  },
-                  styles.todayButtonDesktop,
-                ]}
-                onPress={() => {
-                  const today = new Date().toISOString().split("T")[0]
-                  setSelectedDate(today)
-                }}
-              >
-                <Ionicons name="today-outline" size={18} color="#fff" style={styles.buttonIcon} />
-                <Text style={[styles.todayButtonText, styles.todayButtonTextDesktop]}>Hoy</Text>
-              </TouchableOpacity>
+              <View style={styles.calendarActionsContainer}>
+                <TouchableOpacity
+                  style={[
+                    styles.todayButton,
+                    {
+                      backgroundColor:
+                        activeFilter === "psychology"
+                          ? Colors.PSICOLOGIA
+                          : activeFilter === "nutrition"
+                            ? Colors.NUTRICIÓN
+                            : Colors.PRIMARYCOLOR,
+                    },
+                    styles.todayButtonDesktop,
+                  ]}
+                  onPress={() => {
+                    const today = new Date().toISOString().split("T")[0]
+                    setSelectedDate(today)
+                  }}
+                >
+                  <Ionicons name="today-outline" size={18} color="#fff" style={styles.buttonIcon} />
+                  <Text style={[styles.todayButtonText, styles.todayButtonTextDesktop]}>Hoy</Text>
+                </TouchableOpacity>
+
+                {selectedDate && (
+                  <TouchableOpacity
+                    style={[styles.clearAllButton, styles.clearAllButtonDesktop]}
+                    onPress={clearDateSelection}
+                  >
+                    <Ionicons name="calendar-clear-outline" size={18} color="#fff" style={styles.buttonIcon} />
+                    <Text style={[styles.clearAllButtonText, styles.clearAllButtonTextDesktop]}>Ver todas</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
 
               <View style={[styles.calendarContainer, styles.calendarContainerDesktop]}>
                 <Calendar
                   current={selectedDate || new Date().toISOString().split("T")[0]}
-                  onDayPress={(day) => setSelectedDate(day.dateString)}
+                  onDayPress={handleDayPress}
                   markedDates={markedDates}
                   markingType="multi-dot"
                   theme={{
@@ -493,6 +528,19 @@ const AppointmentsScreen = () => {
                     textDayFontSize: 18,
                     textMonthFontSize: 20,
                     textDayHeaderFontSize: 16,
+                    // Corregir la deformación del día seleccionado
+                    "stylesheet.day.basic": {
+                      base: {
+                        width: 36,
+                        height: 36,
+                        alignItems: "center",
+                        justifyContent: "center",
+                        borderRadius: 18,
+                      },
+                      selected: {
+                        borderRadius: 18,
+                      },
+                    },
                   }}
                 />
               </View>
@@ -517,31 +565,40 @@ const AppointmentsScreen = () => {
               <Text style={styles.requestServiceButtonText}>Solicitar nueva cita</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity
-              style={[
-                styles.todayButton,
-                {
-                  backgroundColor:
-                    activeFilter === "psychology"
-                      ? Colors.PSICOLOGIA
-                      : activeFilter === "nutrition"
-                        ? Colors.NUTRICIÓN
-                        : Colors.PRIMARYCOLOR,
-                },
-              ]}
-              onPress={() => {
-                const today = new Date().toISOString().split("T")[0]
-                setSelectedDate(today)
-              }}
-            >
-              <Ionicons name="today-outline" size={16} color="#fff" style={styles.buttonIcon} />
-              <Text style={styles.todayButtonText}>Hoy</Text>
-            </TouchableOpacity>
+            <View style={styles.calendarActionsContainer}>
+              <TouchableOpacity
+                style={[
+                  styles.todayButton,
+                  {
+                    backgroundColor:
+                      activeFilter === "psychology"
+                        ? Colors.PSICOLOGIA
+                        : activeFilter === "nutrition"
+                          ? Colors.NUTRICIÓN
+                          : Colors.PRIMARYCOLOR,
+                  },
+                ]}
+                onPress={() => {
+                  const today = new Date().toISOString().split("T")[0]
+                  setSelectedDate(today)
+                }}
+              >
+                <Ionicons name="today-outline" size={16} color="#fff" style={styles.buttonIcon} />
+                <Text style={styles.todayButtonText}>Hoy</Text>
+              </TouchableOpacity>
+
+              {selectedDate && (
+                <TouchableOpacity style={styles.clearAllButton} onPress={clearDateSelection}>
+                  <Ionicons name="calendar-clear-outline" size={16} color="#fff" style={styles.buttonIcon} />
+                  <Text style={styles.clearAllButtonText}>Ver todas</Text>
+                </TouchableOpacity>
+              )}
+            </View>
 
             <View style={styles.calendarContainer}>
               <Calendar
                 current={selectedDate || new Date().toISOString().split("T")[0]}
-                onDayPress={(day) => setSelectedDate(day.dateString)}
+                onDayPress={handleDayPress}
                 markedDates={markedDates}
                 markingType="multi-dot"
                 theme={{
@@ -572,6 +629,19 @@ const AppointmentsScreen = () => {
                   textDayFontSize: 16,
                   textMonthFontSize: 18,
                   textDayHeaderFontSize: 14,
+                  // Corregir la deformación del día seleccionado
+                  "stylesheet.day.basic": {
+                    base: {
+                      width: 32,
+                      height: 32,
+                      alignItems: "center",
+                      justifyContent: "center",
+                      borderRadius: 16,
+                    },
+                    selected: {
+                      borderRadius: 16,
+                    },
+                  },
                 }}
               />
             </View>
@@ -617,6 +687,14 @@ const HomeUser = () => {
   const [logoutModalVisible, setLogoutModalVisible] = useState(false)
   const [isLoggingOut, setIsLoggingOut] = useState(false)
   const responsive = useResponsive()
+  const [activeTab, setActiveTab] = useState("Citas")
+  // Añadir un nuevo estado para controlar la visibilidad de la barra lateral
+  const [sidebarExpanded, setSidebarExpanded] = useState(true)
+
+  // Añadir una función para alternar la visibilidad de la barra lateral
+  const toggleSidebar = () => {
+    setSidebarExpanded(!sidebarExpanded)
+  }
 
   const handleLogout = () => {
     setIsLoggingOut(true)
@@ -635,6 +713,153 @@ const HomeUser = () => {
     setLogoutModalVisible(false)
   }
 
+  // Modificar el renderSidebar para incluir el botón de colapsar y la lógica de expansión/colapso
+  const renderSidebar = () => {
+    if (!responsive.isDesktop) return null
+
+    return (
+      <View style={[styles.sidebarContainer, !sidebarExpanded && styles.sidebarCollapsed]}>
+        <View style={styles.sidebarHeader}>
+          {sidebarExpanded ? (
+            <>
+              <Text style={styles.sidebarLogo}>Senda</Text>
+              <TouchableOpacity style={styles.sidebarToggleButton} onPress={toggleSidebar}>
+                <MaterialCommunityIcons name="chevron-left" size={24} color="#555" />
+              </TouchableOpacity>
+            </>
+          ) : (
+            <TouchableOpacity style={styles.sidebarToggleButtonCollapsed} onPress={toggleSidebar}>
+              <MaterialCommunityIcons name="chevron-right" size={24} color="#555" />
+            </TouchableOpacity>
+          )}
+        </View>
+
+        <View style={styles.sidebarContent}>
+          <TouchableOpacity
+            style={[
+              styles.sidebarItem,
+              activeTab === "Citas" && styles.sidebarItemActive,
+              !sidebarExpanded && styles.sidebarItemCollapsed,
+            ]}
+            onPress={() => setActiveTab("Citas")}
+          >
+            <MaterialCommunityIcons
+              name={activeTab === "Citas" ? "calendar-clock" : "calendar-clock-outline"}
+              size={24}
+              color={activeTab === "Citas" ? Colors.PRIMARYCOLOR : "#555"}
+            />
+            {sidebarExpanded && (
+              <Text style={[styles.sidebarItemText, activeTab === "Citas" && styles.sidebarItemTextActive]}>
+                Mis Citas
+              </Text>
+            )}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.sidebarItem,
+              activeTab === "Documentos" && styles.sidebarItemActive,
+              !sidebarExpanded && styles.sidebarItemCollapsed,
+            ]}
+            onPress={() => setActiveTab("Documentos")}
+          >
+            <MaterialCommunityIcons
+              name={activeTab === "Documentos" ? "file-document-multiple" : "file-document-multiple-outline"}
+              size={24}
+              color={activeTab === "Documentos" ? Colors.PRIMARYCOLOR : "#555"}
+            />
+            {sidebarExpanded && (
+              <Text style={[styles.sidebarItemText, activeTab === "Documentos" && styles.sidebarItemTextActive]}>
+                Documentos
+              </Text>
+            )}
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.sidebarFooter}>
+          <TouchableOpacity
+            style={[styles.logoutButton, !sidebarExpanded && styles.logoutButtonCollapsed]}
+            onPress={() => setLogoutModalVisible(true)}
+          >
+            <MaterialCommunityIcons name="logout" size={22} color="#555" />
+            {sidebarExpanded && <Text style={styles.logoutButtonText}>Cerrar Sesión</Text>}
+          </TouchableOpacity>
+        </View>
+      </View>
+    )
+  }
+
+  // Renderizar el contenido principal
+  const renderContent = () => {
+    if (responsive.isDesktop) {
+      return (
+        <View style={styles.desktopContentContainer}>
+          {activeTab === "Citas" ? <AppointmentsScreen /> : <UserDoc />}
+        </View>
+      )
+    }
+
+    // En móvil, usamos el Tab.Navigator normal
+    return (
+      <Tab.Navigator
+        screenOptions={({ route }) => ({
+          tabBarIcon: ({ focused, color, size }) => {
+            let iconName
+            if (route.name === "Citas") {
+              iconName = focused ? "calendar-clock" : "calendar-clock-outline"
+              return <MaterialCommunityIcons name={iconName} size={size} color={color} />
+            } else if (route.name === "Documentos") {
+              iconName = focused ? "file-document-multiple" : "file-document-multiple-outline"
+              return <MaterialCommunityIcons name={iconName} size={size} color={color} />
+            } else if (route.name === "Cerrar Sesión") {
+              iconName = "logout"
+              return <MaterialCommunityIcons name={iconName} size={size} color={color} />
+            }
+            return null
+          },
+          tabBarActiveTintColor: Colors.PRIMARYCOLOR,
+          tabBarInactiveTintColor: "#777",
+          tabBarStyle: {
+            backgroundColor: "#fff",
+            borderTopWidth: 1,
+            borderTopColor: "#eee",
+            paddingTop: 5,
+            height: Platform.OS === "ios" ? 85 : 65,
+            shadowColor: "#000",
+            shadowOffset: {
+              width: 0,
+              height: -2,
+            },
+            shadowOpacity: 0.1,
+            shadowRadius: 3,
+            elevation: 10,
+          },
+          tabBarLabelStyle: {
+            fontSize: 12,
+            fontWeight: "600",
+            paddingBottom: Platform.OS === "ios" ? 0 : 5,
+          },
+        })}
+      >
+        <Tab.Screen name="Citas" component={AppointmentsScreen} options={{ headerShown: false }} />
+        <Tab.Screen name="Documentos" component={UserDoc} options={{ headerShown: false }} />
+
+        {/* Pestaña para cerrar sesión */}
+        <Tab.Screen
+          name="Cerrar Sesión"
+          component={EmptyScreen}
+          options={{ headerShown: false }}
+          listeners={({ navigation }) => ({
+            tabPress: (e) => {
+              e.preventDefault()
+              setLogoutModalVisible(true)
+            },
+          })}
+        />
+      </Tab.Navigator>
+    )
+  }
+
   return (
     <>
       <StatusBar translucent backgroundColor="transparent" barStyle="light-content" />
@@ -647,74 +872,14 @@ const HomeUser = () => {
         isLoggingOut={isLoggingOut}
       />
 
-      <Tab.Navigator
-        screenOptions={({ route }) => ({
-          tabBarIcon: ({ focused, color, size }) => {
-            let iconName
-            if (route.name === "Citas") {
-              iconName = focused ? "calendar-clock" : "calendar-clock-outline"
-              return (
-                <MaterialCommunityIcons name={iconName} size={responsive.isDesktop ? size + 4 : size} color={color} />
-              )
-            } else if (route.name === "Documentos") {
-              iconName = focused ? "file-document-multiple" : "file-document-multiple-outline"
-              return (
-                <MaterialCommunityIcons name={iconName} size={responsive.isDesktop ? size + 4 : size} color={color} />
-              )
-            } else if (route.name === "Cerrar App") {
-              iconName = focused ? "logout" : "logout"
-              return (
-                <MaterialCommunityIcons name={iconName} size={responsive.isDesktop ? size + 4 : size} color={color} />
-              )
-            }
-            return null
-          },
-          tabBarActiveTintColor: Colors.PRIMARYCOLOR,
-          tabBarInactiveTintColor: "#777",
-          tabBarStyle: {
-            backgroundColor: "#fff",
-            borderTopWidth: 1,
-            borderTopColor: "#eee",
-            paddingTop: responsive.isDesktop ? 8 : 5,
-            height: Platform.OS === "ios" ? 85 : responsive.isWeb ? (responsive.isDesktop ? 70 : 60) : 65,
-            shadowColor: "#000",
-            shadowOffset: {
-              width: 0,
-              height: -2,
-            },
-            shadowOpacity: 0.1,
-            shadowRadius: 3,
-            elevation: 10,
-            ...(responsive.isDesktop && {
-              maxWidth: 1200,
-              marginHorizontal: "auto",
-              borderTopLeftRadius: 4,
-              borderTopRightRadius: 4,
-            }),
-          },
-          tabBarLabelStyle: {
-            fontSize: responsive.isDesktop ? 15 : 12,
-            fontWeight: responsive.isDesktop ? "500" : "600",
-            paddingBottom: Platform.OS === "ios" ? 0 : responsive.isDesktop ? 8 : 5,
-          },
-        })}
-      >
-        <Tab.Screen name="Citas" component={AppointmentsScreen} options={{ headerShown: false }} />
-        <Tab.Screen name="Documentos" component={UserDoc} options={{ headerShown: false }} />
-
-        {/* Pestaña para cerrar sesión */}
-        <Tab.Screen
-          name="Cerrar App"
-          component={EmptyScreen}
-          options={{ headerShown: false }}
-          listeners={({ navigation }) => ({
-            tabPress: (e) => {
-              e.preventDefault()
-              setLogoutModalVisible(true)
-            },
-          })}
-        />
-      </Tab.Navigator>
+      {responsive.isDesktop ? (
+        <View style={styles.desktopLayout}>
+          {renderSidebar()}
+          {renderContent()}
+        </View>
+      ) : (
+        renderContent()
+      )}
     </>
   )
 }
@@ -861,6 +1026,11 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     letterSpacing: "0.3px",
   },
+  calendarActionsContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 16,
+  },
   todayButton: {
     flexDirection: "row",
     alignItems: "center",
@@ -868,7 +1038,8 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.PRIMARYCOLOR,
     padding: 10,
     borderRadius: 8,
-    marginBottom: 16,
+    flex: 1,
+    marginRight: 8,
   },
   todayButtonDesktop: {
     padding: 12,
@@ -882,6 +1053,31 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   todayButtonTextDesktop: {
+    fontSize: 15,
+    fontWeight: "500",
+  },
+  clearAllButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#6c757d",
+    padding: 10,
+    borderRadius: 8,
+    flex: 1,
+    marginLeft: 8,
+  },
+  clearAllButtonDesktop: {
+    padding: 12,
+    borderRadius: 6,
+    boxShadow: "0 1px 3px rgba(0, 0, 0, 0.1)",
+    transition: "all 0.2s ease",
+  },
+  clearAllButtonText: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  clearAllButtonTextDesktop: {
     fontSize: 15,
     fontWeight: "500",
   },
@@ -919,6 +1115,12 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
     justifyContent: "space-between",
   },
+  selectedDateHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
+  },
   selectedDateText: {
     fontSize: 18,
     fontWeight: "700",
@@ -930,6 +1132,18 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#1f2937",
     marginBottom: 20,
+  },
+  clearDateButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 6,
+    borderRadius: 6,
+    backgroundColor: "#f3f4f6",
+  },
+  clearDateButtonText: {
+    fontSize: 14,
+    color: "#666",
+    marginLeft: 4,
   },
   appointmentItem: {
     backgroundColor: "#fff",
@@ -954,10 +1168,6 @@ const styles = StyleSheet.create({
     boxShadow: "0 2px 5px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.07)",
     transition: "transform 0.2s ease, box-shadow 0.2s ease",
     cursor: "pointer",
-    ":hover": {
-      transform: "translateY(-2px)",
-      boxShadow: "0 4px 8px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.06)",
-    },
   },
   appointmentHeader: {
     flexDirection: "row",
@@ -998,10 +1208,13 @@ const styles = StyleSheet.create({
   appointmentDetails: {
     flexDirection: "row",
     justifyContent: "space-between",
+    flexWrap: "wrap",
   },
   detailItem: {
     flexDirection: "row",
     alignItems: "center",
+    marginRight: 12,
+    marginBottom: 6,
   },
   detailText: {
     marginLeft: 6,
@@ -1025,6 +1238,18 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#666",
     fontStyle: "italic",
+    marginBottom: 16,
+  },
+  clearFilterButton: {
+    backgroundColor: Colors.PRIMARYCOLOR,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+  },
+  clearFilterButtonText: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "600",
   },
   // Estilos específicos para móvil
   mobileScrollView: {
@@ -1034,6 +1259,140 @@ const styles = StyleSheet.create({
   mobileScrollContent: {
     padding: 16,
     paddingBottom: 80, // Espacio adicional al final
+  },
+  // Estilos para la barra lateral en desktop
+  desktopLayout: {
+    flexDirection: "row",
+    height: "100vh",
+    width: "100%",
+  },
+  sidebarContainer: {
+    width: 260,
+    backgroundColor: "#fff",
+    borderRight: "1px solid #e5e7eb",
+    height: "100%",
+    display: "flex",
+    flexDirection: "column",
+    boxShadow: "1px 0 5px rgba(0, 0, 0, 0.05)",
+    transition: "width 0.3s ease",
+  },
+  sidebarCollapsed: {
+    width: 70,
+  },
+  sidebarHeader: {
+    padding: 20,
+    borderBottom: "1px solid #f3f4f6",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  sidebarLogo: {
+    fontSize: 22,
+    fontWeight: "700",
+    color: Colors.PRIMARYCOLOR,
+  },
+  sidebarContent: {
+    flex: 1,
+    padding: 16,
+  },
+  sidebarItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 14,
+    borderRadius: 8,
+    marginBottom: 8,
+    cursor: "pointer",
+    transition: "all 0.2s ease",
+  },
+  sidebarItemActive: {
+    backgroundColor: "#f3f4f6",
+  },
+  sidebarItemText: {
+    fontSize: 16,
+    fontWeight: "500",
+    color: "#555",
+    marginLeft: 12,
+  },
+  sidebarItemTextActive: {
+    color: Colors.PRIMARYCOLOR,
+    fontWeight: "600",
+  },
+  sidebarFooter: {
+    padding: 16,
+    borderTop: "1px solid #f3f4f6",
+  },
+  logoutButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 14,
+    borderRadius: 8,
+    backgroundColor: "#f9fafb",
+    cursor: "pointer",
+    transition: "all 0.2s ease",
+  },
+  logoutButtonText: {
+    fontSize: 16,
+    fontWeight: "500",
+    color: "#555",
+    marginLeft: 12,
+  },
+  desktopContentContainer: {
+    flex: 1,
+    height: "100%",
+    overflow: "auto",
+  },
+  sidebarToggleButton: {
+    position: "absolute",
+    right: 16,
+    top: "50%",
+    transform: "translateY(-50%)",
+    padding: 5,
+    borderRadius: 5,
+    backgroundColor: "#f3f4f6",
+  },
+  sidebarToggleButtonCollapsed: {
+    padding: 5,
+    borderRadius: 5,
+    backgroundColor: "#f3f4f6",
+    alignSelf: "center",
+  },
+  sidebarItemCollapsed: {
+    justifyContent: "center",
+    padding: 12,
+  },
+  logoutButtonCollapsed: {
+    justifyContent: "center",
+    padding: 12,
+  },
+  activeIndicator: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 3,
+    backgroundColor: Colors.PRIMARYCOLOR,
+    borderRadius: 1.5,
+  },
+  psychologyIndicator: {
+    backgroundColor: Colors.PSICOLOGIA,
+  },
+  nutritionIndicator: {
+    backgroundColor: Colors.NUTRICIÓN,
+  },
+  filterButtonActive: {
+    backgroundColor: "#f8f9fa",
+    borderWidth: 1,
+    borderColor: "#e5e7eb",
+  },
+  filterButtonPsychology: {
+    borderColor: Colors.PSICOLOGIA,
+  },
+  filterButtonNutrition: {
+    borderColor: Colors.NUTRICIÓN,
+  },
+  filterTextActive: {
+    fontWeight: "700",
+    color: "#333",
   },
 })
 
