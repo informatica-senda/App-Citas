@@ -67,10 +67,10 @@ const LoginScreen = () => {
             setIsLoading(false)
             // Redirigir según el rol del usuario
             navigation.replace(userData.role === "admin" ? "HomeManager" : "HomeUser")
-            alert("Inicio de seisón correcto")
+            alert("Inicio de sesión correcto")
           } else {
             setIsLoading(false)
-            alert("Usuario o contraseña incorectos")
+            alert("Usuario o contraseña incorrectos")
           }
         }
       } catch (e) {
@@ -95,7 +95,7 @@ const LoginScreen = () => {
               <View style={styles.logoContainerDesktop}>
                 <Image source={require("@assets/icon.png")} style={styles.desktopLogo} resizeMode="contain" />
               </View>
-              <Text style={styles.desktopWelcomeTitle}>Bienvenido</Text>
+              <Text style={styles.desktopWelcomeTitle}>Senda Servicios</Text>
               <Text style={styles.desktopWelcomeText}>Accede a tu cuenta para gestionar tus citas y servicios</Text>
             </View>
             <View style={styles.sidebarFooter}>
@@ -245,13 +245,13 @@ const styles = StyleSheet.create({
     padding: 15,
     marginBottom: 25,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 5,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
     ...Platform.select({
       web: {
-        boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+        boxShadow: "0 2px 8px rgba(0, 0, 0, 0.08)",
       },
     }),
   },
@@ -274,10 +274,10 @@ const styles = StyleSheet.create({
     width: "100%",
     alignItems: "center",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 3,
+    elevation: 4,
     marginTop: 20,
   },
   loginButtonDesktop: {
@@ -288,10 +288,9 @@ const styles = StyleSheet.create({
       web: {
         cursor: "pointer",
         transition: "all 0.2s ease",
-        boxShadow: "0 4px 10px rgba(22, 107, 255, 0.3)",
         ":hover": {
-          transform: "translateY(-2px)",
-          boxShadow: "0 6px 15px rgba(22, 107, 255, 0.4)",
+          transform: "translateY(-1px)",
+          boxShadow: "0 4px 10px rgba(22, 107, 255, 0.25)",
           backgroundColor: "#0055e6",
         },
       },
@@ -325,17 +324,22 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: "center",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 4,
+    ...Platform.select({
+      web: {
+        boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
+      },
+    }),
   },
   modalContentDesktop: {
     padding: 30,
     borderRadius: 16,
     ...Platform.select({
       web: {
-        boxShadow: "0 10px 25px rgba(0, 0, 0, 0.2)",
+        boxShadow: "0 6px 16px rgba(0, 0, 0, 0.12)",
       },
     }),
   },
@@ -362,7 +366,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     ...Platform.select({
       web: {
-        boxShadow: "0 0 20px rgba(0, 0, 0, 0.1)",
+        boxShadow: "0 0 20px rgba(0, 0, 0, 0.08)",
       },
     }),
   },
@@ -399,7 +403,7 @@ const styles = StyleSheet.create({
   },
   desktopFormPanel: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: Colors.BACKGROUND,
     justifyContent: "center",
     alignItems: "center",
     padding: 40,
