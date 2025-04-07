@@ -7,10 +7,13 @@ import { useFonts, Inter_400Regular, Inter_700Bold, Inter_500Medium, Inter_600Se
 // Estas pantallas serán utilizadas dentro de nuestro sistema de navegación
 import LoginScreen from '@screens/login.js';
 import UserDoc from '@screens/users/UserDoc.js';
-import HomeUser from '@screens/users/HomeUser.js';
+import HomeEmployee from '@screens/employee/HomeEmployee.js';
+import HomeUser from '@screens/user/HomeUser.js';
 import HomeManager from '@screens/manager/HomeManager.js';
 import HomeTeacher from '@screens/teacher/HomeTeacher.js';
 import EmployeeDetailScreen from '@screens/teacher/EmployeeDetailScreen.js';
+import AppointmentCalendarScreen from '@components/AppoimentCalendarScreen.js';
+import RegisterScreen from '@screens/RegisterScreen.js';
 
 // Creamos una instancia del stack navigator, que nos permitirá manejar la navegación entre distintas pantallas
 // Stack Navigator es una forma de navegación donde las pantallas se apilan unas sobre otras
@@ -23,7 +26,7 @@ function AppNavigator() {
    * Se utiliza useState para manejar este estado de manera dinámica en caso de necesitar cambios futuros.
    * 'LoginScreen' es la pantalla por defecto en la que el usuario comienza la aplicación.
    */
-  const [initialRoute, setInitialRoute] = useState('HomeManager');
+  const [initialRoute, setInitialRoute] = useState('LoginScreen');
 
   return (
     /**
@@ -43,7 +46,13 @@ function AppNavigator() {
         name="LoginScreen"
         component={LoginScreen}
         options={{ headerShown: false }}
-      /><Stack.Screen
+      />
+      <Stack.Screen
+        name="RegisterScreen"
+        component={RegisterScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
       name="EmployeeDetailScreen"
       component={EmployeeDetailScreen}
       options={{ headerShown: false }}
@@ -59,6 +68,11 @@ function AppNavigator() {
         options={{ headerShown: false }}
       />
       <Stack.Screen
+        name="HomeEmployee"
+        component={HomeEmployee}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
         name="HomeManager"
         component={HomeManager}
         options={{ headerShown: false }}
@@ -66,6 +80,11 @@ function AppNavigator() {
       <Stack.Screen
         name="UserDoc"
         component={UserDoc}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="AppointmentCalendarScreen"
+        component={AppointmentCalendarScreen}
         options={{ headerShown: false }}
       />
       

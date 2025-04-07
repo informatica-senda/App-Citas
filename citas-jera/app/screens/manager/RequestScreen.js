@@ -14,7 +14,7 @@ const initialRequestsData = [
     id: "1",
     name: "María García",
     service: "Psicología",
-    date: "2023-06-15",
+    date: null,
     message: "Necesito una consulta para tratar problemas de ansiedad.",
     phone: "123-456-7890",
     email: "maria.garcia@email.com",
@@ -23,7 +23,7 @@ const initialRequestsData = [
     id: "2",
     name: "Juan Rodríguez",
     service: "Nutrición",
-    date: "2023-06-16",
+    date: null,
     message: "Quiero una consulta para mejorar mi alimentación y bajar de peso.",
     phone: "098-765-4321",
     email: "juan.rodriguez@email.com",
@@ -32,7 +32,7 @@ const initialRequestsData = [
     id: "3",
     name: "Ana Martínez",
     service: "Psicología",
-    date: "2023-06-17",
+    date: null,
     message: "Busco ayuda para problemas de estrés laboral.",
     phone: "555-123-4567",
     email: "ana.martinez@email.com",
@@ -41,7 +41,7 @@ const initialRequestsData = [
     id: "4",
     name: "Carlos López",
     service: "Nutrición",
-    date: "2023-06-18",
+    date: null,
     message: "Necesito un plan alimenticio para deportistas.",
     phone: "777-888-9999",
     email: "carlos.lopez@email.com",
@@ -50,7 +50,7 @@ const initialRequestsData = [
     id: "5",
     name: "Laura Sánchez",
     service: "Psicología",
-    date: "2023-06-19",
+    date: null,
     message: "Quiero terapia para mejorar mis relaciones interpersonales.",
     phone: "111-222-3333",
     email: "laura.sanchez@email.com",
@@ -59,7 +59,7 @@ const initialRequestsData = [
     id: "6",
     name: "Pedro Fernández",
     service: "Nutrición",
-    date: "2023-06-20",
+    date: null,
     message: "Busco asesoría para una dieta vegetariana balanceada.",
     phone: "444-555-6666",
     email: "pedro.fernandez@email.com",
@@ -147,6 +147,12 @@ const RequestScreen = ({ navigation }) => {
     setActiveFilter(filter)
   }
 
+  // Función para formatear la fecha o devolver un string vacío si es null
+  const formatDate = (dateString) => {
+    if (!dateString) return ""
+    return new Date(dateString).toLocaleDateString()
+  }
+
   // Función para renderizar cada elemento de la lista
   const renderRequestItem = ({ item }) => (
     <TouchableOpacity
@@ -156,9 +162,11 @@ const RequestScreen = ({ navigation }) => {
       <View style={styles.requestContent}>
         <View style={styles.requestHeader}>
           <Text style={[styles.requestName, responsive.isDesktop && styles.requestNameDesktop]}>{item.name}</Text>
-          <Text style={[styles.requestDate, responsive.isDesktop && styles.requestDateDesktop]}>
-            {new Date(item.date).toLocaleDateString()}
-          </Text>
+          {item.date && (
+            <Text style={[styles.requestDate, responsive.isDesktop && styles.requestDateDesktop]}>
+              {formatDate(item.date)}
+            </Text>
+          )}
         </View>
         <View style={styles.serviceContainer}>
           {item.service === "Psicología" ? (
@@ -226,12 +234,12 @@ const RequestScreen = ({ navigation }) => {
               <MaterialIcons name="medical-services" size={20} color={Colors.PRIMARYCOLOR} />
               <Text style={styles.detailsItemText}>Servicio: {selectedRequest.service}</Text>
             </View>
-            <View style={styles.detailsItem}>
-              <MaterialIcons name="event" size={20} color={Colors.PRIMARYCOLOR} />
-              <Text style={styles.detailsItemText}>
-                Fecha de solicitud: {new Date(selectedRequest.date).toLocaleDateString()}
-              </Text>
-            </View>
+            {selectedRequest.date && (
+              <View style={styles.detailsItem}>
+                <MaterialIcons name="event" size={20} color={Colors.PRIMARYCOLOR} />
+                <Text style={styles.detailsItemText}>Fecha de solicitud: {formatDate(selectedRequest.date)}</Text>
+              </View>
+            )}
           </View>
 
           <View style={styles.detailsSection}>
@@ -283,11 +291,12 @@ const RequestScreen = ({ navigation }) => {
             <View style={[styles.searchContainer, styles.searchContainerDesktop]}>
               <Ionicons name="search" size={20} color={Colors.SECONDARYCOLOR} style={styles.searchIcon} />
               <TextInput
-                style={styles.searchInput}
+                style={[styles.searchInput, { outline: "none", WebkitTapHighlightColor: "transparent" }]}
                 placeholder="Buscar por nombre..."
                 value={searchText}
                 onChangeText={setSearchText}
                 placeholderTextColor={Colors.SECONDARYCOLOR}
+                className="no-highlight"
               />
               {searchText ? (
                 <TouchableOpacity onPress={() => setSearchText("")}>
@@ -381,11 +390,12 @@ const RequestScreen = ({ navigation }) => {
           <View style={styles.searchContainer}>
             <Ionicons name="search" size={20} color={Colors.SECONDARYCOLOR} style={styles.searchIcon} />
             <TextInput
-              style={styles.searchInput}
+              style={[styles.searchInput, { outline: "none", WebkitTapHighlightColor: "transparent" }]}
               placeholder="Buscar por nombre..."
               value={searchText}
               onChangeText={setSearchText}
               placeholderTextColor={Colors.SECONDARYCOLOR}
+              className="no-highlight"
             />
             {searchText ? (
               <TouchableOpacity onPress={() => setSearchText("")}>

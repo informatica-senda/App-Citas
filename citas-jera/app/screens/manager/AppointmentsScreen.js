@@ -110,7 +110,6 @@ const APPOINTMENTS = [
     client: "Laura Martínez",
     status: "pending",
   },
-
 ]
 
 // Función para formatear la fecha en formato dd/mm/yyyy
@@ -138,6 +137,11 @@ const AppointmentsScreen = () => {
     // Agrupar citas por fecha
     const appointmentsByDate = {}
     appointments.forEach((appointment) => {
+      // Skip appointments that don't match the active filter
+      if (filter !== "all" && appointment.category !== filter) {
+        return
+      }
+
       if (!appointmentsByDate[appointment.date]) {
         appointmentsByDate[appointment.date] = []
       }
@@ -154,15 +158,15 @@ const AppointmentsScreen = () => {
       if (hasPsychology && hasNutrition) {
         marked[date] = {
           dots: [
-            { key: "psychology", color: Colors.PRIMARYCOLOR },
-            { key: "nutrition", color: Colors.SECONDARYCOLOR },
+            { key: "psychology", color: "#8996F2" }, // Color for psychology
+            { key: "nutrition", color: "#6EB566" }, // Color for nutrition
           ],
           marked: true,
         }
       }
       // Si solo hay un tipo, usar un solo dot
       else {
-        const dotColor = hasPsychology ? Colors.PRIMARYCOLOR : Colors.SECONDARYCOLOR
+        const dotColor = hasPsychology ? "#8996F2" : "#6EB566"
         marked[date] = {
           dots: [{ key: "single", color: dotColor }],
           marked: true,
@@ -174,12 +178,7 @@ const AppointmentsScreen = () => {
         marked[date] = {
           ...marked[date],
           selected: true,
-          selectedColor: 
-            filter === "psychology" 
-              ? Colors.PRIMARYCOLOR 
-              : filter === "nutrition" 
-                ? Colors.SECONDARYCOLOR 
-                : Colors.PRIMARYCOLOR,
+          selectedColor: filter === "psychology" ? "#8996F2" : filter === "nutrition" ? "#6EB566" : Colors.PRIMARYCOLOR,
         }
       }
     })
@@ -188,12 +187,7 @@ const AppointmentsScreen = () => {
     if (selectedDate && !marked[selectedDate]) {
       marked[selectedDate] = {
         selected: true,
-        selectedColor: 
-          filter === "psychology" 
-            ? Colors.PRIMARYCOLOR 
-            : filter === "nutrition" 
-              ? Colors.SECONDARYCOLOR 
-              : Colors.PRIMARYCOLOR,
+        selectedColor: filter === "psychology" ? "#8996F2" : filter === "nutrition" ? "#6EB566" : Colors.PRIMARYCOLOR,
       }
     }
 
@@ -227,7 +221,7 @@ const AppointmentsScreen = () => {
   // Obtener estilos para botones de filtro
   const getFilterButtonStyle = (filterType) => {
     const isActive = filter === filterType
-    
+
     return {
       button: [
         styles.filterButton,
@@ -281,7 +275,9 @@ const AppointmentsScreen = () => {
               key={appointment.id}
               style={[
                 styles.appointmentItem,
-                { borderLeftColor: appointment.category === "psychology" ? Colors.PRIMARYCOLOR : Colors.SECONDARYCOLOR },
+                {
+                  borderLeftColor: appointment.category === "psychology" ? "#8996F2" : "#6EB566",
+                },
                 responsive.isDesktop && styles.appointmentItemDesktop,
               ]}
               onPress={() => setSelectedAppointment(appointment)}
@@ -294,8 +290,7 @@ const AppointmentsScreen = () => {
                   style={[
                     styles.categoryBadge,
                     {
-                      backgroundColor:
-                        appointment.category === "psychology" ? Colors.PRIMARYCOLOR : Colors.SECONDARYCOLOR,
+                      backgroundColor: appointment.category === "psychology" ? "#8996F2" : "#6EB566",
                     },
                     responsive.isDesktop && styles.categoryBadgeDesktop,
                   ]}
@@ -331,7 +326,10 @@ const AppointmentsScreen = () => {
                   </View>
                   <View style={styles.detailItem}>
                     <Ionicons name="call-outline" size={responsive.isDesktop ? 18 : 16} color="#666" />
-                    <Text style={[styles.detailText, responsive.isDesktop && styles.detailTextDesktop]}>
+                    <Text
+                      style={[styles.detailText, responsive.isDesktop && styles.detailTextDesktop]}
+                      numberOfLines={1}
+                    >
                       {appointment.phone}
                     </Text>
                   </View>
@@ -379,7 +377,7 @@ const AppointmentsScreen = () => {
             {filter === "all" && <View style={styles.activeIndicator} />}
             <Text style={getFilterButtonStyle("all").text}>Todas</Text>
           </TouchableOpacity>
-          
+
           <TouchableOpacity style={getFilterButtonStyle("psychology").button} onPress={() => setFilter("psychology")}>
             {filter === "psychology" && <View style={[styles.activeIndicator, styles.psychologyIndicator]} />}
             <FontAwesome5
@@ -390,7 +388,7 @@ const AppointmentsScreen = () => {
             />
             <Text style={getFilterButtonStyle("psychology").text}>Psicología</Text>
           </TouchableOpacity>
-          
+
           <TouchableOpacity style={getFilterButtonStyle("nutrition").button} onPress={() => setFilter("nutrition")}>
             {filter === "nutrition" && <View style={[styles.activeIndicator, styles.nutritionIndicator]} />}
             <MaterialCommunityIcons
@@ -418,11 +416,7 @@ const AppointmentsScreen = () => {
                     styles.todayButton,
                     {
                       backgroundColor:
-                        filter === "psychology"
-                          ? Colors.PRIMARYCOLOR
-                          : filter === "nutrition"
-                            ? Colors.SECONDARYCOLOR
-                            : Colors.PRIMARYCOLOR,
+                        filter === "psychology" ? "#8996F2" : filter === "nutrition" ? "#6EB566" : Colors.PRIMARYCOLOR,
                     },
                     styles.todayButtonDesktop,
                   ]}
@@ -456,12 +450,8 @@ const AppointmentsScreen = () => {
                     backgroundColor: "#fff",
                     calendarBackground: "#fff",
                     textSectionTitleColor: "#333",
-                    selectedDayBackgroundColor: 
-                      filter === "psychology"
-                        ? Colors.PRIMARYCOLOR
-                        : filter === "nutrition"
-                          ? Colors.SECONDARYCOLOR
-                          : Colors.PRIMARYCOLOR,
+                    selectedDayBackgroundColor:
+                      filter === "psychology" ? "#8996F2" : filter === "nutrition" ? "#6EB566" : Colors.PRIMARYCOLOR,
                     selectedDayTextColor: "#fff",
                     todayTextColor: Colors.PRIMARYCOLOR,
                     dayTextColor: "#333",
@@ -518,11 +508,7 @@ const AppointmentsScreen = () => {
                   styles.todayButton,
                   {
                     backgroundColor:
-                      filter === "psychology"
-                        ? Colors.PRIMARYCOLOR
-                        : filter === "nutrition"
-                          ? Colors.SECONDARYCOLOR
-                          : Colors.PRIMARYCOLOR,
+                      filter === "psychology" ? "#8996F2" : filter === "nutrition" ? "#6EB566" : Colors.PRIMARYCOLOR,
                   },
                 ]}
                 onPress={() => {
@@ -552,12 +538,8 @@ const AppointmentsScreen = () => {
                   backgroundColor: "#fff",
                   calendarBackground: "#fff",
                   textSectionTitleColor: "#333",
-                  selectedDayBackgroundColor: 
-                    filter === "psychology"
-                      ? Colors.PRIMARYCOLOR
-                      : filter === "nutrition"
-                        ? Colors.SECONDARYCOLOR
-                        : Colors.PRIMARYCOLOR,
+                  selectedDayBackgroundColor:
+                    filter === "psychology" ? "#8996F2" : filter === "nutrition" ? "#6EB566" : Colors.PRIMARYCOLOR,
                   selectedDayTextColor: "#fff",
                   todayTextColor: Colors.PRIMARYCOLOR,
                   dayTextColor: "#333",
@@ -718,10 +700,10 @@ const styles = StyleSheet.create({
     borderColor: "#e5e7eb",
   },
   filterButtonPsychology: {
-    borderColor: Colors.PRIMARYCOLOR,
+    borderColor: "#8996F2",
   },
   filterButtonNutrition: {
-    borderColor: Colors.SECONDARYCOLOR,
+    borderColor: "#6EB566",
   },
   filterText: {
     fontSize: 14,
@@ -749,10 +731,10 @@ const styles = StyleSheet.create({
     borderRadius: 1.5,
   },
   psychologyIndicator: {
-    backgroundColor: Colors.PRIMARYCOLOR,
+    backgroundColor: "#8996F2",
   },
   nutritionIndicator: {
-    backgroundColor: Colors.SECONDARYCOLOR,
+    backgroundColor: "#6EB566",
   },
   // Botones del calendario
   calendarActionsContainer: {
@@ -947,17 +929,20 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     marginBottom: 8,
+    flexWrap: "wrap",
   },
   detailItem: {
     flexDirection: "row",
     alignItems: "center",
     marginRight: 12,
     marginBottom: 6,
+    maxWidth: "45%",
   },
   detailText: {
     marginLeft: 6,
     color: "#666",
     fontSize: 14,
+    flexShrink: 1,
   },
   detailTextDesktop: {
     fontSize: 15,
@@ -1023,3 +1008,4 @@ const styles = StyleSheet.create({
 })
 
 export default AppointmentsScreen
+

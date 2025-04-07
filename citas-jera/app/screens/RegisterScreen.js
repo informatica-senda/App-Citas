@@ -8,85 +8,113 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
-  Dimensions,
   Image,
   SafeAreaView,
   StatusBar,
   ScrollView,
   Modal,
   ActivityIndicator,
+  Alert,
 } from "react-native"
 import { useNavigation } from "@react-navigation/native"
 import Input from "@components/Inputs.js"
 import Colors from "@styles/colors.js"
-import { signInWithEmailAndPassword } from "firebase/auth"
+import { createUserWithEmailAndPassword } from "firebase/auth"
 import { db, auth } from "../../firebaseConfig.js"
-import { doc, getDoc } from "firebase/firestore"
+import { doc, setDoc } from "firebase/firestore"
 import { useResponsive } from "../hooks/use-responsive"
 
-// Obtenemos las dimensiones de la pantalla del dispositivo
-const { width, height } = Dimensions.get("window")
-
-// Componente principal de la pantalla de inicio de sesión
-const LoginScreen = () => {
+// Componente principal de la pantalla de registro
+const RegisterScreen = () => {
   const responsive = useResponsive()
-  const [isLoading, setIsLoading] = useState(false) // Estado para controlar la visibilidad del modal de carga
+  const [isLoading, setIsLoading] = useState(false)
+  const navigation = useNavigation()
 
-  const navigation = useNavigation() // Hook para manejar la navegación entre pantallas
+  // Referencias para los campos de entrada
+  const fullNameRef = useRef()
+  const emailRef = useRef()
+  const dniRef = useRef()
+  const companyCodeRef = useRef()
+  const passwordRef = useRef()
+  const confirmPasswordRef = useRef()
 
-  // Referencias para los campos de entrada (usuario y contraseña)
-  const password = useRef()
-  const usernameRef = useRef()
-  const phoneNumberRef = useRef()
-  const workerIdRef = useRef()
-
-  // Estado que controla la visibilidad de la contraseña en el campo de entrada
-  const [hide, setHide] = useState(true)
+  // Estado que controla la visibilidad de las contraseñas
+  const [hidePassword, setHidePassword] = useState(true)
+  const [hideConfirmPassword, setHideConfirmPassword] = useState(true)
 
   /**
-   * Función que maneja el proceso de inicio de sesión.
-   * - Obtiene el valor ingresado en el campo de usuario.
-   * - Si el usuario ingresa '1', se redirige a la pantalla de administrador.
-   * - En caso contrario, se redirige a la pantalla de usuario.
+   * Función que maneja el proceso de registro.
    */
-  const handleLogin = async () => {
-    const username = usernameRef.current?.getValue()
-    const passwordComp = password.current?.getValue()
+  const handleRegister = async () => {
+    const fullName = fullNameRef.current?.getValue()
+    const email = emailRef.current?.getValue()
+    const dni = dniRef.current?.getValue()
+    const companyCode = companyCodeRef.current?.getValue()
+    const password = passwordRef.current?.getValue()
+    const confirmPassword = confirmPasswordRef.current?.getValue()
 
-    if (username && passwordComp) {
-      try {
-        setIsLoading(true)
-        const response = await signInWithEmailAndPassword(auth, username, passwordComp)
-        if (response) {
-          // Obtener el documento del usuario desde Firestore
-          const userDocRef = doc(db, "users", response.user.uid)
-          const userDocSnap = await getDoc(userDocRef)
+    // Validar que todos los campos estén completos
+    if (!fullName || !email || !dni || !companyCode || !password || !confirmPassword) {
+      Alert.alert("Error", "Por favor, completa todos los campos")
+      return
+    }
 
-          if (userDocSnap.exists()) {
-            const userData = userDocSnap.data()
-            setIsLoading(false)
-            // Redirigir según el rol del usuario
-            navigation.replace(userData.role === "admin" ? "HomeManager" : "HomeUser")
-            alert("Inicio de sesión correcto")
-          } else {
-            setIsLoading(false)
-            alert("Usuario o contraseña incorrectos")
-          }
-        }
-      } catch (e) {
-        setIsLoading(false)
-        e = "[FirebaseError: Firebase: Error (auth/invalid-email).]"
-          ? alert("No hay autenticación")
-          : alert("Ha ocurrido un error")
+    // Validar que las contraseñas coincidan
+    if (password !== confirmPassword) {
+      Alert.alert("Error", "Las contraseñas no coinciden")
+      return
+    }
+
+    // Validar formato de email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email)) {
+      Alert.alert("Error", "Por favor, introduce un email válido")
+      return
+    }
+
+    // Validar formato de DNI (8 números y una letra)
+    const dniRegex = /^[0-9]{8}[A-Za-z]$/
+    if (!dniRegex.test(dni)) {
+      Alert.alert("Error", "Por favor, introduce un DNI válido (8 números y una letra)")
+      return
+    }
+
+    try {
+      setIsLoading(true)
+      // Crear usuario en Firebase Authentication
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password)
+
+      // Guardar información adicional en Firestore
+      await setDoc(doc(db, "user", userCredential.user.uid), {
+        fullName,
+        email,
+        dni,
+        companyCode,
+        role: "user", // Por defecto, todos los usuarios registrados son usuarios normales
+        createdAt: new Date().toISOString(),
+      })
+
+      setIsLoading(false)
+      Alert.alert("Registro exitoso", "Tu cuenta ha sido creada correctamente", [
+        { text: "OK", onPress: () => navigation.navigate("Login") },
+      ])
+    } catch (error) {
+      setIsLoading(false)
+      let errorMessage = "Ha ocurrido un error durante el registro"
+
+      if (error.code === "auth/email-already-in-use") {
+        errorMessage = "Este email ya está registrado"
+      } else if (error.code === "auth/weak-password") {
+        errorMessage = "La contraseña debe tener al menos 6 caracteres"
       }
-    } else {
-      alert("Introduce el usuario y la contraseña")
+
+      Alert.alert("Error", errorMessage)
     }
   }
 
-  // Función para navegar a la pantalla de registro
-  const navigateToRegister = () => {
-    navigation.replace("RegisterScreen")
+  // Función para volver a la pantalla de login
+  const navigateToLogin = () => {
+    navigation.replace("LoginScreen")
   }
 
   return (
@@ -101,7 +129,9 @@ const LoginScreen = () => {
                 <Image source={require("@assets/icon.png")} style={styles.desktopLogo} resizeMode="contain" />
               </View>
               <Text style={styles.desktopWelcomeTitle}>Senda Servicios</Text>
-              <Text style={styles.desktopWelcomeText}>Accede a tu cuenta para gestionar tus citas y servicios</Text>
+              <Text style={styles.desktopWelcomeText}>
+                Crea tu cuenta para acceder a nuestros servicios y gestionar tus citas
+              </Text>
             </View>
             <View style={styles.sidebarFooter}>
               <Text style={styles.copyrightText}>© 2025 Servicio de Atención al Empleado</Text>
@@ -111,40 +141,52 @@ const LoginScreen = () => {
           {/* Panel de formulario */}
           <View style={styles.desktopFormPanel}>
             <View style={styles.formContainer}>
-              <Text style={styles.desktopFormTitle}>Iniciar Sesión</Text>
-              <Text style={styles.desktopFormSubtitle}>Introduce tus credenciales para acceder al sistema</Text>
+              <Text style={styles.desktopFormTitle}>Crear Cuenta</Text>
+              <Text style={styles.desktopFormSubtitle}>Completa el formulario para registrarte en el sistema</Text>
 
-              <View style={styles.formFields}>
-                <Input title={"Usuario"} ref={usernameRef} />
+              <ScrollView style={styles.formScrollView} showsVerticalScrollIndicator={false}>
+                <View style={styles.formFields}>
+                  <Input title={"Nombre y Apellidos"} ref={fullNameRef} />
+                  <Input title={"Correo Electrónico"} ref={emailRef} />
+                  <Input title={"DNI"} ref={dniRef} />
+                  <Input title={"Código de Empresa"} ref={companyCodeRef} />
 
-                <Input
-                  secureTextEntry={hide}
-                  handleAction={() => setHide(!hide)}
-                  ref={password}
-                  title={"Contraseña"}
-                  icon={hide ? "eye" : "eye-slash"}
-                />
+                  <Input
+                    secureTextEntry={hidePassword}
+                    handleAction={() => setHidePassword(!hidePassword)}
+                    ref={passwordRef}
+                    title={"Contraseña"}
+                    icon={hidePassword ? "eye" : "eye-slash"}
+                  />
 
-                <TouchableOpacity style={[styles.loginButton, styles.loginButtonDesktop]} onPress={handleLogin}>
+                  <Input
+                    secureTextEntry={hideConfirmPassword}
+                    handleAction={() => setHideConfirmPassword(!hideConfirmPassword)}
+                    ref={confirmPasswordRef}
+                    title={"Confirmar Contraseña"}
+                    icon={hideConfirmPassword ? "eye" : "eye-slash"}
+                  />
+
+                  <TouchableOpacity
+                    style={[styles.registerButton, styles.registerButtonDesktop]}
+                    onPress={handleRegister}
+                  >
+                    <Text style={styles.registerButtonText}>Registrarse</Text>
+                  </TouchableOpacity>
+                </View>
+              </ScrollView>
+
+              <View style={styles.loginSection}>
+                <Text style={styles.loginText}>¿Ya tienes una cuenta?</Text>
+                <TouchableOpacity style={styles.loginButton} onPress={navigateToLogin}>
                   <Text style={styles.loginButtonText}>Iniciar Sesión</Text>
                 </TouchableOpacity>
-              </View>
-
-              <View style={styles.registerSection}>
-                <Text style={styles.registerText}>¿No tienes una cuenta?</Text>
-                <TouchableOpacity style={styles.registerButton} onPress={navigateToRegister}>
-                  <Text style={styles.registerButtonText}>Registrarse</Text>
-                </TouchableOpacity>
-              </View>
-
-              <View style={styles.helpSection}>
-                <Text style={styles.helpText}>¿Necesitas ayuda? Contacta con el administrador del sistema</Text>
               </View>
             </View>
           </View>
         </View>
       ) : (
-        // Layout para móvil - diseño original
+        // Layout para móvil
         <>
           {/* Barra decorativa superior */}
           <View style={styles.decorativeHeader} />
@@ -152,13 +194,12 @@ const LoginScreen = () => {
           {/* Personalización de la barra de estado */}
           <StatusBar translucent={true} backgroundColor={"transparent"} />
 
-          {/* Contenedor principal con manejo del teclado para evitar solapamiento en dispositivos iOS */}
+          {/* Contenedor principal con manejo del teclado */}
           <KeyboardAvoidingView
             style={styles.content}
             behavior={Platform.OS === "ios" ? "padding" : "height"}
             keyboardVerticalOffset={Platform.OS === "ios" ? 60 : 20}
           >
-            {/* ScrollView permite desplazarse cuando el teclado está activo */}
             <ScrollView contentContainerStyle={styles.scrollViewContent} keyboardShouldPersistTaps="handled">
               {/* Encabezado con el logo de la aplicación */}
               <View style={styles.header}>
@@ -166,30 +207,40 @@ const LoginScreen = () => {
               </View>
 
               {/* Título de la aplicación */}
-              <Text style={styles.appTitle}>Servicio de Atención al Empleado</Text>
+              <Text style={styles.appTitle}>Crear Cuenta</Text>
 
-              {/* Campo de entrada para el usuario */}
-              <Input title={"Usuario"} ref={usernameRef} />
+              {/* Campos del formulario */}
+              <Input title={"Nombre y Apellidos"} ref={fullNameRef} />
+              <Input title={"Correo Electrónico"} ref={emailRef} />
+              <Input title={"DNI"} ref={dniRef} />
+              <Input title={"Código de Empresa"} ref={companyCodeRef} />
 
-              {/* Campo de entrada para la contraseña con opción de ocultar/mostrar texto */}
               <Input
-                secureTextEntry={hide}
-                handleAction={() => setHide(!hide)}
-                ref={password}
+                secureTextEntry={hidePassword}
+                handleAction={() => setHidePassword(!hidePassword)}
+                ref={passwordRef}
                 title={"Contraseña"}
-                icon={hide ? "eye" : "eye-slash"}
+                icon={hidePassword ? "eye" : "eye-slash"}
               />
 
-              {/* Botón de inicio de sesión */}
-              <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
-                <Text style={styles.loginButtonText}>Iniciar Sesión</Text>
+              <Input
+                secureTextEntry={hideConfirmPassword}
+                handleAction={() => setHideConfirmPassword(!hideConfirmPassword)}
+                ref={confirmPasswordRef}
+                title={"Confirmar Contraseña"}
+                icon={hideConfirmPassword ? "eye" : "eye-slash"}
+              />
+
+              {/* Botón de registro */}
+              <TouchableOpacity style={styles.registerButton} onPress={handleRegister}>
+                <Text style={styles.registerButtonText}>Registrarse</Text>
               </TouchableOpacity>
 
-              {/* Sección de registro para móvil */}
-              <View style={styles.mobileRegisterSection}>
-                <Text style={styles.mobileRegisterText}>¿No tienes una cuenta?</Text>
-                <TouchableOpacity onPress={navigateToRegister}>
-                  <Text style={styles.mobileRegisterButtonText}>Registrarse</Text>
+              {/* Sección para volver al login */}
+              <View style={styles.mobileLoginSection}>
+                <Text style={styles.mobileLoginText}>¿Ya tienes una cuenta?</Text>
+                <TouchableOpacity onPress={navigateToLogin}>
+                  <Text style={styles.mobileLoginButtonText}>Iniciar Sesión</Text>
                 </TouchableOpacity>
               </View>
             </ScrollView>
@@ -197,13 +248,13 @@ const LoginScreen = () => {
         </>
       )}
 
-      {/* Modal de carga - común para ambos layouts */}
+      {/* Modal de carga */}
       <Modal visible={isLoading} transparent={true} animationType="fade">
         <View style={[styles.modalContainer, responsive.isDesktop && styles.modalContainerDesktop]}>
           <View style={[styles.modalContent, responsive.isDesktop && styles.modalContentDesktop]}>
             <ActivityIndicator size="large" color={Colors.PRIMARYCOLOR} />
             <Text style={[styles.loadingText, responsive.isDesktop && styles.loadingTextDesktop]}>
-              Iniciando Sesión...
+              Procesando registro...
             </Text>
           </View>
         </View>
@@ -212,7 +263,7 @@ const LoginScreen = () => {
   )
 }
 
-// Definición de estilos para la pantalla de inicio de sesión
+// Definición de estilos para la pantalla de registro
 const styles = StyleSheet.create({
   // Barra decorativa superior con color primario
   decorativeHeader: {
@@ -242,7 +293,8 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     justifyContent: "center",
     alignItems: "center",
-    paddingBottom: 20,
+    paddingVertical: 30,
+    width: "100%",
   },
 
   // Encabezado con el logo de la aplicación
@@ -285,8 +337,8 @@ const styles = StyleSheet.create({
     color: Colors.TEXT,
   },
 
-  // Botón de inicio de sesión con estilos personalizados
-  loginButton: {
+  // Botón de registro con estilos personalizados
+  registerButton: {
     backgroundColor: Colors.PRIMARYCOLOR,
     paddingVertical: 15,
     paddingHorizontal: 20,
@@ -300,7 +352,7 @@ const styles = StyleSheet.create({
     elevation: 4,
     marginTop: 20,
   },
-  loginButtonDesktop: {
+  registerButtonDesktop: {
     paddingVertical: 16,
     borderRadius: 12,
     marginTop: 30,
@@ -317,8 +369,8 @@ const styles = StyleSheet.create({
     }),
   },
 
-  // Texto del botón de inicio de sesión
-  loginButtonText: {
+  // Texto del botón de registro
+  registerButtonText: {
     color: Colors.TEXTWHITE,
     fontSize: 18,
     fontWeight: "bold",
@@ -431,6 +483,12 @@ const styles = StyleSheet.create({
   formContainer: {
     width: "100%",
     maxWidth: 450,
+    height: "100%",
+    display: "flex",
+    flexDirection: "column",
+  },
+  formScrollView: {
+    flex: 1,
   },
   desktopFormTitle: {
     fontSize: 32,
@@ -441,34 +499,25 @@ const styles = StyleSheet.create({
   desktopFormSubtitle: {
     fontSize: 16,
     color: "#666",
-    marginBottom: 40,
+    marginBottom: 30,
   },
   formFields: {
     width: "100%",
   },
-  helpSection: {
-    marginTop: 30,
-    alignItems: "center",
-  },
-  helpText: {
-    fontSize: 14,
-    color: "#666",
-    textAlign: "center",
-  },
 
-  // Estilos para la sección de registro (desktop)
-  registerSection: {
+  // Estilos para la sección de login (desktop)
+  loginSection: {
     marginTop: 30,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
   },
-  registerText: {
+  loginText: {
     fontSize: 16,
     color: "#666",
     marginRight: 10,
   },
-  registerButton: {
+  loginButton: {
     backgroundColor: "transparent",
     paddingVertical: 8,
     paddingHorizontal: 12,
@@ -485,30 +534,30 @@ const styles = StyleSheet.create({
       },
     }),
   },
-  registerButtonText: {
+  loginButtonText: {
     color: Colors.PRIMARYCOLOR,
     fontSize: 16,
     fontWeight: "600",
   },
 
-  // Estilos para la sección de registro (móvil)
-  mobileRegisterSection: {
+  // Estilos para la sección de login (móvil)
+  mobileLoginSection: {
     marginTop: 25,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
   },
-  mobileRegisterText: {
+  mobileLoginText: {
     fontSize: 14,
     color: "#666",
     marginRight: 6,
   },
-  mobileRegisterButtonText: {
+  mobileLoginButtonText: {
     color: Colors.PRIMARYCOLOR,
     fontSize: 14,
     fontWeight: "600",
   },
 })
 
-export default LoginScreen
+export default RegisterScreen
 

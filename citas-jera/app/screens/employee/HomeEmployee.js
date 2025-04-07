@@ -682,7 +682,7 @@ const AppointmentsScreen = () => {
   )
 }
 
-const HomeUser = () => {
+const HomeEmployee = () => {
   const navigation = useNavigation()
   const [logoutModalVisible, setLogoutModalVisible] = useState(false)
   const [isLoggingOut, setIsLoggingOut] = useState(false)
@@ -1396,5 +1396,5 @@ const styles = StyleSheet.create({
   },
 })
 
-export default HomeUser
+export default HomeEmployee
 

@@ -1,0 +1,21 @@
+/* Estilos globales para la aplicación */
+
+/* Eliminar el resaltado azul/negro en los inputs en la vista web */
+.no-highlight {
+  outline: none !important;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Eliminar el resaltado azul/negro en todos los inputs */
+input, textarea, select, button {
+  outline: none !important;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Estilo específico para el campo inputAttachment */
+input[name="inputAttachment"] {
+  outline: none !important;
+  -webkit-tap-highlight-color: transparent;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}

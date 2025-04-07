@@ -220,11 +220,12 @@ const EmployeesScreen = () => {
             <View style={[styles.searchContainer, styles.searchContainerDesktop]}>
               <Feather name="search" size={20} color="#999" style={styles.searchIcon} />
               <TextInput
-                style={styles.searchInput}
+                style={[styles.searchInput, { outline: "none", WebkitTapHighlightColor: "transparent" }]}
                 placeholder="Buscar por nombre o código"
                 placeholderTextColor="#999"
                 value={searchQuery}
                 onChangeText={setSearchQuery}
+                className="no-highlight"
               />
               {searchQuery.length > 0 && (
                 <TouchableOpacity onPress={() => setSearchQuery("")}>
@@ -232,16 +233,6 @@ const EmployeesScreen = () => {
                 </TouchableOpacity>
               )}
             </View>
-
-            {/* Botón para abrir el modal de agregar empleados */}
-            <TouchableOpacity
-              style={[styles.addButton, styles.addButtonDesktop]}
-              onPress={() => setModalVisible(true)}
-              activeOpacity={0.8}
-            >
-              <Feather name="user-plus" size={18} color="#fff" style={styles.buttonIcon} />
-              <Text style={styles.addButtonText}>Añadir Empleado</Text>
-            </TouchableOpacity>
 
             {/* Lista de empleados filtrada según la búsqueda */}
             <FlatList
@@ -264,11 +255,12 @@ const EmployeesScreen = () => {
           <View style={styles.searchContainer}>
             <Feather name="search" size={20} color="#999" style={styles.searchIcon} />
             <TextInput
-              style={styles.searchInput}
+              style={[styles.searchInput, { outline: "none", WebkitTapHighlightColor: "transparent" }]}
               placeholder="Buscar por nombre o código"
               placeholderTextColor="#999"
               value={searchQuery}
               onChangeText={setSearchQuery}
+              className="no-highlight"
             />
             {searchQuery.length > 0 && (
               <TouchableOpacity onPress={() => setSearchQuery("")}>
@@ -276,12 +268,6 @@ const EmployeesScreen = () => {
               </TouchableOpacity>
             )}
           </View>
-
-          {/* Botón para abrir el modal de agregar empleados */}
-          <TouchableOpacity style={styles.addButton} onPress={() => setModalVisible(true)} activeOpacity={0.8}>
-            <Feather name="user-plus" size={18} color="#fff" style={styles.buttonIcon} />
-            <Text style={styles.addButtonText}>Añadir Empleado</Text>
-          </TouchableOpacity>
 
           {/* Lista de empleados filtrada según la búsqueda */}
           <FlatList
