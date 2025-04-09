@@ -20,7 +20,7 @@ import { useNavigation } from "@react-navigation/native"
 import Header from "@components/HeaderUser"
 import AppointmentModal from "@components/AppointmentModal"
 import Colors from "@styles/colors"
-import UserDoc from "@screens/users/UserDoc"
+import UserDoc from "@screens/employee/UserDoc"
 import LogoutModal from "@components/LogOutModal"
 import ServiceSelectionModal from "@components/RequestServiceModal"
 // Import the AppointmentCalendarScreen component
