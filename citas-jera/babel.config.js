@@ -16,6 +16,7 @@ module.exports = function (api) {
               "@android": "./android",
               "@components": "./app/components"
               
+              
           }
         }]
       ]

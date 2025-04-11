@@ -1,0 +1,25 @@
+/* Estilos para eliminar el borde resaltado predeterminado */
+input:focus {
+  outline: none;
+}
+
+/* Estilos personalizados para el foco */
+.custom-focus:focus {
+  outline: none;
+  border-color: #166bff;
+  box-shadow: 0 0 0 2px rgba(22, 107, 255, 0.1);
+  transition: all 0.2s ease;
+}
+
+/* Estilos para inputs en hover */
+input:hover {
+  border-color: #166bff;
+  transition: all 0.2s ease;
+}
+
+/* Estilos para inputs por defecto */
+input {
+  border-color: #e0e0e0;
+  transition: border-color 0.2s ease;
+}
+

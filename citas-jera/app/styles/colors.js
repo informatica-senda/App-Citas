@@ -8,5 +8,6 @@ export default {
   ERROR: '#d64550',
   SUCCESS: '#4caf50',
   PSICOLOGIA: '#8996F2',
-  NUTRICIÓN: '#6EB566'
+  NUTRICIÓN: '#6EB566',
+  RED: "#ED1C24",
   };
