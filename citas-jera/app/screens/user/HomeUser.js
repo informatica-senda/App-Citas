@@ -24,6 +24,8 @@ import UserDoc from "@screens/employee/UserDoc"
 import LogoutModal from "@components/LogOutModal"
 import ServiceSelectionModal from "@components/RequestServiceModal"
 import AppointmentCalendarScreen from "@components/AppoimentCalendarScreen"
+import { db, auth } from "../../../firebaseConfig.js"
+import { doc, getDoc } from "firebase/firestore"
 
 const Tab = createBottomTabNavigator()
 
