@@ -26,7 +26,7 @@ function AppNavigator() {
    * Se utiliza useState para manejar este estado de manera dinámica en caso de necesitar cambios futuros.
    * 'LoginScreen' es la pantalla por defecto en la que el usuario comienza la aplicación.
    */
-  const [initialRoute, setInitialRoute] = useState('HomeUser');
+  const [initialRoute, setInitialRoute] = useState('LoginScreen');
 
   return (
     /**
