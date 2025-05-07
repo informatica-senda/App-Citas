@@ -25,7 +25,7 @@ import LogoutModal from "@components/LogOutModal"
 import ServiceSelectionModal from "@components/RequestServiceModal"
 import AppointmentCalendarScreen from "@components/AppoimentCalendarScreen"
 import { db, auth } from "../../../firebaseConfig.js"
-import { collection, getDocs,addDoc, query, where, getDoc, doc } from "firebase/firestore"
+import { collection, getDocs, addDoc, query, where, getDoc, doc } from "firebase/firestore"
 
 const Tab = createBottomTabNavigator()
 
@@ -135,9 +135,11 @@ const AppointmentsScreen = () => {
   const [markedDates, setMarkedDates] = useState({})
   const [serviceModalVisible, setServiceModalVisible] = useState(false)
   const [activeFilter, setActiveFilter] = useState("all") // 'all', 'psychology', 'nutrition'
+  const [statusFilter, setStatusFilter] = useState("all") // 'all', 'confirmed', 'pending'
   const [calendarVisible, setCalendarVisible] = useState(false)
   const [selectedService, setSelectedService] = useState(null)
   const [error, setError] = useState(null)
+  const [listOnlyView, setListOnlyView] = useState(false) // Nuevo estado para controlar la vista
 
   // Estados para el modal de cierre de sesión
   const [logoutModalVisible, setLogoutModalVisible] = useState(false)
@@ -152,14 +154,14 @@ const AppointmentsScreen = () => {
     try {
       setLoading(true)
       setError(null)
-  
+
       const currentUser = auth.currentUser
       if (!currentUser) {
         console.log("No user is signed in")
         setLoading(false)
         return
       }
-  
+
       const userDoc = await getDoc(doc(db, "users", currentUser.uid))
       if (userDoc.exists()) {
         const userData = userDoc.data()
@@ -169,14 +171,14 @@ const AppointmentsScreen = () => {
           role: userData.role || "user",
         })
       }
-  
+
       const appointmentsQuery = query(collection(db, "dates"), where("userId", "==", currentUser.uid))
       const querySnapshot = await getDocs(appointmentsQuery)
       const appointmentsData = []
-  
+
       querySnapshot.forEach((doc) => {
         const data = doc.data()
-  
+
         appointmentsData.push({
           id: doc.id,
           title: `Consulta de ${data.service === "psychology" ? "Psicología" : "Nutrición"}`,
@@ -188,7 +190,7 @@ const AppointmentsScreen = () => {
           rawData: data,
         })
       })
-  
+
       setAppointments(appointmentsData)
     } catch (err) {
       console.error("Error fetching data:", err)
@@ -307,20 +309,25 @@ const AppointmentsScreen = () => {
     setServiceModalVisible(true)
   }
 
+  // Función para alternar entre vista completa y vista de solo lista
+  const toggleViewMode = () => {
+    setListOnlyView(!listOnlyView)
+  }
+
   // Modify the handleServiceConfirm function to show the calendar screen
   const handleServiceConfirm = async (serviceType) => {
-    const serviceDisplayName = serviceType === "psychology" ? "Psicología" : "Nutrición";
-    setSelectedService(serviceDisplayName);
-    setSelectedService(serviceType); 
-    setServiceModalVisible(false);
-  
-    const currentUser = auth.currentUser;
-  
+    const serviceDisplayName = serviceType === "psychology" ? "Psicología" : "Nutrición"
+    setSelectedService(serviceDisplayName)
+    setSelectedService(serviceType)
+    setServiceModalVisible(false)
+
+    const currentUser = auth.currentUser
+
     if (!currentUser || !user) {
-      console.warn("Usuario no autenticado o sin datos cargados");
-      return;
+      console.warn("Usuario no autenticado o sin datos cargados")
+      return
     }
-  
+
     if (user.role === "user") {
       try {
         await addDoc(collection(db, "dates"), {
@@ -329,18 +336,18 @@ const AppointmentsScreen = () => {
           state: false,
           teacherId: "",
           date: null, // placeholder hasta que se asigne
-        });
-        alert("Solicitud enviada correctamente.");
+        })
+        alert("Solicitud enviada correctamente.")
         // Aquí puedes refrescar la lista si es necesario
-        fetchAppointments();
+        fetchAppointments()
       } catch (error) {
-        console.error("Error al crear cita:", error);
-        alert("Error al crear la cita.");
+        console.error("Error al crear cita:", error)
+        alert("Error al crear la cita.")
       }
     } else if (user.role === "externalUser") {
-      setCalendarVisible(true);
+      setCalendarVisible(true)
     }
-  };
+  }
 
   // Add a function to handle when the calendar is closed
   const handleCalendarClose = () => {
@@ -349,16 +356,16 @@ const AppointmentsScreen = () => {
 
   // Add a function to handle when an appointment is confirmed
   const handleAppointmentConfirm = async (appointmentDate) => {
-    console.log(`Cita confirmada para: ${appointmentDate}`);
-    setCalendarVisible(false);
-  
-    const currentUser = auth.currentUser;
-  
+    console.log(`Cita confirmada para: ${appointmentDate}`)
+    setCalendarVisible(false)
+
+    const currentUser = auth.currentUser
+
     if (!currentUser || !user || !selectedService) {
-      alert("No se pudo confirmar la cita. Faltan datos.");
-      return;
+      alert("No se pudo confirmar la cita. Faltan datos.")
+      return
     }
-  
+
     try {
       await addDoc(collection(db, "dates"), {
         userId: currentUser.uid,
@@ -366,22 +373,22 @@ const AppointmentsScreen = () => {
         state: false,
         teacherId: "", // puedes asignarlo luego
         date: appointmentDate,
-      });
-  
-      alert("Cita creada correctamente.");
-  
+      })
+
+      alert("Cita creada correctamente.")
+
       // Opcional: refrescar lista de citas si es necesario
       if (typeof fetchAppointments === "function") {
-        fetchAppointments(); // Reemplaza con tu función real de recarga
-    } else {
-      console.warn("Función fetchAppointments no definida.");
-    }
+        fetchAppointments() // Reemplaza con tu función real de recarga
+      } else {
+        console.warn("Función fetchAppointments no definida.")
+      }
       // fetchAppointments();
     } catch (error) {
-      console.error("Error al guardar la cita:", error);
-      alert("Error al guardar la cita.");
+      console.error("Error al guardar la cita:", error)
+      alert("Error al guardar la cita.")
     }
-  };
+  }
 
   // Funciones para el modal de cierre de sesión
   const handleLogout = () => {
@@ -421,7 +428,11 @@ const AppointmentsScreen = () => {
     return appointments.filter((appointment) => {
       const matchesFilter = activeFilter === "all" || appointment.category === activeFilter
       const matchesDate = !selectedDate || appointment.date === selectedDate
-      return matchesFilter && matchesDate
+      const matchesStatus =
+        statusFilter === "all" ||
+        (statusFilter === "confirmed" && appointment.state === true) ||
+        (statusFilter === "pending" && appointment.state === false)
+      return matchesFilter && matchesDate && matchesStatus
     })
   }
 
@@ -454,6 +465,129 @@ const AppointmentsScreen = () => {
     )
   }
 
+  // Renderizar la lista de citas
+  const renderAppointmentsList = () => {
+    const filteredAppointments = getFilteredAppointments()
+
+    return (
+      <View style={styles.iosAppointmentsList}>
+        <View style={styles.iosSelectedDateHeader}>
+          <View style={styles.iosTitleContainer}>
+            <Text style={styles.iosSelectedDateText}>
+              {selectedDate ? `Citas para ${formatDate(selectedDate)}` : "Todas las citas"}
+            </Text>
+            {selectedDate && (
+              <TouchableOpacity style={styles.iosClearDateButton} onPress={clearDateSelection}>
+                <Ionicons name="close-circle" size={18} color="#8E8E93" />
+              </TouchableOpacity>
+            )}
+          </View>
+          <View style={styles.iosStatusFilterContainer}>
+            <TouchableOpacity
+              style={[styles.iosStatusFilterIcon, statusFilter === "all" && styles.iosStatusFilterActive]}
+              onPress={() => setStatusFilter("all")}
+            >
+              <Ionicons name="apps" size={22} color={statusFilter === "all" ? Colors.PRIMARYCOLOR : "#8E8E93"} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.iosStatusFilterIcon, statusFilter === "confirmed" && styles.iosStatusFilterActive]}
+              onPress={() => setStatusFilter("confirmed")}
+            >
+              <Ionicons
+                name="checkmark-circle"
+                size={22}
+                color={statusFilter === "confirmed" ? "#34C759" : "#8E8E93"}
+              />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.iosStatusFilterIcon, statusFilter === "pending" && styles.iosStatusFilterActive]}
+              onPress={() => setStatusFilter("pending")}
+            >
+              <Ionicons name="time" size={22} color={statusFilter === "pending" ? "#FF9500" : "#8E8E93"} />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {filteredAppointments.length === 0 ? (
+          <View style={styles.iosEmptyStateContainer}>
+            <Text style={styles.iosNoAppointmentsText}>
+              {selectedDate
+                ? "No hay citas para esta fecha"
+                : statusFilter !== "all"
+                  ? statusFilter === "confirmed"
+                    ? "No hay citas confirmadas"
+                    : "No hay citas pendientes"
+                  : "No tienes citas programadas"}
+            </Text>
+            {(selectedDate || statusFilter !== "all") && (
+              <TouchableOpacity
+                style={styles.iosClearFilterButton}
+                onPress={() => {
+                  clearDateSelection()
+                  setStatusFilter("all")
+                }}
+              >
+                <Text style={styles.iosClearFilterButtonText}>Ver todas las citas</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        ) : (
+          <View style={isDesktop && !listOnlyView ? styles.iosAppointmentsGridDesktop : undefined}>
+            {filteredAppointments.map((appointment) => (
+              <TouchableOpacity
+                key={appointment.id}
+                style={[
+                  styles.iosAppointmentItemCompact,
+                  appointment.category === "psychology" ? styles.iosPsychologyItem : styles.iosNutritionItem,
+                  isDesktop && !listOnlyView && styles.iosAppointmentItemDesktop,
+                ]}
+                onPress={() => handleSelectAppointment(appointment)}
+                activeOpacity={0.7}
+              >
+                <View style={styles.iosAppointmentRow}>
+                  <View style={styles.iosAppointmentMainInfo}>
+                    <Text style={styles.iosAppointmentTitleCompact}>{appointment.title}</Text>
+                    <View style={styles.iosAppointmentTimeRow}>
+                      <Ionicons name="time-outline" size={14} color="#8E8E93" />
+                      <Text style={styles.iosDetailTextCompact}>{appointment.time}</Text>
+                      <Text style={styles.iosDateSeparator}>•</Text>
+                      <Text style={styles.iosDetailTextCompact}>{formatDate(appointment.date)}</Text>
+                    </View>
+                  </View>
+                  <View
+                    style={[
+                      styles.iosCategoryBadgeCompact,
+                      appointment.category === "psychology" ? styles.iosPsychologyBadge : styles.iosNutritionBadge,
+                    ]}
+                  >
+                    <Text style={styles.iosCategoryTextCompact}>
+                      {appointment.category === "psychology" ? "Psic." : "Nutr."}
+                    </Text>
+                  </View>
+                </View>
+                <View style={styles.iosDoctorRow}>
+                  <Ionicons name="person-outline" size={14} color="#8E8E93" />
+                  <Text style={styles.iosDetailTextCompact}>{appointment.doctor}</Text>
+                </View>
+                {appointment.state !== undefined && (
+                  <View style={styles.iosStatusRow}>
+                    <View
+                      style={[
+                        styles.iosStatusIndicator,
+                        appointment.state ? styles.iosStatusConfirmed : styles.iosStatusPending,
+                      ]}
+                    />
+                    <Text style={styles.iosStatusText}>{appointment.state ? "Confirmada" : "Pendiente"}</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+      </View>
+    )
+  }
+
   // Modificar la función renderAppointments para hacer las citas más compactas
   const renderAppointments = () => {
     if (loading) {
@@ -464,89 +598,7 @@ const AppointmentsScreen = () => {
       return renderError()
     }
 
-    const filteredAppointments = getFilteredAppointments()
-
-    if (filteredAppointments.length === 0) {
-      return (
-        <View style={styles.iosEmptyStateContainer}>
-          <Text style={styles.iosNoAppointmentsText}>
-            {selectedDate ? "No hay citas para esta fecha" : "No tienes citas programadas"}
-          </Text>
-          {selectedDate && (
-            <TouchableOpacity style={styles.iosClearFilterButton} onPress={clearDateSelection}>
-              <Text style={styles.iosClearFilterButtonText}>Ver todas las citas</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      )
-    }
-
-    return (
-      <View style={styles.iosAppointmentsList}>
-        {selectedDate ? (
-          <View style={styles.iosSelectedDateHeader}>
-            <Text style={styles.iosSelectedDateText}>Citas para {formatDate(selectedDate)}</Text>
-            <TouchableOpacity style={styles.iosClearDateButton} onPress={clearDateSelection}>
-              <Ionicons name="close-circle" size={18} color="#8E8E93" />
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <Text style={styles.iosSelectedDateText}>Todas las citas</Text>
-        )}
-
-        <View style={isDesktop ? styles.iosAppointmentsGridDesktop : undefined}>
-          {filteredAppointments.map((appointment) => (
-            <TouchableOpacity
-              key={appointment.id}
-              style={[
-                styles.iosAppointmentItemCompact,
-                appointment.category === "psychology" ? styles.iosPsychologyItem : styles.iosNutritionItem,
-                isDesktop && styles.iosAppointmentItemDesktop,
-              ]}
-              onPress={() => handleSelectAppointment(appointment)}
-              activeOpacity={0.7}
-            >
-              <View style={styles.iosAppointmentRow}>
-                <View style={styles.iosAppointmentMainInfo}>
-                  <Text style={styles.iosAppointmentTitleCompact}>{appointment.title}</Text>
-                  <View style={styles.iosAppointmentTimeRow}>
-                    <Ionicons name="time-outline" size={14} color="#8E8E93" />
-                    <Text style={styles.iosDetailTextCompact}>{appointment.time}</Text>
-                    <Text style={styles.iosDateSeparator}>•</Text>
-                    <Text style={styles.iosDetailTextCompact}>{formatDate(appointment.date)}</Text>
-                  </View>
-                </View>
-                <View
-                  style={[
-                    styles.iosCategoryBadgeCompact,
-                    appointment.category === "psychology" ? styles.iosPsychologyBadge : styles.iosNutritionBadge,
-                  ]}
-                >
-                  <Text style={styles.iosCategoryTextCompact}>
-                    {appointment.category === "psychology" ? "Psic." : "Nutr."}
-                  </Text>
-                </View>
-              </View>
-              <View style={styles.iosDoctorRow}>
-                <Ionicons name="person-outline" size={14} color="#8E8E93" />
-                <Text style={styles.iosDetailTextCompact}>{appointment.doctor}</Text>
-              </View>
-              {appointment.state !== undefined && (
-                <View style={styles.iosStatusRow}>
-                  <View
-                    style={[
-                      styles.iosStatusIndicator,
-                      appointment.state ? styles.iosStatusConfirmed : styles.iosStatusPending,
-                    ]}
-                  />
-                  <Text style={styles.iosStatusText}>{appointment.state ? "Confirmada" : "Pendiente"}</Text>
-                </View>
-              )}
-            </TouchableOpacity>
-          ))}
-        </View>
-      </View>
-    )
+    return renderAppointmentsList()
   }
 
   return (
@@ -560,6 +612,9 @@ const AppointmentsScreen = () => {
           headerStyle={styles.iosHeader}
           titleStyle={styles.iosHeaderTitle}
         />
+        <TouchableOpacity style={styles.iosViewToggleButton} onPress={toggleViewMode}>
+          <Ionicons name={listOnlyView ? "calendar-outline" : "list-outline"} size={24} color={Colors.PRIMARYCOLOR} />
+        </TouchableOpacity>
       </View>
 
       <View style={styles.iosContainer}>
@@ -612,8 +667,8 @@ const AppointmentsScreen = () => {
           </ScrollView>
         </View>
 
-        {isDesktop ? (
-          // Layout para desktop - dos columnas con estilo iOS
+        {isDesktop && !listOnlyView ? (
+          // Layout para desktop - dos columnas con estilo iOS (solo en modo vista completa)
           <View style={styles.iosContentContainerDesktop}>
             <ScrollView
               showsVerticalScrollIndicator={false}
@@ -691,67 +746,76 @@ const AppointmentsScreen = () => {
             </ScrollView>
           </View>
         ) : (
-          // Layout para móvil - una columna con scroll completo con estilo iOS
+          // Layout para móvil o vista de solo lista - una columna con scroll completo
           <ScrollView
             style={styles.iosMobileScrollView}
             contentContainerStyle={styles.iosMobileScrollContent}
             showsVerticalScrollIndicator={false}
           >
-            {/* Botones y calendario para móvil con estilo iOS */}
+            {/* Botón de solicitar cita siempre visible */}
             <TouchableOpacity style={styles.iosRequestServiceButton} onPress={openServiceModal} activeOpacity={0.8}>
               <Ionicons name="add-circle-outline" size={18} color="#FFFFFF" style={styles.iosButtonIcon} />
               <Text style={styles.iosRequestServiceButtonText}>Solicitar nueva cita</Text>
             </TouchableOpacity>
 
-            <View style={styles.iosCalendarContainer}>
-              <Calendar
-                current={selectedDate || new Date().toISOString().split("T")[0]}
-                onDayPress={handleDayPress}
-                markedDates={markedDates}
-                markingType="multi-dot"
-                theme={{
-                  backgroundColor: "#FFFFFF",
-                  calendarBackground: "#FFFFFF",
-                  textSectionTitleColor: "#000000",
-                  selectedDayBackgroundColor: Colors.PRIMARYCOLOR,
-                  selectedDayTextColor: "#FFFFFF",
-                  todayTextColor: Colors.PRIMARYCOLOR,
-                  dayTextColor: "#000000",
-                  textDisabledColor: "#C7C7CC",
-                  dotColor: Colors.PRIMARYCOLOR,
-                  selectedDotColor: "#FFFFFF",
-                  arrowColor: Colors.PRIMARYCOLOR,
-                  monthTextColor: "#000000",
-                  indicatorColor: Colors.PRIMARYCOLOR,
-                  textDayFontFamily: "System",
-                  textMonthFontFamily: "System",
-                  textDayHeaderFontFamily: "System",
-                  textDayFontWeight: "400",
-                  textMonthFontWeight: "600",
-                  textDayHeaderFontWeight: "500",
-                  textDayFontSize: 16,
-                  textMonthFontSize: 18,
-                  textDayHeaderFontSize: 14,
-                  "stylesheet.day.basic": {
-                    base: {
-                      width: 32,
-                      height: 32,
-                      alignItems: "center",
-                      justifyContent: "center",
-                      borderRadius: 16,
-                    },
-                    selected: {
-                      borderRadius: 16,
-                    },
-                  },
-                }}
-              />
-            </View>
+            {/* Calendario solo visible en modo vista completa */}
+            {!listOnlyView && (
+              <>
+                <View style={styles.iosCalendarContainer}>
+                  <Calendar
+                    current={selectedDate || new Date().toISOString().split("T")[0]}
+                    onDayPress={handleDayPress}
+                    markedDates={markedDates}
+                    markingType="multi-dot"
+                    theme={{
+                      backgroundColor: "#FFFFFF",
+                      calendarBackground: "#FFFFFF",
+                      textSectionTitleColor: "#000000",
+                      selectedDayBackgroundColor: Colors.PRIMARYCOLOR,
+                      selectedDayTextColor: "#FFFFFF",
+                      todayTextColor: Colors.PRIMARYCOLOR,
+                      dayTextColor: "#000000",
+                      textDisabledColor: "#C7C7CC",
+                      dotColor: Colors.PRIMARYCOLOR,
+                      selectedDotColor: "#FFFFFF",
+                      arrowColor: Colors.PRIMARYCOLOR,
+                      monthTextColor: "#000000",
+                      indicatorColor: Colors.PRIMARYCOLOR,
+                      textDayFontFamily: "System",
+                      textMonthFontFamily: "System",
+                      textDayHeaderFontFamily: "System",
+                      textDayFontWeight: "400",
+                      textMonthFontWeight: "600",
+                      textDayHeaderFontWeight: "500",
+                      textDayFontSize: 16,
+                      textMonthFontSize: 18,
+                      textDayHeaderFontSize: 14,
+                      "stylesheet.day.basic": {
+                        base: {
+                          width: 32,
+                          height: 32,
+                          alignItems: "center",
+                          justifyContent: "center",
+                          borderRadius: 16,
+                        },
+                        selected: {
+                          borderRadius: 16,
+                        },
+                      },
+                    }}
+                  />
+                </View>
 
-            {selectedDate && (
-              <TouchableOpacity style={styles.iosClearDateButtonLarge} onPress={clearDateSelection} activeOpacity={0.8}>
-                <Text style={styles.iosClearDateButtonText}>Limpiar selección</Text>
-              </TouchableOpacity>
+                {selectedDate && (
+                  <TouchableOpacity
+                    style={styles.iosClearDateButtonLarge}
+                    onPress={clearDateSelection}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.iosClearDateButtonText}>Limpiar selección</Text>
+                  </TouchableOpacity>
+                )}
+              </>
             )}
 
             {/* Lista de citas para móvil con estilo iOS */}
@@ -1070,6 +1134,7 @@ const styles = StyleSheet.create({
     paddingTop: Platform.OS === "android" ? 40 : Platform.OS === "web" ? 0 : 0,
     borderBottomWidth: 1,
     borderBottomColor: "#F2F2F7",
+    position: "relative",
   },
   iosHeader: {
     backgroundColor: "#FFFFFF",
@@ -1079,6 +1144,15 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#000000",
     letterSpacing: 0.5,
+  },
+  iosViewToggleButton: {
+    position: "absolute",
+    right: 16,
+    top: Platform.OS === "android" ? 50 : 16,
+    padding: 8,
+    borderRadius: 20,
+    backgroundColor: "#F2F2F7",
+    zIndex: 10,
   },
 
   // Filtros con estilo iOS
@@ -1658,6 +1732,35 @@ const styles = StyleSheet.create({
   iosStatusText: {
     fontSize: 13,
     color: "#3A3A3C",
+  },
+
+  // Estilos para filtros de estado
+  iosConfirmedFilterActive: {
+    backgroundColor: "#34C759", // Verde iOS
+    borderColor: "#34C759",
+  },
+  iosPendingFilterActive: {
+    backgroundColor: "#FF9500", // Naranja iOS
+    borderColor: "#FF9500",
+  },
+  // Estilos para los iconos de filtrado por estado
+  iosTitleContainer: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  iosStatusFilterContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginLeft: 8,
+  },
+  iosStatusFilterIcon: {
+    padding: 6,
+    marginLeft: 4,
+    borderRadius: 20,
+  },
+  iosStatusFilterActive: {
+    backgroundColor: "#F2F2F7",
   },
 })
 
