@@ -20,8 +20,8 @@ import { useNavigation } from "@react-navigation/native"
 import Input from "@components/Inputs.js"
 import Colors from "@styles/colors.js"
 import { signInWithEmailAndPassword } from "firebase/auth"
-import { db, auth } from "../../firebaseConfig.js"
-import { doc, getDoc } from "firebase/firestore"
+//import { db, auth } from "../../firebaseConfig.js"
+//import { doc, getDoc } from "firebase/firestore"
 import { useResponsive } from "../hooks/use-responsive"
 
 // Obtenemos las dimensiones de la pantalla del dispositivo
