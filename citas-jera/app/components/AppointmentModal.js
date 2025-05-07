@@ -82,7 +82,7 @@ const AppointmentModal = ({ appointment, visible, onClose }) => {
               style={[
                 styles.categoryBadge,
                 {
-                  backgroundColor: appointment.category === "psychology" ? Colors.PRIMARYCOLOR : Colors.SECONDARYCOLOR,
+                  backgroundColor: appointment.category === "psychology" ? Colors.PSICOLOGIA : Colors.NUTRICIÓN,
                 },
                 responsive.isDesktop && styles.categoryBadgeDesktop,
               ]}

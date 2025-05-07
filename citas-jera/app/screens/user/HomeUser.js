@@ -25,86 +25,9 @@ import LogoutModal from "@components/LogOutModal"
 import ServiceSelectionModal from "@components/RequestServiceModal"
 import AppointmentCalendarScreen from "@components/AppoimentCalendarScreen"
 import { db, auth } from "../../../firebaseConfig.js"
-import { doc, getDoc } from "firebase/firestore"
+import { collection, getDocs,addDoc, query, where, getDoc, doc } from "firebase/firestore"
 
 const Tab = createBottomTabNavigator()
-
-// Array de appointments data (mantenido igual)
-const APPOINTMENTS = [
-  {
-    id: 1,
-    title: "Consulta de Psicología",
-    date: "2025-04-08",
-    category: "psychology",
-    time: "10:00",
-    doctor: "Dr. García",
-  },
-  {
-    id: 2,
-    title: "Consulta de Nutrición",
-    date: "2025-04-08",
-    category: "nutrition",
-    time: "14:30",
-    doctor: "Dra. Martínez",
-  },
-  {
-    id: 3,
-    title: "Terapia Cognitiva",
-    date: "2025-04-10",
-    category: "psychology",
-    time: "11:15",
-    doctor: "Dr. García",
-  },
-  {
-    id: 4,
-    title: "Plan Alimenticio",
-    date: "2025-04-12",
-    category: "nutrition",
-    time: "09:00",
-    doctor: "Dra. Martínez",
-  },
-  {
-    id: 5,
-    title: "Evaluación Psicológica",
-    date: "2025-04-15",
-    category: "psychology",
-    time: "16:00",
-    doctor: "Dra. López",
-  },
-  {
-    id: 6,
-    title: "Control de Peso",
-    date: "2025-04-18",
-    category: "nutrition",
-    time: "12:30",
-    doctor: "Dr. Rodríguez",
-  },
-  { id: 7, title: "Terapia de Grupo", date: "2025-04-20", category: "psychology", time: "17:00", doctor: "Dr. García" },
-  {
-    id: 8,
-    title: "Asesoría Nutricional",
-    date: "2025-04-22",
-    category: "nutrition",
-    time: "10:45",
-    doctor: "Dra. Martínez",
-  },
-  {
-    id: 9,
-    title: "Consulta de Seguimiento",
-    date: "2025-04-25",
-    category: "psychology",
-    time: "15:30",
-    doctor: "Dra. López",
-  },
-  {
-    id: 10,
-    title: "Plan Deportivo",
-    date: "2025-04-28",
-    category: "nutrition",
-    time: "11:00",
-    doctor: "Dr. Rodríguez",
-  },
-]
 
 // Función para formatear la fecha en formato dd/mm/yyyy
 const formatDate = (dateString) => {
@@ -113,6 +36,83 @@ const formatDate = (dateString) => {
   const month = String(date.getMonth() + 1).padStart(2, "0")
   const year = date.getFullYear()
   return `${day}/${month}/${year}`
+}
+
+// Función para convertir timestamp de Firestore a formato de fecha YYYY-MM-DD
+const formatFirestoreDate = (firestoreDate) => {
+  if (!firestoreDate) return ""
+
+  // Si es un timestamp de Firestore
+  if (firestoreDate.toDate) {
+    const date = firestoreDate.toDate()
+    return date.toISOString().split("T")[0]
+  }
+
+  // Si es una cadena de fecha
+  if (typeof firestoreDate === "string") {
+    // Extraer la fecha de un formato como "6 de mayo de 2025, 12:00:00 a.m. UTC+2"
+    const dateRegex = /(\d+) de (\w+) de (\d{4})/
+    const match = firestoreDate.match(dateRegex)
+
+    if (match) {
+      const day = match[1]
+      const monthName = match[2]
+      const year = match[3]
+
+      // Mapeo de nombres de meses en español a números
+      const monthMap = {
+        enero: "01",
+        febrero: "02",
+        marzo: "03",
+        abril: "04",
+        mayo: "05",
+        junio: "06",
+        julio: "07",
+        agosto: "08",
+        septiembre: "09",
+        octubre: "10",
+        noviembre: "11",
+        diciembre: "12",
+      }
+
+      const month = monthMap[monthName.toLowerCase()]
+      return `${year}-${month}-${day.padStart(2, "0")}`
+    }
+  }
+
+  return ""
+}
+
+// Función para extraer la hora de un timestamp o cadena de fecha
+const extractTime = (firestoreDate) => {
+  if (!firestoreDate) return ""
+
+  // Si es un timestamp de Firestore
+  if (firestoreDate.toDate) {
+    const date = firestoreDate.toDate()
+    return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+  }
+
+  // Si es una cadena de fecha
+  if (typeof firestoreDate === "string") {
+    // Extraer la hora de un formato como "6 de mayo de 2025, 12:00:00 a.m. UTC+2"
+    const timeRegex = /(\d{1,2}):(\d{2}):(\d{2})\s*([ap]\.m\.)/i
+    const match = firestoreDate.match(timeRegex)
+
+    if (match) {
+      let hour = Number.parseInt(match[1])
+      const minute = match[2]
+      const ampm = match[4].toLowerCase()
+
+      // Convertir a formato 24 horas si es necesario
+      if (ampm === "p.m." && hour < 12) hour += 12
+      if (ampm === "a.m." && hour === 12) hour = 0
+
+      return `${hour.toString().padStart(2, "0")}:${minute}`
+    }
+  }
+
+  return ""
 }
 
 // Componente vacío para la pestaña de Cerrar App
@@ -126,8 +126,9 @@ const EmptyScreen = () => {
 
 const AppointmentsScreen = () => {
   const navigation = useNavigation()
-  const [user, setUser] = useState({ name: "Juan" })
-  const [appointments] = useState(APPOINTMENTS)
+  const [user, setUser] = useState({ name: "Usuario" })
+  const [appointments, setAppointments] = useState([])
+  const [loading, setLoading] = useState(true)
   const [selectedAppointment, setSelectedAppointment] = useState(null)
   const [modalVisible, setModalVisible] = useState(false)
   const [selectedDate, setSelectedDate] = useState("")
@@ -136,6 +137,7 @@ const AppointmentsScreen = () => {
   const [activeFilter, setActiveFilter] = useState("all") // 'all', 'psychology', 'nutrition'
   const [calendarVisible, setCalendarVisible] = useState(false)
   const [selectedService, setSelectedService] = useState(null)
+  const [error, setError] = useState(null)
 
   // Estados para el modal de cierre de sesión
   const [logoutModalVisible, setLogoutModalVisible] = useState(false)
@@ -145,6 +147,61 @@ const AppointmentsScreen = () => {
   const screenWidth = Dimensions.get("window").width
   const isDesktop = screenWidth >= 768
   const isWeb = Platform.OS === "web"
+
+  const fetchAppointments = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+  
+      const currentUser = auth.currentUser
+      if (!currentUser) {
+        console.log("No user is signed in")
+        setLoading(false)
+        return
+      }
+  
+      const userDoc = await getDoc(doc(db, "users", currentUser.uid))
+      if (userDoc.exists()) {
+        const userData = userDoc.data()
+        setUser({
+          name: userData.name || userData.firstName || "Usuario",
+          id: currentUser.uid,
+          role: userData.role || "user",
+        })
+      }
+  
+      const appointmentsQuery = query(collection(db, "dates"), where("userId", "==", currentUser.uid))
+      const querySnapshot = await getDocs(appointmentsQuery)
+      const appointmentsData = []
+  
+      querySnapshot.forEach((doc) => {
+        const data = doc.data()
+  
+        appointmentsData.push({
+          id: doc.id,
+          title: `Consulta de ${data.service === "psychology" ? "Psicología" : "Nutrición"}`,
+          date: formatFirestoreDate(data.date),
+          category: data.service || "other",
+          time: extractTime(data.date),
+          doctor: data.teacherId ? `Dr. ${data.teacherId}` : "Sin asignar",
+          state: data.state,
+          rawData: data,
+        })
+      })
+  
+      setAppointments(appointmentsData)
+    } catch (err) {
+      console.error("Error fetching data:", err)
+      setError("Error al cargar los datos. Por favor, intente de nuevo.")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Fetch user data and appointments from Firebase
+  useEffect(() => {
+    fetchAppointments()
+  }, [])
 
   // Preparar las fechas marcadas en el calendario
   useEffect(() => {
@@ -251,14 +308,39 @@ const AppointmentsScreen = () => {
   }
 
   // Modify the handleServiceConfirm function to show the calendar screen
-  const handleServiceConfirm = (serviceType) => {
-    console.log(`Servicio seleccionado: ${serviceType}`)
-    // Map the service type to the display name expected by the calendar screen
-    const serviceDisplayName = serviceType === "psychology" ? "Psicología" : "Nutrición"
-    setSelectedService(serviceDisplayName)
-    setServiceModalVisible(false)
-    setCalendarVisible(true)
-  }
+  const handleServiceConfirm = async (serviceType) => {
+    const serviceDisplayName = serviceType === "psychology" ? "Psicología" : "Nutrición";
+    setSelectedService(serviceDisplayName);
+    setSelectedService(serviceType); 
+    setServiceModalVisible(false);
+  
+    const currentUser = auth.currentUser;
+  
+    if (!currentUser || !user) {
+      console.warn("Usuario no autenticado o sin datos cargados");
+      return;
+    }
+  
+    if (user.role === "user") {
+      try {
+        await addDoc(collection(db, "dates"), {
+          userId: currentUser.uid,
+          service: serviceType,
+          state: false,
+          teacherId: "",
+          date: null, // placeholder hasta que se asigne
+        });
+        alert("Solicitud enviada correctamente.");
+        // Aquí puedes refrescar la lista si es necesario
+        fetchAppointments();
+      } catch (error) {
+        console.error("Error al crear cita:", error);
+        alert("Error al crear la cita.");
+      }
+    } else if (user.role === "externalUser") {
+      setCalendarVisible(true);
+    }
+  };
 
   // Add a function to handle when the calendar is closed
   const handleCalendarClose = () => {
@@ -266,10 +348,40 @@ const AppointmentsScreen = () => {
   }
 
   // Add a function to handle when an appointment is confirmed
-  const handleAppointmentConfirm = (appointmentDate) => {
-    console.log(`Cita confirmada para: ${appointmentDate}`)
-    setCalendarVisible(false)
-  }
+  const handleAppointmentConfirm = async (appointmentDate) => {
+    console.log(`Cita confirmada para: ${appointmentDate}`);
+    setCalendarVisible(false);
+  
+    const currentUser = auth.currentUser;
+  
+    if (!currentUser || !user || !selectedService) {
+      alert("No se pudo confirmar la cita. Faltan datos.");
+      return;
+    }
+  
+    try {
+      await addDoc(collection(db, "dates"), {
+        userId: currentUser.uid,
+        service: selectedService.toLowerCase(), // guarda como 'psychology' o 'nutrition'
+        state: false,
+        teacherId: "", // puedes asignarlo luego
+        date: appointmentDate,
+      });
+  
+      alert("Cita creada correctamente.");
+  
+      // Opcional: refrescar lista de citas si es necesario
+      if (typeof fetchAppointments === "function") {
+        fetchAppointments(); // Reemplaza con tu función real de recarga
+    } else {
+      console.warn("Función fetchAppointments no definida.");
+    }
+      // fetchAppointments();
+    } catch (error) {
+      console.error("Error al guardar la cita:", error);
+      alert("Error al guardar la cita.");
+    }
+  };
 
   // Funciones para el modal de cierre de sesión
   const handleLogout = () => {
@@ -313,17 +425,58 @@ const AppointmentsScreen = () => {
     })
   }
 
+  // Renderizar estado de carga
+  const renderLoading = () => {
+    return (
+      <View style={styles.iosLoadingContainer}>
+        <Text style={styles.iosLoadingText}>Cargando citas...</Text>
+      </View>
+    )
+  }
+
+  // Renderizar mensaje de error
+  const renderError = () => {
+    return (
+      <View style={styles.iosErrorContainer}>
+        <Text style={styles.iosErrorText}>{error}</Text>
+        <TouchableOpacity
+          style={styles.iosRetryButton}
+          onPress={() => {
+            // Refresh appointments
+            setLoading(true)
+            setError(null)
+            // Re-fetch data (this would trigger the useEffect)
+          }}
+        >
+          <Text style={styles.iosRetryButtonText}>Reintentar</Text>
+        </TouchableOpacity>
+      </View>
+    )
+  }
+
   // Modificar la función renderAppointments para hacer las citas más compactas
   const renderAppointments = () => {
+    if (loading) {
+      return renderLoading()
+    }
+
+    if (error) {
+      return renderError()
+    }
+
     const filteredAppointments = getFilteredAppointments()
 
-    if (selectedDate && filteredAppointments.length === 0) {
+    if (filteredAppointments.length === 0) {
       return (
         <View style={styles.iosEmptyStateContainer}>
-          <Text style={styles.iosNoAppointmentsText}>No hay citas para esta fecha</Text>
-          <TouchableOpacity style={styles.iosClearFilterButton} onPress={clearDateSelection}>
-            <Text style={styles.iosClearFilterButtonText}>Ver todas las citas</Text>
-          </TouchableOpacity>
+          <Text style={styles.iosNoAppointmentsText}>
+            {selectedDate ? "No hay citas para esta fecha" : "No tienes citas programadas"}
+          </Text>
+          {selectedDate && (
+            <TouchableOpacity style={styles.iosClearFilterButton} onPress={clearDateSelection}>
+              <Text style={styles.iosClearFilterButtonText}>Ver todas las citas</Text>
+            </TouchableOpacity>
+          )}
         </View>
       )
     }
@@ -378,6 +531,17 @@ const AppointmentsScreen = () => {
                 <Ionicons name="person-outline" size={14} color="#8E8E93" />
                 <Text style={styles.iosDetailTextCompact}>{appointment.doctor}</Text>
               </View>
+              {appointment.state !== undefined && (
+                <View style={styles.iosStatusRow}>
+                  <View
+                    style={[
+                      styles.iosStatusIndicator,
+                      appointment.state ? styles.iosStatusConfirmed : styles.iosStatusPending,
+                    ]}
+                  />
+                  <Text style={styles.iosStatusText}>{appointment.state ? "Confirmada" : "Pendiente"}</Text>
+                </View>
+              )}
             </TouchableOpacity>
           ))}
         </View>
@@ -664,10 +828,30 @@ const HomeUser = () => {
   const [isLoggingOut, setIsLoggingOut] = useState(false)
   const [activeTab, setActiveTab] = useState("Citas")
   const [sidebarExpanded, setSidebarExpanded] = useState(true)
+  const [userData, setUserData] = useState(null)
 
   // Get screen dimensions for responsive design
   const screenWidth = Dimensions.get("window").width
   const isDesktop = screenWidth >= 768
+
+  // Fetch user data from Firebase
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const currentUser = auth.currentUser
+        if (!currentUser) return
+
+        const userDoc = await getDoc(doc(db, "users", currentUser.uid))
+        if (userDoc.exists()) {
+          setUserData(userDoc.data())
+        }
+      } catch (error) {
+        console.error("Error fetching user data:", error)
+      }
+    }
+
+    fetchUserData()
+  }, [])
 
   // Función para alternar la visibilidad de la barra lateral
   const toggleSidebar = () => {
@@ -1408,6 +1592,72 @@ const styles = StyleSheet.create({
   },
   iosNutritionBadge: {
     backgroundColor: Colors.NUTRICIÓN,
+  },
+
+  // Nuevos estilos para estados de carga y error
+  iosLoadingContainer: {
+    padding: 24,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 16,
+  },
+  iosLoadingText: {
+    fontSize: 17,
+    color: "#8E8E93",
+    textAlign: "center",
+  },
+  iosErrorContainer: {
+    padding: 24,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 16,
+  },
+  iosErrorText: {
+    fontSize: 17,
+    color: "#FF3B30",
+    marginBottom: 16,
+    textAlign: "center",
+  },
+  iosRetryButton: {
+    backgroundColor: Colors.PRIMARYCOLOR,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+  },
+  iosRetryButtonText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+
+  // Estilos para el estado de la cita
+  iosStatusRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 6,
+    paddingTop: 6,
+    borderTopWidth: 1,
+    borderTopColor: "#F2F2F7",
+  },
+  iosStatusIndicator: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 6,
+  },
+  iosStatusConfirmed: {
+    backgroundColor: "#34C759", // Verde iOS
+  },
+  iosStatusPending: {
+    backgroundColor: "#FF9500", // Naranja iOS
+  },
+  iosStatusText: {
+    fontSize: 13,
+    color: "#3A3A3C",
   },
 })
 
