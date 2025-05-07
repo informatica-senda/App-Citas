@@ -94,7 +94,7 @@ const styles = StyleSheet.create({
     alignSelf: "stretch",
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: Colors.BACKGROUND,
+    backgroundColor: '#FFFFFF',
     borderWidth: 1.5,
     // El color del borde ahora se aplica condicionalmente en el componente
     borderRadius: 10,
@@ -118,7 +118,7 @@ const styles = StyleSheet.create({
     height: "100%",
     paddingHorizontal: 15,
     fontSize: 16,
-    color: Colors.PRIMARYCOLOR,
+    color: '#000000',
     borderTopLeftRadius: 10,
     borderBottomLeftRadius: 10,
     // Eliminamos el borde resaltado en navegadores web
@@ -132,7 +132,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     borderRadius: 22.5,
-    backgroundColor: Colors.BACKGROUND,
+    backgroundColor: '#FFFFFF',
     marginRight: 10,
   },
   titleBox: {
@@ -140,7 +140,7 @@ const styles = StyleSheet.create({
     width: "auto",
     paddingHorizontal: 2,
     paddingVertical: 0.5,
-    backgroundColor: Colors.BACKGROUND,
+    backgroundColor: '#FFFFFF',
     position: "absolute",
     justifyContent: "center",
     alignItems: "center",

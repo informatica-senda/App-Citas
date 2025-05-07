@@ -23,12 +23,11 @@ import Colors from "@styles/colors"
 import UserDoc from "@screens/employee/UserDoc"
 import LogoutModal from "@components/LogOutModal"
 import ServiceSelectionModal from "@components/RequestServiceModal"
-// Import the AppointmentCalendarScreen component
 import AppointmentCalendarScreen from "@components/AppoimentCalendarScreen"
 
 const Tab = createBottomTabNavigator()
 
-// Array of appointments data
+// Array de appointments data (mantenido igual)
 const APPOINTMENTS = [
   {
     id: 1,
@@ -133,9 +132,7 @@ const AppointmentsScreen = () => {
   const [markedDates, setMarkedDates] = useState({})
   const [serviceModalVisible, setServiceModalVisible] = useState(false)
   const [activeFilter, setActiveFilter] = useState("all") // 'all', 'psychology', 'nutrition'
-  // Add a new state to control the visibility of the AppointmentCalendarScreen
   const [calendarVisible, setCalendarVisible] = useState(false)
-  // Add a state to store the selected service
   const [selectedService, setSelectedService] = useState(null)
 
   // Estados para el modal de cierre de sesión
@@ -269,10 +266,7 @@ const AppointmentsScreen = () => {
   // Add a function to handle when an appointment is confirmed
   const handleAppointmentConfirm = (appointmentDate) => {
     console.log(`Cita confirmada para: ${appointmentDate}`)
-    // Here you would typically save the appointment to your backend
-    // For now, we'll just close the calendar screen
     setCalendarVisible(false)
-    // Optionally show a success message or navigate to another screen
   }
 
   // Funciones para el modal de cierre de sesión
@@ -317,82 +311,70 @@ const AppointmentsScreen = () => {
     })
   }
 
-  // Renderizar las citas filtradas
+  // Modificar la función renderAppointments para hacer las citas más compactas
   const renderAppointments = () => {
     const filteredAppointments = getFilteredAppointments()
 
     if (selectedDate && filteredAppointments.length === 0) {
       return (
-        <View style={styles.emptyStateContainer}>
-          <Text style={styles.noAppointmentsText}>No hay citas para esta fecha</Text>
-          <TouchableOpacity style={styles.clearFilterButton} onPress={clearDateSelection}>
-            <Text style={styles.clearFilterButtonText}>Ver todas las citas</Text>
+        <View style={styles.iosEmptyStateContainer}>
+          <Text style={styles.iosNoAppointmentsText}>No hay citas para esta fecha</Text>
+          <TouchableOpacity style={styles.iosClearFilterButton} onPress={clearDateSelection}>
+            <Text style={styles.iosClearFilterButtonText}>Ver todas las citas</Text>
           </TouchableOpacity>
         </View>
       )
     }
 
     return (
-      <View style={styles.appointmentsList}>
+      <View style={styles.iosAppointmentsList}>
         {selectedDate ? (
-          <View style={styles.selectedDateHeader}>
-            <Text style={[styles.selectedDateText, isDesktop && styles.selectedDateTextDesktop]}>
-              Citas para {formatDate(selectedDate)}
-            </Text>
-            <TouchableOpacity style={styles.clearDateButton} onPress={clearDateSelection}>
-              <Ionicons name="close-circle" size={20} color="#666" />
-              <Text style={styles.clearDateButtonText}>Limpiar fecha</Text>
+          <View style={styles.iosSelectedDateHeader}>
+            <Text style={styles.iosSelectedDateText}>Citas para {formatDate(selectedDate)}</Text>
+            <TouchableOpacity style={styles.iosClearDateButton} onPress={clearDateSelection}>
+              <Ionicons name="close-circle" size={18} color="#8E8E93" />
             </TouchableOpacity>
           </View>
         ) : (
-          <Text style={[styles.selectedDateText, isDesktop && styles.selectedDateTextDesktop]}>Todas las citas</Text>
+          <Text style={styles.iosSelectedDateText}>Todas las citas</Text>
         )}
 
-        <View style={isDesktop ? styles.appointmentsGridDesktop : undefined}>
+        <View style={isDesktop ? styles.iosAppointmentsGridDesktop : undefined}>
           {filteredAppointments.map((appointment) => (
             <TouchableOpacity
               key={appointment.id}
               style={[
-                styles.appointmentItem,
-                { borderLeftColor: appointment.category === "psychology" ? Colors.PSICOLOGIA : Colors.NUTRICIÓN },
-                isDesktop && styles.appointmentItemDesktop,
+                styles.iosAppointmentItemCompact,
+                appointment.category === "psychology" ? styles.iosPsychologyItem : styles.iosNutritionItem,
+                isDesktop && styles.iosAppointmentItemDesktop,
               ]}
               onPress={() => handleSelectAppointment(appointment)}
+              activeOpacity={0.7}
             >
-              <View style={styles.appointmentHeader}>
-                <Text style={[styles.appointmentTitle, isDesktop && styles.appointmentTitleDesktop]}>
-                  {appointment.title}
-                </Text>
+              <View style={styles.iosAppointmentRow}>
+                <View style={styles.iosAppointmentMainInfo}>
+                  <Text style={styles.iosAppointmentTitleCompact}>{appointment.title}</Text>
+                  <View style={styles.iosAppointmentTimeRow}>
+                    <Ionicons name="time-outline" size={14} color="#8E8E93" />
+                    <Text style={styles.iosDetailTextCompact}>{appointment.time}</Text>
+                    <Text style={styles.iosDateSeparator}>•</Text>
+                    <Text style={styles.iosDetailTextCompact}>{formatDate(appointment.date)}</Text>
+                  </View>
+                </View>
                 <View
                   style={[
-                    styles.categoryBadge,
-                    { backgroundColor: appointment.category === "psychology" ? Colors.PSICOLOGIA : Colors.NUTRICIÓN },
-                    isDesktop && styles.categoryBadgeDesktop,
+                    styles.iosCategoryBadgeCompact,
+                    appointment.category === "psychology" ? styles.iosPsychologyBadge : styles.iosNutritionBadge,
                   ]}
                 >
-                  <Text style={[styles.categoryText, isDesktop && styles.categoryTextDesktop]}>
-                    {appointment.category === "psychology" ? "Psicología" : "Nutrición"}
+                  <Text style={styles.iosCategoryTextCompact}>
+                    {appointment.category === "psychology" ? "Psic." : "Nutr."}
                   </Text>
                 </View>
               </View>
-
-              <View style={styles.appointmentDetails}>
-                <View style={styles.detailItem}>
-                  <Ionicons name="time-outline" size={isDesktop ? 18 : 16} color="#666" />
-                  <Text style={[styles.detailText, isDesktop && styles.detailTextDesktop]}>{appointment.time}</Text>
-                </View>
-
-                <View style={styles.detailItem}>
-                  <Ionicons name="calendar-outline" size={isDesktop ? 18 : 16} color="#666" />
-                  <Text style={[styles.detailText, isDesktop && styles.detailTextDesktop]}>
-                    {formatDate(appointment.date)}
-                  </Text>
-                </View>
-
-                <View style={styles.detailItem}>
-                  <Ionicons name="person-outline" size={isDesktop ? 18 : 16} color="#666" />
-                  <Text style={[styles.detailText, isDesktop && styles.detailTextDesktop]}>{appointment.doctor}</Text>
-                </View>
+              <View style={styles.iosDoctorRow}>
+                <Ionicons name="person-outline" size={14} color="#8E8E93" />
+                <Text style={styles.iosDetailTextCompact}>{appointment.doctor}</Text>
               </View>
             </TouchableOpacity>
           ))}
@@ -401,158 +383,112 @@ const AppointmentsScreen = () => {
     )
   }
 
-  // Reemplazar los estilos de los botones de filtro activos para mejorar el contraste
-  const getFilterButtonStyle = (filterType) => {
-    const isActive = activeFilter === filterType
-
-    // Usar un enfoque diferente para los botones activos
-    // Mantenemos el texto oscuro pero cambiamos otros elementos visuales
-    return {
-      button: [
-        styles.filterButton,
-        isActive && styles.filterButtonActive,
-        filterType === "psychology" && isActive && styles.filterButtonPsychology,
-        filterType === "nutrition" && isActive && styles.filterButtonNutrition,
-        isDesktop && styles.filterButtonDesktop,
-      ],
-      text: [styles.filterText, isActive && styles.filterTextActive, isDesktop && styles.filterTextDesktop],
-      icon: isActive ? "#333" : "#666",
-    }
-  }
-
   return (
-    <SafeAreaView style={[styles.safeArea, isWeb && styles.safeAreaWeb]}>
-      <StatusBar translucent backgroundColor="transparent" barStyle="light-content" />
+    <SafeAreaView style={styles.iosSafeArea}>
+      <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
 
-      <View style={[styles.headerContainer, isDesktop && styles.headerContainerDesktop]}>
-        <Header userName={user.name} screenName="Mis Citas" />
+      <View style={styles.iosHeaderContainer}>
+        <Header
+          userName={user.name}
+          screenName="Mis Citas"
+          headerStyle={styles.iosHeader}
+          titleStyle={styles.iosHeaderTitle}
+        />
       </View>
 
-      <View style={styles.container}>
-        {/* Filtros de categoría */}
-        <View style={[styles.filterContainer, isDesktop && styles.filterContainerDesktop]}>
-          <TouchableOpacity style={getFilterButtonStyle("all").button} onPress={() => setActiveFilter("all")}>
-            {activeFilter === "all" && <View style={styles.activeIndicator} />}
-            <Text style={getFilterButtonStyle("all").text}>Todas</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={getFilterButtonStyle("psychology").button}
-            onPress={() => setActiveFilter("psychology")}
+      <View style={styles.iosContainer}>
+        {/* Filtros de categoría con estilo iOS */}
+        <View style={styles.iosFilterContainer}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.iosFilterScrollContent}
           >
-            {activeFilter === "psychology" && <View style={[styles.activeIndicator, styles.psychologyIndicator]} />}
-            <FontAwesome5
-              name="brain"
-              size={isDesktop ? 12 : 14}
-              color={getFilterButtonStyle("psychology").icon}
-              style={styles.filterIcon}
-            />
-            <Text style={getFilterButtonStyle("psychology").text}>Psicología</Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.iosFilterButton, activeFilter === "all" && styles.iosFilterButtonActive]}
+              onPress={() => setActiveFilter("all")}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.iosFilterText, activeFilter === "all" && styles.iosFilterTextActive]}>Todas</Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            style={getFilterButtonStyle("nutrition").button}
-            onPress={() => setActiveFilter("nutrition")}
-          >
-            {activeFilter === "nutrition" && <View style={[styles.activeIndicator, styles.nutritionIndicator]} />}
-            <MaterialCommunityIcons
-              name="food-apple"
-              size={isDesktop ? 14 : 16}
-              color={getFilterButtonStyle("nutrition").icon}
-              style={styles.filterIcon}
-            />
-            <Text style={getFilterButtonStyle("nutrition").text}>Nutrición</Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.iosFilterButton, activeFilter === "psychology" && styles.iosPsychologyFilterActive]}
+              onPress={() => setActiveFilter("psychology")}
+              activeOpacity={0.7}
+            >
+              <FontAwesome5
+                name="brain"
+                size={14}
+                color={activeFilter === "psychology" ? "#FFFFFF" : "#8E8E93"}
+                style={styles.iosFilterIcon}
+              />
+              <Text style={[styles.iosFilterText, activeFilter === "psychology" && styles.iosFilterTextActive]}>
+                Psicología
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.iosFilterButton, activeFilter === "nutrition" && styles.iosNutritionFilterActive]}
+              onPress={() => setActiveFilter("nutrition")}
+              activeOpacity={0.7}
+            >
+              <MaterialCommunityIcons
+                name="food-apple"
+                size={16}
+                color={activeFilter === "nutrition" ? "#FFFFFF" : "#8E8E93"}
+                style={styles.iosFilterIcon}
+              />
+              <Text style={[styles.iosFilterText, activeFilter === "nutrition" && styles.iosFilterTextActive]}>
+                Nutrición
+              </Text>
+            </TouchableOpacity>
+          </ScrollView>
         </View>
 
         {isDesktop ? (
-          // Layout para desktop - dos columnas
-          <View style={styles.contentContainerDesktop}>
+          // Layout para desktop - dos columnas con estilo iOS
+          <View style={styles.iosContentContainerDesktop}>
             <ScrollView
               showsVerticalScrollIndicator={false}
-              style={styles.scrollViewDesktop}
-              contentContainerStyle={styles.scrollContentDesktop}
+              style={styles.iosScrollViewDesktop}
+              contentContainerStyle={styles.iosScrollContentDesktop}
             >
-              {/* Botones y calendario para desktop */}
-              <TouchableOpacity
-                style={[styles.requestServiceButton, styles.requestServiceButtonDesktop]}
-                onPress={openServiceModal}
-              >
-                <Ionicons name="add-circle-outline" size={20} color="#fff" style={styles.buttonIcon} />
-                <Text style={[styles.requestServiceButtonText, styles.requestServiceButtonTextDesktop]}>
-                  Solicitar nueva cita
-                </Text>
+              {/* Botones y calendario para desktop con estilo iOS */}
+              <TouchableOpacity style={styles.iosRequestServiceButton} onPress={openServiceModal} activeOpacity={0.8}>
+                <Ionicons name="add-circle-outline" size={20} color="#FFFFFF" style={styles.iosButtonIcon} />
+                <Text style={styles.iosRequestServiceButtonText}>Solicitar nueva cita</Text>
               </TouchableOpacity>
 
-              <View style={styles.calendarActionsContainer}>
-                <TouchableOpacity
-                  style={[
-                    styles.todayButton,
-                    {
-                      backgroundColor:
-                        activeFilter === "psychology"
-                          ? Colors.PSICOLOGIA
-                          : activeFilter === "nutrition"
-                            ? Colors.NUTRICIÓN
-                            : Colors.PRIMARYCOLOR,
-                    },
-                    styles.todayButtonDesktop,
-                  ]}
-                  onPress={() => {
-                    const today = new Date().toISOString().split("T")[0]
-                    setSelectedDate(today)
-                  }}
-                >
-                  <Ionicons name="today-outline" size={18} color="#fff" style={styles.buttonIcon} />
-                  <Text style={[styles.todayButtonText, styles.todayButtonTextDesktop]}>Hoy</Text>
-                </TouchableOpacity>
-
-                {selectedDate && (
-                  <TouchableOpacity
-                    style={[styles.clearAllButton, styles.clearAllButtonDesktop]}
-                    onPress={clearDateSelection}
-                  >
-                    <Ionicons name="calendar-clear-outline" size={18} color="#fff" style={styles.buttonIcon} />
-                    <Text style={[styles.clearAllButtonText, styles.clearAllButtonTextDesktop]}>Ver todas</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-
-              <View style={[styles.calendarContainer, styles.calendarContainerDesktop]}>
+              <View style={styles.iosCalendarContainer}>
                 <Calendar
                   current={selectedDate || new Date().toISOString().split("T")[0]}
                   onDayPress={handleDayPress}
                   markedDates={markedDates}
                   markingType="multi-dot"
                   theme={{
-                    backgroundColor: "#fff",
-                    calendarBackground: "#fff",
-                    textSectionTitleColor: "#333",
-                    selectedDayBackgroundColor:
-                      activeFilter === "psychology"
-                        ? Colors.PSICOLOGIA
-                        : activeFilter === "nutrition"
-                          ? Colors.NUTRICIÓN
-                          : Colors.PRIMARYCOLOR,
-                    selectedDayTextColor: "#fff",
+                    backgroundColor: "#FFFFFF",
+                    calendarBackground: "#FFFFFF",
+                    textSectionTitleColor: "#000000",
+                    selectedDayBackgroundColor: Colors.PRIMARYCOLOR,
+                    selectedDayTextColor: "#FFFFFF",
                     todayTextColor: Colors.PRIMARYCOLOR,
-                    dayTextColor: "#333",
-                    textDisabledColor: "#d9e1e8",
+                    dayTextColor: "#000000",
+                    textDisabledColor: "#C7C7CC",
                     dotColor: Colors.PRIMARYCOLOR,
-                    selectedDotColor: "#fff",
+                    selectedDotColor: "#FFFFFF",
                     arrowColor: Colors.PRIMARYCOLOR,
-                    monthTextColor: "#333",
+                    monthTextColor: "#000000",
                     indicatorColor: Colors.PRIMARYCOLOR,
                     textDayFontFamily: "System",
                     textMonthFontFamily: "System",
                     textDayHeaderFontFamily: "System",
                     textDayFontWeight: "400",
-                    textMonthFontWeight: "700",
-                    textDayHeaderFontWeight: "600",
-                    textDayFontSize: 18,
+                    textMonthFontWeight: "600",
+                    textDayHeaderFontWeight: "500",
+                    textDayFontSize: 17,
                     textMonthFontSize: 20,
-                    textDayHeaderFontSize: 16,
-                    // Corregir la deformación del día seleccionado
+                    textDayHeaderFontSize: 14,
                     "stylesheet.day.basic": {
                       base: {
                         width: 36,
@@ -568,92 +504,68 @@ const AppointmentsScreen = () => {
                   }}
                 />
               </View>
-              <View style={styles.scrollPadding} />
+
+              {selectedDate && (
+                <TouchableOpacity
+                  style={styles.iosClearDateButtonLarge}
+                  onPress={clearDateSelection}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.iosClearDateButtonText}>Limpiar selección</Text>
+                </TouchableOpacity>
+              )}
             </ScrollView>
 
-            <ScrollView style={styles.appointmentsScrollDesktop} showsVerticalScrollIndicator={false}>
+            <ScrollView
+              style={styles.iosAppointmentsScrollDesktop}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.iosAppointmentsScrollContent}
+            >
               {renderAppointments()}
-              <View style={styles.scrollPadding} />
             </ScrollView>
           </View>
         ) : (
-          // Layout para móvil - una columna con scroll completo
+          // Layout para móvil - una columna con scroll completo con estilo iOS
           <ScrollView
-            style={styles.mobileScrollView}
-            contentContainerStyle={styles.mobileScrollContent}
+            style={styles.iosMobileScrollView}
+            contentContainerStyle={styles.iosMobileScrollContent}
             showsVerticalScrollIndicator={false}
           >
-            {/* Botones y calendario para móvil */}
-            <TouchableOpacity style={styles.requestServiceButton} onPress={openServiceModal}>
-              <Ionicons name="add-circle-outline" size={18} color="#fff" style={styles.buttonIcon} />
-              <Text style={styles.requestServiceButtonText}>Solicitar nueva cita</Text>
+            {/* Botones y calendario para móvil con estilo iOS */}
+            <TouchableOpacity style={styles.iosRequestServiceButton} onPress={openServiceModal} activeOpacity={0.8}>
+              <Ionicons name="add-circle-outline" size={18} color="#FFFFFF" style={styles.iosButtonIcon} />
+              <Text style={styles.iosRequestServiceButtonText}>Solicitar nueva cita</Text>
             </TouchableOpacity>
 
-            <View style={styles.calendarActionsContainer}>
-              <TouchableOpacity
-                style={[
-                  styles.todayButton,
-                  {
-                    backgroundColor:
-                      activeFilter === "psychology"
-                        ? Colors.PSICOLOGIA
-                        : activeFilter === "nutrition"
-                          ? Colors.NUTRICIÓN
-                          : Colors.PRIMARYCOLOR,
-                  },
-                ]}
-                onPress={() => {
-                  const today = new Date().toISOString().split("T")[0]
-                  setSelectedDate(today)
-                }}
-              >
-                <Ionicons name="today-outline" size={16} color="#fff" style={styles.buttonIcon} />
-                <Text style={styles.todayButtonText}>Hoy</Text>
-              </TouchableOpacity>
-
-              {selectedDate && (
-                <TouchableOpacity style={styles.clearAllButton} onPress={clearDateSelection}>
-                  <Ionicons name="calendar-clear-outline" size={16} color="#fff" style={styles.buttonIcon} />
-                  <Text style={styles.clearAllButtonText}>Ver todas</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-
-            <View style={styles.calendarContainer}>
+            <View style={styles.iosCalendarContainer}>
               <Calendar
                 current={selectedDate || new Date().toISOString().split("T")[0]}
                 onDayPress={handleDayPress}
                 markedDates={markedDates}
                 markingType="multi-dot"
                 theme={{
-                  backgroundColor: "#fff",
-                  calendarBackground: "#fff",
-                  textSectionTitleColor: "#333",
-                  selectedDayBackgroundColor:
-                    activeFilter === "psychology"
-                      ? Colors.PSICOLOGIA
-                      : activeFilter === "nutrition"
-                        ? Colors.NUTRICIÓN
-                        : Colors.PRIMARYCOLOR,
-                  selectedDayTextColor: "#fff",
+                  backgroundColor: "#FFFFFF",
+                  calendarBackground: "#FFFFFF",
+                  textSectionTitleColor: "#000000",
+                  selectedDayBackgroundColor: Colors.PRIMARYCOLOR,
+                  selectedDayTextColor: "#FFFFFF",
                   todayTextColor: Colors.PRIMARYCOLOR,
-                  dayTextColor: "#333",
-                  textDisabledColor: "#d9e1e8",
+                  dayTextColor: "#000000",
+                  textDisabledColor: "#C7C7CC",
                   dotColor: Colors.PRIMARYCOLOR,
-                  selectedDotColor: "#fff",
+                  selectedDotColor: "#FFFFFF",
                   arrowColor: Colors.PRIMARYCOLOR,
-                  monthTextColor: "#333",
+                  monthTextColor: "#000000",
                   indicatorColor: Colors.PRIMARYCOLOR,
                   textDayFontFamily: "System",
                   textMonthFontFamily: "System",
                   textDayHeaderFontFamily: "System",
                   textDayFontWeight: "400",
-                  textMonthFontWeight: "700",
-                  textDayHeaderFontWeight: "600",
+                  textMonthFontWeight: "600",
+                  textDayHeaderFontWeight: "500",
                   textDayFontSize: 16,
                   textMonthFontSize: 18,
                   textDayHeaderFontSize: 14,
-                  // Corregir la deformación del día seleccionado
                   "stylesheet.day.basic": {
                     base: {
                       width: 32,
@@ -670,47 +582,73 @@ const AppointmentsScreen = () => {
               />
             </View>
 
-            {/* Lista de citas para móvil */}
-            {renderAppointments()}
+            {selectedDate && (
+              <TouchableOpacity style={styles.iosClearDateButtonLarge} onPress={clearDateSelection} activeOpacity={0.8}>
+                <Text style={styles.iosClearDateButtonText}>Limpiar selección</Text>
+              </TouchableOpacity>
+            )}
 
-            {/* Espacio adicional al final del scroll */}
-            <View style={styles.scrollPadding} />
+            {/* Lista de citas para móvil con estilo iOS */}
+            {renderAppointments()}
           </ScrollView>
         )}
       </View>
 
-      {/* Modal de detalles de cita */}
+      {/* Modal de detalles de cita con estilo iOS */}
       {selectedAppointment && (
         <AppointmentModal
           appointment={selectedAppointment}
           visible={modalVisible}
           onClose={() => setModalVisible(false)}
+          modalStyle={styles.iosModal}
+          contentStyle={styles.iosModalContent}
+          titleStyle={styles.iosModalTitle}
+          textStyle={styles.iosModalText}
+          buttonStyle={styles.iosModalButton}
+          buttonTextStyle={styles.iosModalButtonText}
         />
       )}
 
-      {/* Modal de selección de servicio */}
+      {/* Modal de selección de servicio con estilo iOS */}
       <ServiceSelectionModal
         visible={serviceModalVisible}
         onClose={() => setServiceModalVisible(false)}
         onConfirm={handleServiceConfirm}
+        modalStyle={styles.iosModal}
+        contentStyle={styles.iosModalContent}
+        titleStyle={styles.iosModalTitle}
+        textStyle={styles.iosModalText}
+        buttonStyle={styles.iosModalButton}
+        buttonTextStyle={styles.iosModalButtonText}
       />
 
-      {/* Modal de cierre de sesión */}
+      {/* Modal de cierre de sesión con estilo iOS */}
       <LogoutModal
         visible={logoutModalVisible}
         onCancel={handleCancelLogout}
         onConfirm={handleLogout}
         isLoggingOut={isLoggingOut}
+        modalStyle={styles.iosModal}
+        contentStyle={styles.iosModalContent}
+        titleStyle={styles.iosModalTitle}
+        textStyle={styles.iosModalText}
+        buttonStyle={styles.iosModalButton}
+        buttonTextStyle={styles.iosModalButtonText}
       />
 
-      {/* AppointmentCalendarScreen as a full-screen overlay */}
+      {/* AppointmentCalendarScreen como overlay con estilo iOS */}
       {calendarVisible && (
-        <View style={styles.calendarScreenOverlay}>
+        <View style={styles.iosCalendarScreenOverlay}>
           <AppointmentCalendarScreen
             onClose={handleCalendarClose}
             onConfirm={handleAppointmentConfirm}
             patientName={user.name}
             service={selectedService}
+            screenStyle={styles.iosCalendarScreen}
+            headerStyle={styles.iosCalendarScreenHeader}
+            titleStyle={styles.iosCalendarScreenTitle}
+            buttonStyle={styles.iosCalendarScreenButton}
+            buttonTextStyle={styles.iosCalendarScreenButtonText}
           />
         </View>
       )}
@@ -723,14 +661,13 @@ const HomeUser = () => {
   const [logoutModalVisible, setLogoutModalVisible] = useState(false)
   const [isLoggingOut, setIsLoggingOut] = useState(false)
   const [activeTab, setActiveTab] = useState("Citas")
-  // Añadir un nuevo estado para controlar la visibilidad de la barra lateral
   const [sidebarExpanded, setSidebarExpanded] = useState(true)
 
   // Get screen dimensions for responsive design
   const screenWidth = Dimensions.get("window").width
   const isDesktop = screenWidth >= 768
 
-  // Añadir una función para alternar la visibilidad de la barra lateral
+  // Función para alternar la visibilidad de la barra lateral
   const toggleSidebar = () => {
     setSidebarExpanded(!sidebarExpanded)
   }
@@ -752,43 +689,44 @@ const HomeUser = () => {
     setLogoutModalVisible(false)
   }
 
-  // Modificar el renderSidebar para incluir el botón de colapsar y la lógica de expansión/colapso
+  // Renderizar la barra lateral con estilo iOS
   const renderSidebar = () => {
     if (!isDesktop) return null
 
     return (
-      <View style={[styles.sidebarContainer, !sidebarExpanded && styles.sidebarCollapsed]}>
-        <View style={styles.sidebarHeader}>
+      <View style={[styles.iosSidebarContainer, !sidebarExpanded && styles.iosSidebarCollapsed]}>
+        <View style={styles.iosSidebarHeader}>
           {sidebarExpanded ? (
             <>
-              <Text style={styles.sidebarLogo}>Senda</Text>
-              <TouchableOpacity style={styles.sidebarToggleButton} onPress={toggleSidebar}>
-                <MaterialCommunityIcons name="chevron-left" size={24} color="#555" />
+              <Text style={styles.iosSidebarLogo}>Senda</Text>
+              <TouchableOpacity style={styles.iosSidebarToggleButton} onPress={toggleSidebar}>
+                <MaterialCommunityIcons name="chevron-left" size={24} color="#8E8E93" />
               </TouchableOpacity>
             </>
           ) : (
-            <TouchableOpacity style={styles.sidebarToggleButtonCollapsed} onPress={toggleSidebar}>
-              <MaterialCommunityIcons name="chevron-right" size={24} color="#555" />
+            <TouchableOpacity style={styles.iosSidebarToggleButtonCollapsed} onPress={toggleSidebar}>
+              <MaterialCommunityIcons name="chevron-right" size={24} color="#8E8E93" />
             </TouchableOpacity>
           )}
         </View>
 
-        <View style={styles.sidebarContent}>
+        <View style={styles.iosSidebarContent}>
           <TouchableOpacity
             style={[
-              styles.sidebarItem,
-              activeTab === "Citas" && styles.sidebarItemActive,
-              !sidebarExpanded && styles.sidebarItemCollapsed,
+              styles.iosSidebarItem,
+              activeTab === "Citas" && styles.iosSidebarItemActive,
+              !sidebarExpanded && styles.iosSidebarItemCollapsed,
             ]}
             onPress={() => setActiveTab("Citas")}
+            activeOpacity={0.7}
           >
             <MaterialCommunityIcons
-              name={activeTab === "Citas" ? "calendar-clock" : "calendar-clock-outline"}
+              name="calendar-clock"
               size={24}
-              color={activeTab === "Citas" ? Colors.PRIMARYCOLOR : "#555"}
+              color={activeTab === "Citas" ? Colors.PRIMARYCOLOR : "#8E8E93"}
             />
             {sidebarExpanded && (
-              <Text style={[styles.sidebarItemText, activeTab === "Citas" && styles.sidebarItemTextActive]}>
+              <Text style={[styles.iosSidebarItemText, activeTab === "Citas" && styles.iosSidebarItemTextActive]}>
                 Mis Citas
               </Text>
             )}
@@ -796,32 +734,34 @@ const HomeUser = () => {
 
           <TouchableOpacity
             style={[
-              styles.sidebarItem,
-              activeTab === "Documentos" && styles.sidebarItemActive,
-              !sidebarExpanded && styles.sidebarItemCollapsed,
+              styles.iosSidebarItem,
+              activeTab === "Documentos" && styles.iosSidebarItemActive,
+              !sidebarExpanded && styles.iosSidebarItemCollapsed,
             ]}
             onPress={() => setActiveTab("Documentos")}
+            activeOpacity={0.7}
           >
             <MaterialCommunityIcons
-              name={activeTab === "Documentos" ? "file-document-multiple" : "file-document-multiple-outline"}
+              name="file-document-multiple"
               size={24}
-              color={activeTab === "Documentos" ? Colors.PRIMARYCOLOR : "#555"}
+              color={activeTab === "Documentos" ? Colors.PRIMARYCOLOR : "#8E8E93"}
             />
             {sidebarExpanded && (
-              <Text style={[styles.sidebarItemText, activeTab === "Documentos" && styles.sidebarItemTextActive]}>
+              <Text style={[styles.iosSidebarItemText, activeTab === "Documentos" && styles.iosSidebarItemTextActive]}>
                 Documentos
               </Text>
             )}
           </TouchableOpacity>
         </View>
 
-        <View style={styles.sidebarFooter}>
+        <View style={styles.iosSidebarFooter}>
           <TouchableOpacity
-            style={[styles.logoutButton, !sidebarExpanded && styles.logoutButtonCollapsed]}
+            style={[styles.iosLogoutButton, !sidebarExpanded && styles.iosLogoutButtonCollapsed]}
             onPress={() => setLogoutModalVisible(true)}
+            activeOpacity={0.7}
           >
-            <MaterialCommunityIcons name="logout" size={22} color="#555" />
-            {sidebarExpanded && <Text style={styles.logoutButtonText}>Cerrar Sesión</Text>}
+            <MaterialCommunityIcons name="logout" size={22} color="#8E8E93" />
+            {sidebarExpanded && <Text style={styles.iosLogoutButtonText}>Cerrar Sesión</Text>}
           </TouchableOpacity>
         </View>
       </View>
@@ -832,23 +772,23 @@ const HomeUser = () => {
   const renderContent = () => {
     if (isDesktop) {
       return (
-        <View style={styles.desktopContentContainer}>
+        <View style={styles.iosDesktopContentContainer}>
           {activeTab === "Citas" ? <AppointmentsScreen /> : <UserDoc />}
         </View>
       )
     }
 
-    // En móvil, usamos el Tab.Navigator normal
+    // En móvil, usamos el Tab.Navigator con estilo iOS
     return (
       <Tab.Navigator
         screenOptions={({ route }) => ({
           tabBarIcon: ({ focused, color, size }) => {
             let iconName
             if (route.name === "Citas") {
-              iconName = focused ? "calendar-clock" : "calendar-clock-outline"
+              iconName = "calendar-clock"
               return <MaterialCommunityIcons name={iconName} size={size} color={color} />
             } else if (route.name === "Documentos") {
-              iconName = focused ? "file-document-multiple" : "file-document-multiple-outline"
+              iconName = "file-document-multiple"
               return <MaterialCommunityIcons name={iconName} size={size} color={color} />
             } else if (route.name === "Cerrar Sesión") {
               iconName = "logout"
@@ -857,11 +797,11 @@ const HomeUser = () => {
             return null
           },
           tabBarActiveTintColor: Colors.PRIMARYCOLOR,
-          tabBarInactiveTintColor: "#777",
+          tabBarInactiveTintColor: "#8E8E93",
           tabBarStyle: {
-            backgroundColor: "#fff",
+            backgroundColor: "#FFFFFF",
             borderTopWidth: 1,
-            borderTopColor: "#eee",
+            borderTopColor: "#F2F2F7",
             paddingTop: 5,
             height: Platform.OS === "ios" ? 85 : 65,
             shadowColor: "#000",
@@ -869,13 +809,13 @@ const HomeUser = () => {
               width: 0,
               height: -2,
             },
-            shadowOpacity: 0.1,
+            shadowOpacity: 0.05,
             shadowRadius: 3,
-            elevation: 10,
+            elevation: 5,
           },
           tabBarLabelStyle: {
             fontSize: 12,
-            fontWeight: "600",
+            fontWeight: "500",
             paddingBottom: Platform.OS === "ios" ? 0 : 5,
           },
         })}
@@ -901,18 +841,24 @@ const HomeUser = () => {
 
   return (
     <>
-      <StatusBar translucent backgroundColor="transparent" barStyle="light-content" />
+      <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
 
-      {/* Modal de cierre de sesión */}
+      {/* Modal de cierre de sesión con estilo iOS */}
       <LogoutModal
         visible={logoutModalVisible}
         onCancel={handleCancelLogout}
         onConfirm={handleLogout}
         isLoggingOut={isLoggingOut}
+        modalStyle={styles.iosModal}
+        contentStyle={styles.iosModalContent}
+        titleStyle={styles.iosModalTitle}
+        textStyle={styles.iosModalText}
+        buttonStyle={styles.iosModalButton}
+        buttonTextStyle={styles.iosModalButtonText}
       />
 
       {isDesktop ? (
-        <View style={styles.desktopLayout}>
+        <View style={styles.iosDesktopLayout}>
           {renderSidebar()}
           {renderContent()}
         </View>
@@ -924,26 +870,363 @@ const HomeUser = () => {
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
+  // Estilos generales con estilo iOS
+  iosSafeArea: {
     flex: 1,
-    backgroundColor: Colors.PRIMARYCOLOR,
+    backgroundColor: "#FFFFFF",
   },
-  safeAreaWeb: {
-    height: "100vh",
+  iosContainer: {
+    flex: 1,
+    backgroundColor: "#F2F2F7",
   },
-  headerContainer: {
-    backgroundColor: Colors.PRIMARYCOLOR,
+  iosHeaderContainer: {
+    backgroundColor: "#FFFFFF",
     paddingTop: Platform.OS === "android" ? 40 : Platform.OS === "web" ? 0 : 0,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F2F2F7",
   },
-  headerContainerDesktop: {
+  iosHeader: {
+    backgroundColor: "#FFFFFF",
+  },
+  iosHeaderTitle: {
+    fontSize: 17,
+    fontWeight: "700",
+    color: "#000000",
+    letterSpacing: 0.5,
+  },
+
+  // Filtros con estilo iOS
+  iosFilterContainer: {
+    backgroundColor: "#FFFFFF",
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F2F2F7",
+  },
+  iosFilterScrollContent: {
+    paddingHorizontal: 16,
+  },
+  iosFilterButton: {
+    flexDirection: "row",
+    alignItems: "center",
     paddingVertical: 8,
-    borderBottom: "1px solid rgba(255, 255, 255, 0.1)",
+    paddingHorizontal: 16,
+    marginRight: 10,
+    borderRadius: 16,
+    backgroundColor: "#F5F5F5",
+    borderWidth: 1,
+    borderColor: "#E5E5EA",
   },
-  container: {
+  iosFilterButtonActive: {
+    backgroundColor: Colors.PRIMARYCOLOR,
+    borderColor: Colors.PRIMARYCOLOR,
+  },
+  iosFilterText: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#3A3A3C",
+  },
+  iosFilterTextActive: {
+    color: "#FFFFFF",
+  },
+  iosFilterIcon: {
+    marginRight: 6,
+  },
+
+  // Botones con estilo iOS
+  iosRequestServiceButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: Colors.PRIMARYCOLOR,
+    padding: 16,
+    borderRadius: 10,
+    marginBottom: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  iosRequestServiceButtonText: {
+    color: "#FFFFFF",
+    fontSize: 17,
+    fontWeight: "600",
+    letterSpacing: 0.5,
+  },
+  iosButtonIcon: {
+    marginRight: 8,
+  },
+  iosClearDateButtonLarge: {
+    backgroundColor: "#F2F2F7",
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    alignItems: "center",
+    marginTop: 16,
+    marginBottom: 24,
+  },
+  iosClearDateButtonText: {
+    color: Colors.PRIMARYCOLOR,
+    fontSize: 16,
+    fontWeight: "500",
+  },
+
+  // Calendario con estilo iOS
+  iosCalendarContainer: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 10,
+    padding: 16,
+    marginBottom: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: "#F2F2F7",
+  },
+
+  // Lista de citas con estilo iOS
+  iosAppointmentsList: {
+    marginTop: 8,
+  },
+  iosAppointmentsGridDesktop: {
+    display: "flex",
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+  },
+  iosSelectedDateHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  iosSelectedDateText: {
+    fontSize: 18,
+    fontWeight: "700",
+    marginBottom: 12,
+    color: "#000000",
+    letterSpacing: 0.5,
+  },
+  iosClearDateButton: {
+    padding: 6,
+    borderRadius: 16,
+  },
+  // Nuevo estilo compacto para las citas
+  iosAppointmentItemCompact: {
+    backgroundColor: "#FFFFFF",
+    padding: 12,
+    marginBottom: 8,
+    borderRadius: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: "#F2F2F7",
+  },
+  iosAppointmentRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  iosAppointmentMainInfo: {
     flex: 1,
-    backgroundColor: "#f8f9fa",
   },
-  contentContainerDesktop: {
+  iosAppointmentTimeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 4,
+  },
+  iosDoctorRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 6,
+    paddingTop: 6,
+    borderTopWidth: 1,
+    borderTopColor: "#F2F2F7",
+  },
+  iosDateSeparator: {
+    marginHorizontal: 4,
+    color: "#8E8E93",
+    fontSize: 12,
+  },
+  iosPsychologyItem: {
+    borderLeftWidth: 3,
+    borderLeftColor: Colors.PSICOLOGIA,
+  },
+  iosNutritionItem: {
+    borderLeftWidth: 3,
+    borderLeftColor: Colors.NUTRICIÓN,
+  },
+  iosAppointmentItemDesktop: {
+    width: "calc(50% - 8px)",
+    marginBottom: 12,
+  },
+  iosAppointmentTitleCompact: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#000000",
+  },
+  iosCategoryBadgeCompact: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    marginLeft: 8,
+  },
+  iosCategoryTextCompact: {
+    color: "#FFFFFF",
+    fontSize: 11,
+    fontWeight: "600",
+  },
+  iosDetailTextCompact: {
+    marginLeft: 4,
+    color: "#3A3A3C",
+    fontSize: 13,
+    fontWeight: "400",
+  },
+
+  // Estado vacío con estilo iOS
+  iosEmptyStateContainer: {
+    padding: 24,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 16,
+  },
+  iosNoAppointmentsText: {
+    fontSize: 17,
+    color: "#8E8E93",
+    marginBottom: 16,
+    textAlign: "center",
+  },
+  iosClearFilterButton: {
+    backgroundColor: Colors.PRIMARYCOLOR,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+  },
+  iosClearFilterButtonText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+
+  // Estilos específicos para móvil con estilo iOS
+  iosMobileScrollView: {
+    flex: 1,
+  },
+  iosMobileScrollContent: {
+    padding: 16,
+    paddingBottom: 80,
+  },
+
+  // Estilos para la barra lateral en desktop con estilo iOS
+  iosDesktopLayout: {
+    flexDirection: "row",
+    height: "100vh",
+    width: "100%",
+    backgroundColor: "#FFFFFF",
+  },
+  iosSidebarContainer: {
+    width: 260,
+    backgroundColor: "#FFFFFF",
+    borderRightWidth: 1,
+    borderRightColor: "#F2F2F7",
+    height: "100%",
+    display: "flex",
+    flexDirection: "column",
+  },
+  iosSidebarCollapsed: {
+    width: 70,
+  },
+  iosSidebarHeader: {
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F2F2F7",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  iosSidebarLogo: {
+    fontSize: 22,
+    fontWeight: "600",
+    color: Colors.PRIMARYCOLOR,
+  },
+  iosSidebarContent: {
+    flex: 1,
+    padding: 16,
+  },
+  iosSidebarItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 14,
+    borderRadius: 10,
+    marginBottom: 8,
+  },
+  iosSidebarItemActive: {
+    backgroundColor: "#F2F2F7",
+  },
+  iosSidebarItemText: {
+    fontSize: 17,
+    fontWeight: "500",
+    color: "#8E8E93",
+    marginLeft: 12,
+  },
+  iosSidebarItemTextActive: {
+    color: Colors.PRIMARYCOLOR,
+    fontWeight: "600",
+  },
+  iosSidebarFooter: {
+    padding: 16,
+    borderTopWidth: 1,
+    borderTopColor: "#F2F2F7",
+  },
+  iosLogoutButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 14,
+    borderRadius: 10,
+  },
+  iosLogoutButtonText: {
+    fontSize: 17,
+    fontWeight: "500",
+    color: "#8E8E93",
+    marginLeft: 12,
+  },
+  iosDesktopContentContainer: {
+    flex: 1,
+    height: "100%",
+    overflow: "auto",
+  },
+  iosSidebarToggleButton: {
+    position: "absolute",
+    right: 16,
+    top: "50%",
+    transform: "translateY(-50%)",
+    padding: 5,
+    borderRadius: 15,
+    backgroundColor: "#F2F2F7",
+  },
+  iosSidebarToggleButtonCollapsed: {
+    padding: 5,
+    borderRadius: 15,
+    backgroundColor: "#F2F2F7",
+  },
+  iosSidebarItemCollapsed: {
+    justifyContent: "center",
+    padding: 12,
+  },
+  iosLogoutButtonCollapsed: {
+    justifyContent: "center",
+    padding: 12,
+  },
+
+  // Estilos para layout desktop
+  iosContentContainerDesktop: {
     flexDirection: "row",
     flex: 1,
     maxWidth: 1200,
@@ -951,499 +1234,179 @@ const styles = StyleSheet.create({
     width: "100%",
     padding: 16,
   },
-  scrollView: {
-    flex: 1,
-    padding: 16,
-  },
-  scrollViewDesktop: {
+  iosScrollViewDesktop: {
     flex: 1,
     maxWidth: "50%",
     paddingRight: 16,
   },
-  scrollContentDesktop: {
+  iosScrollContentDesktop: {
     paddingBottom: 20,
   },
-  appointmentsScrollDesktop: {
+  iosAppointmentsScrollDesktop: {
     flex: 1,
     padding: 16,
     maxWidth: "50%",
     paddingLeft: 16,
   },
-  scrollPadding: {
-    height: 40,
+  iosAppointmentsScrollContent: {
+    paddingBottom: 40,
   },
-  // Filtros
-  filterContainer: {
-    flexDirection: "row",
-    backgroundColor: "#fff",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#eee",
+
+  // Estilos para modales con estilo iOS
+  iosModal: {
+    margin: 0,
+    justifyContent: "flex-end",
   },
-  filterContainerDesktop: {
-    paddingVertical: 10,
-    paddingHorizontal: 24,
-    borderBottomColor: "#e5e7eb",
-    boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)",
-  },
-  filterButton: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    marginHorizontal: 4,
-    borderRadius: 8,
-    backgroundColor: "#f0f0f0",
-  },
-  filterButtonDesktop: {
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    marginHorizontal: 6,
-    borderRadius: 6,
-    backgroundColor: "#f3f4f6",
-    transition: "all 0.2s ease",
-    maxWidth: 160,
-  },
-  activeFilterButton: {
-    backgroundColor: Colors.PRIMARYCOLOR,
-  },
-  activeFilterButtonPsychology: {
-    backgroundColor: Colors.PSICOLOGIA,
-  },
-  activeFilterButtonNutrition: {
-    backgroundColor: Colors.NUTRICIÓN,
-  },
-  filterText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#333",
-  },
-  filterTextDesktop: {
-    fontSize: 13,
-    fontWeight: "500",
-  },
-  activeFilterText: {
-    color: "#fff",
-  },
-  filterIcon: {
-    marginRight: 6,
-  },
-  // Botones
-  requestServiceButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: Colors.PRIMARYCOLOR,
-    padding: 14,
-    borderRadius: 10,
-    marginBottom: 16,
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  requestServiceButtonDesktop: {
-    padding: 16,
-    borderRadius: 8,
-    boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06)",
-    transition: "all 0.2s ease",
-  },
-  requestServiceButtonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  requestServiceButtonTextDesktop: {
-    fontSize: 17,
-    fontWeight: "500",
-    letterSpacing: "0.3px",
-  },
-  calendarActionsContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 16,
-  },
-  todayButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: Colors.PRIMARYCOLOR,
-    padding: 10,
-    borderRadius: 8,
-    flex: 1,
-    marginRight: 8,
-  },
-  todayButtonDesktop: {
-    padding: 12,
-    borderRadius: 6,
-    boxShadow: "0 1px 3px rgba(0, 0, 0, 0.1)",
-    transition: "all 0.2s ease",
-  },
-  todayButtonText: {
-    color: "#fff",
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  todayButtonTextDesktop: {
-    fontSize: 15,
-    fontWeight: "500",
-  },
-  clearAllButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#6c757d",
-    padding: 10,
-    borderRadius: 8,
-    flex: 1,
-    marginLeft: 8,
-  },
-  clearAllButtonDesktop: {
-    padding: 12,
-    borderRadius: 6,
-    boxShadow: "0 1px 3px rgba(0, 0, 0, 0.1)",
-    transition: "all 0.2s ease",
-  },
-  clearAllButtonText: {
-    color: "#fff",
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  clearAllButtonTextDesktop: {
-    fontSize: 15,
-    fontWeight: "500",
-  },
-  buttonIcon: {
-    marginRight: 8,
-  },
-  // Calendario
-  calendarContainer: {
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    padding: 10,
-    marginBottom: 16,
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  calendarContainerDesktop: {
+  iosModalContent: {
+    backgroundColor: "#FFFFFF",
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
     padding: 20,
-    borderRadius: 10,
-    marginBottom: 24,
-    boxShadow: "0 4px 6px rgba(0, 0, 0, 0.05), 0 1px 3px rgba(0, 0, 0, 0.1)",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 5,
   },
-  // Lista de citas
-  appointmentsList: {
-    marginTop: 8,
-  },
-  appointmentsGridDesktop: {
-    display: "flex",
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
-  },
-  selectedDateHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  selectedDateText: {
-    fontSize: 18,
-    fontWeight: "700",
-    marginBottom: 16,
-    color: "#333",
-  },
-  selectedDateTextDesktop: {
+  iosModalTitle: {
     fontSize: 20,
     fontWeight: "600",
-    color: "#1f2937",
-    marginBottom: 20,
-  },
-  clearDateButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 6,
-    borderRadius: 6,
-    backgroundColor: "#f3f4f6",
-  },
-  clearDateButtonText: {
-    fontSize: 14,
-    color: "#666",
-    marginLeft: 4,
-  },
-  appointmentItem: {
-    backgroundColor: "#fff",
-    padding: 16,
-    marginBottom: 12,
-    borderRadius: 10,
-    borderLeftWidth: 4,
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  appointmentItemDesktop: {
-    width: "calc(50% - 8px)",
+    color: "#000000",
     marginBottom: 16,
-    borderRadius: 8,
-    padding: 20,
-    boxShadow: "0 2px 5px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.07)",
-    transition: "transform 0.2s ease, box-shadow 0.2s ease",
-    cursor: "pointer",
+    textAlign: "center",
   },
-  appointmentHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
+  iosModalText: {
+    fontSize: 17,
+    color: "#000000",
+    marginBottom: 20,
+    textAlign: "center",
+  },
+  iosModalButton: {
+    backgroundColor: Colors.PRIMARYCOLOR,
+    borderRadius: 12,
+    paddingVertical: 14,
     alignItems: "center",
-    marginBottom: 10,
+    marginTop: 10,
   },
-  appointmentTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#333",
-    flex: 1,
-  },
-  appointmentTitleDesktop: {
+  iosModalButtonText: {
+    color: "#FFFFFF",
     fontSize: 17,
     fontWeight: "600",
-    color: "#111827",
   },
-  categoryBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  categoryBadgeDesktop: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 4,
-  },
-  categoryText: {
-    color: "#fff",
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  categoryTextDesktop: {
-    fontSize: 13,
-    fontWeight: "500",
-  },
-  appointmentDetails: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    flexWrap: "wrap",
-  },
-  detailItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginRight: 12,
-    marginBottom: 6,
-  },
-  detailText: {
-    marginLeft: 6,
-    color: "#666",
-    fontSize: 14,
-  },
-  detailTextDesktop: {
-    fontSize: 15,
-    color: "#4b5563",
-  },
-  // Estado vacío
-  emptyStateContainer: {
-    padding: 24,
-    backgroundColor: "#fff",
-    borderRadius: 10,
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: 16,
-  },
-  noAppointmentsText: {
-    fontSize: 16,
-    color: "#666",
-    fontStyle: "italic",
-    marginBottom: 16,
-  },
-  clearFilterButton: {
-    backgroundColor: Colors.PRIMARYCOLOR,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-  },
-  clearFilterButtonText: {
-    color: "#fff",
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  // Estilos específicos para móvil
-  mobileScrollView: {
-    flex: 1,
-    width: "100%",
-  },
-  mobileScrollContent: {
-    padding: 16,
-    paddingBottom: 80, // Espacio adicional al final
-  },
-  // Estilos para la barra lateral en desktop
-  desktopLayout: {
-    flexDirection: "row",
-    height: "100vh",
-    width: "100%",
-  },
-  sidebarContainer: {
-    width: 260,
-    backgroundColor: "#fff",
-    borderRight: "1px solid #e5e7eb",
-    height: "100%",
-    display: "flex",
-    flexDirection: "column",
-    boxShadow: "1px 0 5px rgba(0, 0, 0, 0.05)",
-    transition: "width 0.3s ease",
-  },
-  sidebarCollapsed: {
-    width: 70,
-  },
-  sidebarHeader: {
-    padding: 20,
-    borderBottom: "1px solid #f3f4f6",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  sidebarLogo: {
-    fontSize: 22,
-    fontWeight: "700",
-    color: Colors.PRIMARYCOLOR,
-  },
-  sidebarContent: {
-    flex: 1,
-    padding: 16,
-  },
-  sidebarItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 14,
-    borderRadius: 8,
-    marginBottom: 8,
-    cursor: "pointer",
-    transition: "all 0.2s ease",
-  },
-  sidebarItemActive: {
-    backgroundColor: "#f3f4f6",
-  },
-  sidebarItemText: {
-    fontSize: 16,
-    fontWeight: "500",
-    color: "#555",
-    marginLeft: 12,
-  },
-  sidebarItemTextActive: {
-    color: Colors.PRIMARYCOLOR,
-    fontWeight: "600",
-  },
-  sidebarFooter: {
-    padding: 16,
-    borderTop: "1px solid #f3f4f6",
-  },
-  logoutButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 14,
-    borderRadius: 8,
-    backgroundColor: "#f9fafb",
-    cursor: "pointer",
-    transition: "all 0.2s ease",
-  },
-  logoutButtonText: {
-    fontSize: 16,
-    fontWeight: "500",
-    color: "#555",
-    marginLeft: 12,
-  },
-  desktopContentContainer: {
-    flex: 1,
-    height: "100%",
-    overflow: "auto",
-  },
-  sidebarToggleButton: {
-    position: "absolute",
-    right: 16,
-    top: "50%",
-    transform: "translateY(-50%)",
-    padding: 5,
-    borderRadius: 5,
-    backgroundColor: "#f3f4f6",
-  },
-  sidebarToggleButtonCollapsed: {
-    padding: 5,
-    borderRadius: 5,
-    backgroundColor: "#f3f4f6",
-    alignSelf: "center",
-  },
-  sidebarItemCollapsed: {
-    justifyContent: "center",
-    padding: 12,
-  },
-  logoutButtonCollapsed: {
-    justifyContent: "center",
-    padding: 12,
-  },
-  activeIndicator: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 3,
-    backgroundColor: Colors.PRIMARYCOLOR,
-    borderRadius: 1.5,
-  },
-  psychologyIndicator: {
-    backgroundColor: Colors.PSICOLOGIA,
-  },
-  nutritionIndicator: {
-    backgroundColor: Colors.NUTRICIÓN,
-  },
-  filterButtonActive: {
-    backgroundColor: "#f8f9fa",
-    borderWidth: 1,
-    borderColor: "#e5e7eb",
-  },
-  filterButtonPsychology: {
-    borderColor: Colors.PSICOLOGIA,
-  },
-  filterButtonNutrition: {
-    borderColor: Colors.NUTRICIÓN,
-  },
-  filterTextActive: {
-    fontWeight: "700",
-    color: "#333",
-  },
-  // Calendar screen overlay styles
-  calendarScreenOverlay: {
+
+  // Estilos para el calendario overlay con estilo iOS
+  iosCalendarScreenOverlay: {
     position: "absolute",
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: "#fff",
+    backgroundColor: "#FFFFFF",
     zIndex: 1000,
+  },
+  iosCalendarScreen: {
+    flex: 1,
+    backgroundColor: "#FFFFFF",
+  },
+  iosCalendarScreenHeader: {
+    backgroundColor: "#FFFFFF",
+    borderBottomWidth: 1,
+    borderBottomColor: "#F2F2F7",
+    paddingVertical: 16,
+  },
+  iosCalendarScreenTitle: {
+    fontSize: 20,
+    fontWeight: "600",
+    color: "#000000",
+    textAlign: "center",
+  },
+  iosCalendarScreenButton: {
+    backgroundColor: Colors.PRIMARYCOLOR,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: "center",
+    marginHorizontal: 16,
+    marginBottom: 16,
+  },
+  iosCalendarScreenButtonText: {
+    color: "#FFFFFF",
+    fontSize: 17,
+    fontWeight: "600",
+  },
+
+  // Estilos para citas compactas
+  iosAppointmentItemCompact: {
+    backgroundColor: "#FFFFFF",
+    padding: 12,
+    marginBottom: 12,
+    borderRadius: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: "#F2F2F7",
+  },
+  iosAppointmentRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  iosAppointmentMainInfo: {
+    flex: 1,
+  },
+  iosAppointmentTitleCompact: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#000000",
+  },
+  iosAppointmentTimeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 4,
+  },
+  iosDetailTextCompact: {
+    marginLeft: 4,
+    color: "#3A3A3C",
+    fontSize: 13,
+    fontWeight: "400",
+  },
+  iosDateSeparator: {
+    marginHorizontal: 4,
+    color: "#8E8E93",
+    fontSize: 13,
+  },
+  iosCategoryBadgeCompact: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  iosCategoryTextCompact: {
+    color: "#FFFFFF",
+    fontSize: 11,
+    fontWeight: "600",
+  },
+  iosDoctorRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 4,
+  },
+  iosPsychologyFilterActive: {
+    backgroundColor: Colors.PSICOLOGIA,
+    borderColor: Colors.PSICOLOGIA,
+  },
+  iosNutritionFilterActive: {
+    backgroundColor: Colors.NUTRICIÓN,
+    borderColor: Colors.NUTRICIÓN,
+  },
+  iosPsychologyBadge: {
+    backgroundColor: Colors.PSICOLOGIA,
+  },
+  iosNutritionBadge: {
+    backgroundColor: Colors.NUTRICIÓN,
   },
 })
 
 export default HomeUser
-

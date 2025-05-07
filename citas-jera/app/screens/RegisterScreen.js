@@ -118,9 +118,11 @@ const RegisterScreen = () => {
   }
 
   return (
-    <SafeAreaView style={[styles.container, responsive.isDesktop && styles.containerDesktop]}>
+    <SafeAreaView style={[styles.iosSafeArea, responsive.isDesktop && styles.containerDesktop]}>
+      <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
+
       {responsive.isDesktop ? (
-        // Layout para escritorio - diseño de dos columnas
+        // Layout para escritorio - diseño de dos columnas con estilo iOS
         <View style={styles.desktopLayout}>
           {/* Panel lateral con imagen/branding */}
           <View style={styles.desktopSidebar}>
@@ -138,82 +140,121 @@ const RegisterScreen = () => {
             </View>
           </View>
 
-          {/* Panel de formulario */}
+          {/* Panel de formulario con estilo iOS */}
           <View style={styles.desktopFormPanel}>
             <View style={styles.formContainer}>
               <Text style={styles.desktopFormTitle}>Crear Cuenta</Text>
               <Text style={styles.desktopFormSubtitle}>Completa el formulario para registrarte en el sistema</Text>
 
-              <ScrollView style={styles.formScrollView} showsVerticalScrollIndicator={false}>
-                <View style={styles.formFields}>
-                  <Input title={"Nombre y Apellidos"} ref={fullNameRef} />
-                  <Input title={"Correo Electrónico"} ref={emailRef} />
-                  <Input title={"DNI"} ref={dniRef} />
-                  <Input title={"Código de Empresa"} ref={companyCodeRef} />
-
-                  <Input
-                    secureTextEntry={hidePassword}
-                    handleAction={() => setHidePassword(!hidePassword)}
-                    ref={passwordRef}
-                    title={"Contraseña"}
-                    icon={hidePassword ? "eye" : "eye-slash"}
-                  />
-
-                  <Input
-                    secureTextEntry={hideConfirmPassword}
-                    handleAction={() => setHideConfirmPassword(!hideConfirmPassword)}
-                    ref={confirmPasswordRef}
-                    title={"Confirmar Contraseña"}
-                    icon={hideConfirmPassword ? "eye" : "eye-slash"}
-                  />
-
-                  <TouchableOpacity
-                    style={[styles.registerButton, styles.registerButtonDesktop]}
-                    onPress={handleRegister}
-                  >
-                    <Text style={styles.registerButtonText}>Registrarse</Text>
-                  </TouchableOpacity>
+              <View style={styles.formFields}>
+                <View style={styles.iosFormRow}>
+                  <View style={styles.iosFormColumn}>
+                    <Input
+                      title={"Nombre y Apellidos"}
+                      ref={fullNameRef}
+                      containerStyle={styles.iosInputContainer}
+                      inputStyle={styles.iosInput}
+                      titleStyle={styles.iosInputLabel}
+                    />
+                  </View>
+                  <View style={styles.iosFormColumn}>
+                    <Input
+                      title={"Correo Electrónico"}
+                      ref={emailRef}
+                      containerStyle={styles.iosInputContainer}
+                      inputStyle={styles.iosInput}
+                      titleStyle={styles.iosInputLabel}
+                    />
+                  </View>
                 </View>
-              </ScrollView>
 
-              <View style={styles.loginSection}>
-                <Text style={styles.loginText}>¿Ya tienes una cuenta?</Text>
-                <TouchableOpacity style={styles.loginButton} onPress={navigateToLogin}>
-                  <Text style={styles.loginButtonText}>Iniciar Sesión</Text>
+                
+
+                <View style={styles.iosFormRow}>
+                  <View style={styles.iosFormColumn}>
+                    <Input
+                      secureTextEntry={hidePassword}
+                      handleAction={() => setHidePassword(!hidePassword)}
+                      ref={passwordRef}
+                      title={"Contraseña"}
+                      icon={hidePassword ? "eye" : "eye-slash"}
+                      containerStyle={styles.iosInputContainer}
+                      inputStyle={styles.iosInput}
+                      titleStyle={styles.iosInputLabel}
+                    />
+                  </View>
+                  <View style={styles.iosFormColumn}>
+                    <Input
+                      secureTextEntry={hideConfirmPassword}
+                      handleAction={() => setHideConfirmPassword(!hideConfirmPassword)}
+                      ref={confirmPasswordRef}
+                      title={"Confirmar Contraseña"}
+                      icon={hideConfirmPassword ? "eye" : "eye-slash"}
+                      containerStyle={styles.iosInputContainer}
+                      inputStyle={styles.iosInput}
+                      titleStyle={styles.iosInputLabel}
+                    />
+                  </View>
+                </View>
+
+                <TouchableOpacity style={styles.iosRegisterButton} onPress={handleRegister} activeOpacity={0.8}>
+                  <Text style={styles.iosRegisterButtonText}>Crear Cuenta</Text>
                 </TouchableOpacity>
+              </View>
+
+              <View style={styles.iosLoginSection}>
+                <Text style={styles.iosLoginText}>¿Ya tienes una cuenta?</Text>
+                <TouchableOpacity onPress={navigateToLogin}>
+                  <Text style={styles.iosLoginButtonText}>Iniciar Sesión</Text>
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.iosHelpSection}>
+                <Text style={styles.iosHelpText}>¿Necesitas ayuda? Contacta con el administrador</Text>
               </View>
             </View>
           </View>
         </View>
       ) : (
-        // Layout para móvil
-        <>
-          {/* Barra decorativa superior */}
-          <View style={styles.decorativeHeader} />
-
-          {/* Personalización de la barra de estado */}
-          <StatusBar translucent={true} backgroundColor={"transparent"} />
-
-          {/* Contenedor principal con manejo del teclado */}
-          <KeyboardAvoidingView
-            style={styles.content}
-            behavior={Platform.OS === "ios" ? "padding" : "height"}
-            keyboardVerticalOffset={Platform.OS === "ios" ? 60 : 20}
+        // Layout para móvil - diseño iOS
+        <KeyboardAvoidingView
+          style={styles.iosContent}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          keyboardVerticalOffset={Platform.OS === "ios" ? 60 : 20}
+        >
+          <ScrollView
+            contentContainerStyle={styles.iosScrollViewContent}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
           >
-            <ScrollView contentContainerStyle={styles.scrollViewContent} keyboardShouldPersistTaps="handled">
-              {/* Encabezado con el logo de la aplicación */}
-              <View style={styles.header}>
-                <Image source={require("@assets/icon.png")} style={styles.logo} resizeMode="contain" />
-              </View>
+            {/* Encabezado con el logo */}
+            <View style={styles.iosHeader}>
+              <Image source={require("@assets/icon.png")} style={styles.iosLogo} resizeMode="contain" />
+            </View>
 
-              {/* Título de la aplicación */}
-              <Text style={styles.appTitle}>Crear Cuenta</Text>
+            {/* Título de la aplicación */}
+            <Text style={styles.iosAppTitle}>Senda Servicios</Text>
+            <Text style={styles.iosAppSubtitle}>Crear una nueva cuenta</Text>
 
-              {/* Campos del formulario */}
-              <Input title={"Nombre y Apellidos"} ref={fullNameRef} />
-              <Input title={"Correo Electrónico"} ref={emailRef} />
-              <Input title={"DNI"} ref={dniRef} />
-              <Input title={"Código de Empresa"} ref={companyCodeRef} />
+            {/* Campos de entrada con estilo iOS */}
+            <View style={styles.iosMobileFormContainer}>
+              <Input
+                title={"Nombre y Apellidos"}
+                ref={fullNameRef}
+                containerStyle={styles.iosInputContainer}
+                inputStyle={styles.iosInput}
+                titleStyle={styles.iosInputLabel}
+              />
+
+              <Input
+                title={"Correo Electrónico"}
+                ref={emailRef}
+                containerStyle={styles.iosInputContainer}
+                inputStyle={styles.iosInput}
+                titleStyle={styles.iosInputLabel}
+              />
+
+              
 
               <Input
                 secureTextEntry={hidePassword}
@@ -221,6 +262,9 @@ const RegisterScreen = () => {
                 ref={passwordRef}
                 title={"Contraseña"}
                 icon={hidePassword ? "eye" : "eye-slash"}
+                containerStyle={styles.iosInputContainer}
+                inputStyle={styles.iosInput}
+                titleStyle={styles.iosInputLabel}
               />
 
               <Input
@@ -229,33 +273,34 @@ const RegisterScreen = () => {
                 ref={confirmPasswordRef}
                 title={"Confirmar Contraseña"}
                 icon={hideConfirmPassword ? "eye" : "eye-slash"}
+                containerStyle={styles.iosInputContainer}
+                inputStyle={styles.iosInput}
+                titleStyle={styles.iosInputLabel}
               />
 
-              {/* Botón de registro */}
-              <TouchableOpacity style={styles.registerButton} onPress={handleRegister}>
-                <Text style={styles.registerButtonText}>Registrarse</Text>
+              {/* Botón de registro con estilo iOS */}
+              <TouchableOpacity style={styles.iosRegisterButton} onPress={handleRegister} activeOpacity={0.8}>
+                <Text style={styles.iosRegisterButtonText}>Crear Cuenta</Text>
               </TouchableOpacity>
 
-              {/* Sección para volver al login */}
-              <View style={styles.mobileLoginSection}>
-                <Text style={styles.mobileLoginText}>¿Ya tienes una cuenta?</Text>
+              {/* Sección de login para móvil con estilo iOS */}
+              <View style={styles.iosLoginSection}>
+                <Text style={styles.iosLoginText}>¿Ya tienes una cuenta?</Text>
                 <TouchableOpacity onPress={navigateToLogin}>
-                  <Text style={styles.mobileLoginButtonText}>Iniciar Sesión</Text>
+                  <Text style={styles.iosLoginButtonText}>Iniciar Sesión</Text>
                 </TouchableOpacity>
               </View>
-            </ScrollView>
-          </KeyboardAvoidingView>
-        </>
+            </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
       )}
 
-      {/* Modal de carga */}
+      {/* Modal de carga con estilo iOS */}
       <Modal visible={isLoading} transparent={true} animationType="fade">
-        <View style={[styles.modalContainer, responsive.isDesktop && styles.modalContainerDesktop]}>
-          <View style={[styles.modalContent, responsive.isDesktop && styles.modalContentDesktop]}>
+        <View style={styles.iosModalContainer}>
+          <View style={styles.iosModalContent}>
             <ActivityIndicator size="large" color={Colors.PRIMARYCOLOR} />
-            <Text style={[styles.loadingText, responsive.isDesktop && styles.loadingTextDesktop]}>
-              Procesando registro...
-            </Text>
+            <Text style={styles.iosLoadingText}>Procesando registro...</Text>
           </View>
         </View>
       </Modal>
@@ -263,184 +308,162 @@ const RegisterScreen = () => {
   )
 }
 
-// Definición de estilos para la pantalla de registro
+// Definición de estilos para la pantalla de registro con estilo iOS
 const styles = StyleSheet.create({
-  // Barra decorativa superior con color primario
-  decorativeHeader: {
-    height: "10%",
-    backgroundColor: Colors.PRIMARYCOLOR,
-    width: "100%",
-  },
-
-  // Contenedor principal con fondo personalizado
-  container: {
+  // Estilos generales con estilo iOS
+  iosSafeArea: {
     flex: 1,
-    backgroundColor: Colors.BACKGROUND,
+    backgroundColor: "#FFFFFF",
   },
   containerDesktop: {
-    backgroundColor: "#f5f7fa",
+    backgroundColor: "#FFFFFF",
   },
-  // Contenedor del contenido principal
-  content: {
+  iosContent: {
     flex: 1,
     justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: 20,
+    backgroundColor: "#FFFFFF",
   },
-
-  // Estilos para el contenido desplazable dentro de ScrollView
-  scrollViewContent: {
+  iosScrollViewContent: {
     flexGrow: 1,
     justifyContent: "center",
     alignItems: "center",
-    paddingVertical: 30,
-    width: "100%",
+    paddingHorizontal: 24,
+    paddingBottom: 40,
+    paddingTop: 60,
   },
-
-  // Encabezado con el logo de la aplicación
-  header: {
+  iosHeader: {
     alignItems: "center",
     marginBottom: 20,
   },
-
-  // Estilo del logo
-  logo: {
-    marginTop: -20,
-    width: 100,
-    height: 100,
+  iosLogo: {
+    width: 80,
+    height: 80,
   },
-
-  // Contenedor para el logo con fondo blanco (solo para desktop)
-  logoContainerDesktop: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 20,
-    padding: 15,
-    marginBottom: 25,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-    ...Platform.select({
-      web: {
-        boxShadow: "0 2px 8px rgba(0, 0, 0, 0.08)",
-      },
-    }),
-  },
-
-  // Estilos del título de la aplicación
-  appTitle: {
+  iosAppTitle: {
     fontSize: 28,
-    fontWeight: "bold",
-    marginBottom: 20,
+    fontWeight: "700",
+    color: "#000000",
     textAlign: "center",
-    color: Colors.TEXT,
+    marginBottom: 8,
   },
-
-  // Botón de registro con estilos personalizados
-  registerButton: {
-    backgroundColor: Colors.PRIMARYCOLOR,
-    paddingVertical: 15,
-    paddingHorizontal: 20,
-    borderRadius: 10,
+  iosAppSubtitle: {
+    fontSize: 17,
+    color: "#3A3A3C",
+    textAlign: "center",
+    marginBottom: 40,
+  },
+  iosMobileFormContainer: {
     width: "100%",
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 3,
-    elevation: 4,
     marginTop: 20,
   },
-  registerButtonDesktop: {
+  iosMobileFormRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 20,
+  },
+  iosInputContainer: {
+    marginBottom: 20,
+    borderRadius: 8,
+    backgroundColor: "#F5F5F5",
+    borderWidth: 1,
+    borderColor: "#E5E5EA",
+  },
+  iosNestedInputContainer: {
+    marginBottom: 0,
+    borderRadius: 0,
+    backgroundColor: "transparent",
+    borderWidth: 0,
+  },
+  iosInput: {
+    fontSize: 17,
+    color: "#000000",
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    fontWeight: "400",
+  },
+  iosInputLabel: {
+    fontSize: 14,
+    color: "#3A3A3C",
+    marginBottom: 8,
+    fontWeight: "500",
+  },
+  iosRegisterButton: {
+    backgroundColor: Colors.PRIMARYCOLOR,
+    borderRadius: 10,
     paddingVertical: 16,
-    borderRadius: 12,
-    marginTop: 30,
-    ...Platform.select({
-      web: {
-        cursor: "pointer",
-        transition: "all 0.2s ease",
-        ":hover": {
-          transform: "translateY(-1px)",
-          boxShadow: "0 4px 10px rgba(22, 107, 255, 0.25)",
-          backgroundColor: "#0055e6",
-        },
-      },
-    }),
+    alignItems: "center",
+    marginTop: 24,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  iosRegisterButtonText: {
+    color: "#FFFFFF",
+    fontSize: 17,
+    fontWeight: "600",
+    letterSpacing: 0.5,
+  },
+  iosLoginSection: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    marginTop: 24,
+  },
+  iosLoginText: {
+    fontSize: 15,
+    color: "#8E8E93",
+    marginRight: 6,
+  },
+  iosLoginButtonText: {
+    fontSize: 15,
+    color: Colors.PRIMARYCOLOR,
+    fontWeight: "600",
+  },
+  iosHelpSection: {
+    marginTop: 40,
+    alignItems: "center",
+  },
+  iosHelpText: {
+    fontSize: 15,
+    color: "#8E8E93",
+    textAlign: "center",
   },
 
-  // Texto del botón de registro
-  registerButtonText: {
-    color: Colors.TEXTWHITE,
-    fontSize: 18,
-    fontWeight: "bold",
-  },
-
-  // Estilos para el modal de carga
-  modalContainer: {
+  // Modal con estilo iOS
+  iosModalContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    backgroundColor: "rgba(0, 0, 0, 0.3)",
+    backdropFilter: "blur(10px)",
   },
-  modalContainerDesktop: {
-    ...Platform.select({
-      web: {
-        backdropFilter: "blur(5px)",
-      },
-    }),
-  },
-  modalContent: {
-    backgroundColor: "white",
-    padding: 20,
-    borderRadius: 10,
+  iosModalContent: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 14,
+    padding: 24,
     alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 4,
-    ...Platform.select({
-      web: {
-        boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
-      },
-    }),
+    width: "80%",
+    maxWidth: 280,
   },
-  modalContentDesktop: {
-    padding: 30,
-    borderRadius: 16,
-    ...Platform.select({
-      web: {
-        boxShadow: "0 6px 16px rgba(0, 0, 0, 0.12)",
-      },
-    }),
-  },
-  loadingText: {
-    marginTop: 10,
-    fontSize: 16,
-    color: "#333",
-  },
-  loadingTextDesktop: {
-    fontSize: 18,
-    marginTop: 15,
+  iosLoadingText: {
+    marginTop: 16,
+    fontSize: 17,
+    color: "#000000",
     fontWeight: "500",
   },
 
-  // Estilos específicos para desktop
+  // Estilos para desktop
   desktopLayout: {
     flexDirection: "row",
     height: "100%",
   },
   desktopSidebar: {
     width: "40%",
-    backgroundColor: Colors.PRIMARYCOLOR,
+    backgroundColor: "#F2F2F7",
     padding: 40,
     justifyContent: "space-between",
-    ...Platform.select({
-      web: {
-        boxShadow: "0 0 20px rgba(0, 0, 0, 0.08)",
-      },
-    }),
   },
   sidebarContent: {
     flex: 1,
@@ -451,113 +474,74 @@ const styles = StyleSheet.create({
     marginTop: 20,
     alignItems: "center",
   },
+  logoContainerDesktop: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 30,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 2,
+  },
   desktopLogo: {
-    width: 120,
-    height: 120,
+    width: 100,
+    height: 100,
   },
   desktopWelcomeTitle: {
-    fontSize: 36,
-    fontWeight: "bold",
-    color: "#fff",
-    marginBottom: 20,
+    fontSize: 32,
+    fontWeight: "600",
+    color: "#000000",
+    marginBottom: 16,
     textAlign: "center",
   },
   desktopWelcomeText: {
-    fontSize: 18,
-    color: "rgba(255, 255, 255, 0.9)",
+    fontSize: 17,
+    color: "#8E8E93",
     textAlign: "center",
-    lineHeight: 28,
+    lineHeight: 24,
     maxWidth: 400,
   },
   copyrightText: {
-    color: "rgba(255, 255, 255, 0.7)",
-    fontSize: 14,
+    color: "#8E8E93",
+    fontSize: 13,
   },
   desktopFormPanel: {
     flex: 1,
-    backgroundColor: Colors.BACKGROUND,
+    backgroundColor: "#FFFFFF",
     justifyContent: "center",
     alignItems: "center",
     padding: 40,
   },
   formContainer: {
     width: "100%",
-    maxWidth: 450,
-    height: "100%",
-    display: "flex",
-    flexDirection: "column",
-  },
-  formScrollView: {
-    flex: 1,
+    maxWidth: 800,
   },
   desktopFormTitle: {
     fontSize: 32,
-    fontWeight: "bold",
-    color: "#333",
-    marginBottom: 16,
+    fontWeight: "700",
+    color: "#000000",
+    marginBottom: 12,
   },
   desktopFormSubtitle: {
-    fontSize: 16,
-    color: "#666",
-    marginBottom: 30,
+    fontSize: 17,
+    color: "#3A3A3C",
+    marginBottom: 40,
   },
   formFields: {
     width: "100%",
   },
 
-  // Estilos para la sección de login (desktop)
-  loginSection: {
-    marginTop: 30,
+  // Estilos para el formulario en columnas (desktop)
+  iosFormRow: {
     flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
+    marginBottom: 20,
+    gap: 20,
   },
-  loginText: {
-    fontSize: 16,
-    color: "#666",
-    marginRight: 10,
-  },
-  loginButton: {
-    backgroundColor: "transparent",
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: Colors.PRIMARYCOLOR,
-    ...Platform.select({
-      web: {
-        cursor: "pointer",
-        transition: "all 0.2s ease",
-        ":hover": {
-          backgroundColor: "rgba(0, 102, 255, 0.05)",
-        },
-      },
-    }),
-  },
-  loginButtonText: {
-    color: Colors.PRIMARYCOLOR,
-    fontSize: 16,
-    fontWeight: "600",
-  },
-
-  // Estilos para la sección de login (móvil)
-  mobileLoginSection: {
-    marginTop: 25,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  mobileLoginText: {
-    fontSize: 14,
-    color: "#666",
-    marginRight: 6,
-  },
-  mobileLoginButtonText: {
-    color: Colors.PRIMARYCOLOR,
-    fontSize: 14,
-    fontWeight: "600",
+  iosFormColumn: {
+    flex: 1,
   },
 })
 
 export default RegisterScreen
-
