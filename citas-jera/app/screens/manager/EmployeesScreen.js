@@ -204,7 +204,7 @@ const EmployeesScreen = () => {
 
   return (
     <View style={styles.mainContainer}>
-      <StatusBar backgroundColor={Colors.PRIMARYCOLOR} barStyle="light-content" />
+      <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
 
       {/* Encabezado de la pantalla */}
       <View style={[styles.headerCitas, responsive.isDesktop && styles.headerCitasDesktop]}>
@@ -383,7 +383,7 @@ const styles = StyleSheet.create({
   },
   headerCitas: {
     paddingTop: "10%",
-    backgroundColor: Colors.PRIMARYCOLOR,
+    backgroundColor: "#ffffff",
   },
   headerCitasDesktop: {
     paddingTop: 0,

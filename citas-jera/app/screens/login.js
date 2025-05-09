@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef, useState } from "react"
+import { useRef, useState, useEffect } from "react"
 import {
   View,
   Text,
@@ -15,6 +15,8 @@ import {
   ScrollView,
   Modal,
   ActivityIndicator,
+  Keyboard,
+  TextInput,
 } from "react-native"
 import { useNavigation } from "@react-navigation/native"
 import Input from "@components/Inputs.js"
@@ -39,6 +41,10 @@ const LoginScreen = () => {
   const usernameRef = useRef()
   const phoneNumberRef = useRef()
   const workerIdRef = useRef()
+  
+  // Referencias a los TextInput nativos dentro de nuestros componentes Input
+  const usernameInputRef = useRef(null)
+  const passwordInputRef = useRef(null)
 
   // Estado que controla la visibilidad de la contraseña
   const [hide, setHide] = useState(true)
@@ -49,22 +55,36 @@ const LoginScreen = () => {
   const handleLogin = async () => {
     const username = usernameRef.current?.getValue()
     const passwordComp = password.current?.getValue()
-
+  
     if (username && passwordComp) {
       try {
         setIsLoading(true)
         const response = await signInWithEmailAndPassword(auth, username, passwordComp)
         if (response) {
-          // Obtener el documento del usuario desde Firestore
           const userDocRef = doc(db, "users", response.user.uid)
           const userDocSnap = await getDoc(userDocRef)
-
+  
           if (userDocSnap.exists()) {
             const userData = userDocSnap.data()
             setIsLoading(false)
-            // Redirigir según el rol del usuario
-            navigation.replace(userData.role === "admin" ? "HomeManager" : "HomeUser")
-            alert("Inicio de sesión correcto")
+  
+            // Mapeo de roles a pantallas
+            const roleScreens = {
+              admin: "HomeManager",       // Si quieres mantener "admin" como alias de manager
+              manager: "HomeManager",
+              user: "HomeUser",
+              externalUser: "HomeUser",
+              teacher: "HomeTeacher"
+            }
+  
+            const screen = roleScreens[userData.role]
+  
+            if (screen) {
+              navigation.replace(screen)
+              alert("Inicio de sesión correcto")
+            } else {
+              alert("Rol no reconocido, contacta con soporte")
+            }
           } else {
             setIsLoading(false)
             alert("Usuario o contraseña incorrectos")
@@ -72,19 +92,77 @@ const LoginScreen = () => {
         }
       } catch (e) {
         setIsLoading(false)
-        e = "[FirebaseError: Firebase: Error (auth/invalid-email).]"
-          ? alert("No hay autenticación")
-          : alert("Ha ocurrido un error")
+        alert("Ha ocurrido un error al iniciar sesión")
       }
     } else {
       alert("Introduce el usuario y la contraseña")
     }
   }
-
+  
   // Función para navegar a la pantalla de registro
   const navigateToRegister = () => {
     navigation.replace("RegisterScreen")
   }
+
+  // Manejador de eventos de teclado para detectar la tecla Enter
+  useEffect(() => {
+    // Esta función solo se ejecutará en entornos web (desktop)
+    if (responsive.isDesktop && typeof window !== 'undefined') {
+      const handleKeyDown = (event) => {
+        // Código 13 corresponde a la tecla Enter
+        if (event.keyCode === 13 || event.key === 'Enter') {
+          // Prevenir el comportamiento por defecto para evitar doble acción
+          event.preventDefault();
+          
+          // Si el foco está en el campo de usuario, mover al campo de contraseña
+          if (document.activeElement === usernameInputRef.current) {
+            passwordInputRef.current?.focus();
+          } else {
+            // Si el foco está en el campo de contraseña o en cualquier otro lugar, iniciar sesión
+            handleLogin();
+          }
+        }
+      };
+
+      // Agregar el event listener
+      window.addEventListener('keydown', handleKeyDown);
+
+      // Limpiar el event listener cuando el componente se desmonte
+      return () => {
+        window.removeEventListener('keydown', handleKeyDown);
+      };
+    }
+  }, [responsive.isDesktop]);
+
+  // Para dispositivos móviles, configuramos el evento de envío en el teclado
+  const handleUsernameSubmit = () => {
+    // Intentamos enfocar el campo de contraseña
+    if (passwordInputRef.current) {
+      passwordInputRef.current.focus();
+    }
+  };
+
+  const handlePasswordSubmit = () => {
+    // Al enviar desde el campo de contraseña, iniciamos sesión
+    handleLogin();
+  };
+
+  // Función para obtener la referencia al TextInput nativo dentro del componente Input
+  const getInputRef = (inputRef, nativeRef) => {
+    return (element) => {
+      if (element) {
+        // Guardamos la referencia al TextInput nativo
+        nativeRef.current = element;
+        
+        // Si el componente Input usa forwardRef, también actualizamos esa referencia
+        if (inputRef && typeof inputRef === 'function') {
+          inputRef(element);
+        } else if (inputRef && typeof inputRef === 'object') {
+          inputRef.current = element;
+        }
+      }
+    };
+  };
 
   return (
     <SafeAreaView style={[styles.container, responsive.isDesktop && styles.containerDesktop]}>
@@ -120,6 +198,11 @@ const LoginScreen = () => {
                   containerStyle={styles.iosInputContainer}
                   inputStyle={styles.iosInput}
                   titleStyle={styles.iosInputLabel}
+                  onSubmitEditing={handleUsernameSubmit}
+                  returnKeyType="next"
+                  blurOnSubmit={false}
+                  // Capturamos la referencia al TextInput nativo
+                  inputRef={getInputRef(null, usernameInputRef)}
                 />
 
                 <Input
@@ -131,6 +214,10 @@ const LoginScreen = () => {
                   containerStyle={styles.iosInputContainer}
                   inputStyle={styles.iosInput}
                   titleStyle={styles.iosInputLabel}
+                  onSubmitEditing={handlePasswordSubmit}
+                  returnKeyType="go"
+                  // Capturamos la referencia al TextInput nativo
+                  inputRef={getInputRef(null, passwordInputRef)}
                 />
 
                 <TouchableOpacity style={styles.iosLoginButton} onPress={handleLogin} activeOpacity={0.8}>
@@ -180,6 +267,11 @@ const LoginScreen = () => {
                 containerStyle={styles.iosInputContainer}
                 inputStyle={styles.iosInput}
                 titleStyle={styles.iosInputLabel}
+                onSubmitEditing={handleUsernameSubmit}
+                returnKeyType="next"
+                blurOnSubmit={false}
+                // Capturamos la referencia al TextInput nativo
+                inputRef={getInputRef(null, usernameInputRef)}
               />
 
               <Input
@@ -191,6 +283,10 @@ const LoginScreen = () => {
                 containerStyle={styles.iosInputContainer}
                 inputStyle={styles.iosInput}
                 titleStyle={styles.iosInputLabel}
+                onSubmitEditing={handlePasswordSubmit}
+                returnKeyType="go"
+                // Capturamos la referencia al TextInput nativo
+                inputRef={getInputRef(null, passwordInputRef)}
               />
 
               {/* Botón de inicio de sesión con estilo iOS */}

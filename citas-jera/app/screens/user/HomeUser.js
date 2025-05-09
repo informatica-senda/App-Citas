@@ -31,7 +31,12 @@ const Tab = createBottomTabNavigator()
 
 // Función para formatear la fecha en formato dd/mm/yyyy
 const formatDate = (dateString) => {
+  if (!dateString) return "Sin fecha"
+
   const date = new Date(dateString)
+  // Check if date is valid
+  if (isNaN(date.getTime())) return "Sin fecha"
+
   const day = String(date.getDate()).padStart(2, "0")
   const month = String(date.getMonth() + 1).padStart(2, "0")
   const year = date.getFullYear()
@@ -40,7 +45,7 @@ const formatDate = (dateString) => {
 
 // Función para convertir timestamp de Firestore a formato de fecha YYYY-MM-DD
 const formatFirestoreDate = (firestoreDate) => {
-  if (!firestoreDate) return ""
+  if (!firestoreDate) return "Sin fecha"
 
   // Si es un timestamp de Firestore
   if (firestoreDate.toDate) {
@@ -80,12 +85,12 @@ const formatFirestoreDate = (firestoreDate) => {
     }
   }
 
-  return ""
+  return "Sin fecha"
 }
 
 // Función para extraer la hora de un timestamp o cadena de fecha
 const extractTime = (firestoreDate) => {
-  if (!firestoreDate) return ""
+  if (!firestoreDate) return "Sin hora"
 
   // Si es un timestamp de Firestore
   if (firestoreDate.toDate) {
@@ -112,7 +117,7 @@ const extractTime = (firestoreDate) => {
     }
   }
 
-  return ""
+  return "Sin hora"
 }
 
 // Componente vacío para la pestaña de Cerrar App
@@ -182,9 +187,9 @@ const AppointmentsScreen = () => {
         appointmentsData.push({
           id: doc.id,
           title: `Consulta de ${data.service === "psychology" ? "Psicología" : "Nutrición"}`,
-          date: formatFirestoreDate(data.date),
+          date: data.date ? formatFirestoreDate(data.date) : "Sin fecha",
           category: data.service || "other",
-          time: extractTime(data.date),
+          time: data.date ? extractTime(data.date) : "Sin hora",
           doctor: data.teacherId ? `Dr. ${data.teacherId}` : "Sin asignar",
           state: data.state,
           rawData: data,
@@ -473,9 +478,6 @@ const AppointmentsScreen = () => {
       <View style={styles.iosAppointmentsList}>
         <View style={styles.iosSelectedDateHeader}>
           <View style={styles.iosTitleContainer}>
-            <Text style={styles.iosSelectedDateText}>
-              {selectedDate ? `Citas para ${formatDate(selectedDate)}` : "Todas las citas"}
-            </Text>
             {selectedDate && (
               <TouchableOpacity style={styles.iosClearDateButton} onPress={clearDateSelection}>
                 <Ionicons name="close-circle" size={18} color="#8E8E93" />
@@ -484,26 +486,42 @@ const AppointmentsScreen = () => {
           </View>
           <View style={styles.iosStatusFilterContainer}>
             <TouchableOpacity
-              style={[styles.iosStatusFilterIcon, statusFilter === "all" && styles.iosStatusFilterActive]}
+              style={[styles.iosStatusFilterButton, statusFilter === "all" && styles.iosStatusFilterButtonActive]}
               onPress={() => setStatusFilter("all")}
             >
-              <Ionicons name="apps" size={22} color={statusFilter === "all" ? Colors.PRIMARYCOLOR : "#8E8E93"} />
+              <Ionicons name="apps" size={18} color={statusFilter === "all" ? "#FFFFFF" : "#8E8E93"} />
+              <Text style={[styles.iosStatusFilterText, statusFilter === "all" && styles.iosStatusFilterTextActive]}>
+                Todas
+              </Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.iosStatusFilterIcon, statusFilter === "confirmed" && styles.iosStatusFilterActive]}
+              style={[
+                styles.iosStatusFilterButton,
+                statusFilter === "confirmed" && styles.iosStatusFilterButtonConfirmed,
+              ]}
               onPress={() => setStatusFilter("confirmed")}
             >
               <Ionicons
                 name="checkmark-circle"
-                size={22}
-                color={statusFilter === "confirmed" ? "#34C759" : "#8E8E93"}
+                size={18}
+                color={statusFilter === "confirmed" ? "#FFFFFF" : "#8E8E93"}
               />
+              <Text
+                style={[styles.iosStatusFilterText, statusFilter === "confirmed" && styles.iosStatusFilterTextActive]}
+              >
+                Confirmadas
+              </Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.iosStatusFilterIcon, statusFilter === "pending" && styles.iosStatusFilterActive]}
+              style={[styles.iosStatusFilterButton, statusFilter === "pending" && styles.iosStatusFilterButtonPending]}
               onPress={() => setStatusFilter("pending")}
             >
-              <Ionicons name="time" size={22} color={statusFilter === "pending" ? "#FF9500" : "#8E8E93"} />
+              <Ionicons name="time" size={18} color={statusFilter === "pending" ? "#FFFFFF" : "#8E8E93"} />
+              <Text
+                style={[styles.iosStatusFilterText, statusFilter === "pending" && styles.iosStatusFilterTextActive]}
+              >
+                Pendientes
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -549,9 +567,11 @@ const AppointmentsScreen = () => {
                     <Text style={styles.iosAppointmentTitleCompact}>{appointment.title}</Text>
                     <View style={styles.iosAppointmentTimeRow}>
                       <Ionicons name="time-outline" size={14} color="#8E8E93" />
-                      <Text style={styles.iosDetailTextCompact}>{appointment.time}</Text>
+                      <Text style={styles.iosDetailTextCompact}>{appointment.time || "Sin hora"}</Text>
                       <Text style={styles.iosDateSeparator}>•</Text>
-                      <Text style={styles.iosDetailTextCompact}>{formatDate(appointment.date)}</Text>
+                      <Text style={styles.iosDetailTextCompact}>
+                        {appointment.date ? formatDate(appointment.date) : "Sin fecha"}
+                      </Text>
                     </View>
                   </View>
                   <View
@@ -1752,7 +1772,43 @@ const styles = StyleSheet.create({
   iosStatusFilterContainer: {
     flexDirection: "row",
     alignItems: "center",
-    marginLeft: 8,
+    marginBottom: 12,
+    justifyContent: "space-between",
+    width: "100%",
+  },
+  iosStatusFilterButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+    backgroundColor: "#F5F5F5",
+    borderWidth: 1,
+    borderColor: "#E5E5EA",
+    flex: 1,
+    marginHorizontal: 4,
+    justifyContent: "center",
+  },
+  iosStatusFilterButtonActive: {
+    backgroundColor: Colors.PRIMARYCOLOR,
+    borderColor: Colors.PRIMARYCOLOR,
+  },
+  iosStatusFilterButtonConfirmed: {
+    backgroundColor: "#34C759",
+    borderColor: "#34C759",
+  },
+  iosStatusFilterButtonPending: {
+    backgroundColor: "#FF9500",
+    borderColor: "#FF9500",
+  },
+  iosStatusFilterText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#3A3A3C",
+    marginLeft: 4,
+  },
+  iosStatusFilterTextActive: {
+    color: "#FFFFFF",
   },
   iosStatusFilterIcon: {
     padding: 6,

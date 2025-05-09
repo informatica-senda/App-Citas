@@ -509,7 +509,7 @@ const styles = StyleSheet.create({
   },
   headerCitas: {
     paddingTop: "10%",
-    backgroundColor: Colors.PRIMARYCOLOR,
+    backgroundColor: "#ffffff",
   },
   headerCitasDesktop: {
     paddingTop: 0,

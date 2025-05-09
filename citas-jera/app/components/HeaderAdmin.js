@@ -18,7 +18,7 @@ const styles = StyleSheet.create({
   headerText: {
     fontSize: 25,
     fontWeight: 'bold',
-    color: Colors.TEXTWHITE
+    color: Colors.PRIMARYCOLOR
   },
 });
 

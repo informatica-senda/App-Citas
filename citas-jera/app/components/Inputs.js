@@ -5,7 +5,7 @@ import { Animated, StyleSheet, View, TextInput, TouchableOpacity, Platform } fro
 import Colors from "@styles/colors.js"
 import FontAwesome from "react-native-vector-icons/FontAwesome"
 
-const Input = forwardRef(({ title = "", icon = "", handleAction = () => {}, ...rest }, ref) => {
+const Input = forwardRef(({ title = "", icon = "", handleAction = () => {}, inputRef = null, ...rest }, ref) => {
   const animatedValues = {
     animation: useRef(new Animated.Value(0)).current,
   }
@@ -72,6 +72,7 @@ const Input = forwardRef(({ title = "", icon = "", handleAction = () => {}, ...r
         onFocus={handleFocus}
         onBlur={handleBlur}
         placeholderTextColor={Colors.ACCENT}
+        ref={inputRef} // Usamos la prop inputRef para acceder al TextInput nativo
         {...rest}
       />
       {icon && (
@@ -154,4 +155,3 @@ const styles = StyleSheet.create({
 })
 
 export default Input
-
