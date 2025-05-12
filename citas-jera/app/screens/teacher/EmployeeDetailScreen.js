@@ -1,11 +1,13 @@
 "use client"
 
-import { useState } from "react"
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, StatusBar, Alert } from "react-native"
+import { useState, useEffect } from "react"
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, StatusBar, ActivityIndicator } from "react-native"
 import { MaterialIcons, Ionicons } from "@expo/vector-icons"
 import { useNavigation, useRoute } from "@react-navigation/native"
 import Colors from "@styles/colors"
 import { useResponsive } from "../../hooks/use-responsive"
+import { db } from "../../../firebaseConfig.js"
+import { doc, getDoc } from "firebase/firestore"
 
 const EmployeeDetailScreen = () => {
   const navigation = useNavigation()
@@ -26,47 +28,52 @@ const EmployeeDetailScreen = () => {
     },
   }
 
-  // Estado para controlar si se está cargando la documentación
-  const [loadingDocs, setLoadingDocs] = useState(false)
+  const [employeeData, setEmployeeData] = useState(employee)
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState(null)
+
+  // Cargar datos adicionales del empleado si es necesario
+  useEffect(() => {
+    const fetchAdditionalData = async () => {
+      // Si ya tenemos todos los datos necesarios, no hacemos otra consulta
+      if (employee.rawData) {
+        return
+      }
+
+      // Si tenemos el ID del empleado pero necesitamos más datos
+      if (employee.id) {
+        setIsLoading(true)
+        try {
+          const employeeDocRef = doc(db, "users", employee.id)
+          const employeeDocSnap = await getDoc(employeeDocRef)
+
+          if (employeeDocSnap.exists()) {
+            const data = employeeDocSnap.data()
+            setEmployeeData({
+              ...employee,
+              email: data.email || "No disponible",
+              dni: data.dni || "No disponible",
+              department: data.department || "No asignado",
+              startDate: data.startDate || "No disponible",
+              address: data.address || "No disponible",
+              rawData: data,
+            })
+          }
+        } catch (err) {
+          console.error("Error fetching employee details:", err)
+          setError("Error al cargar los detalles del empleado")
+        } finally {
+          setIsLoading(false)
+        }
+      }
+    }
+
+    fetchAdditionalData()
+  }, [employee])
 
   // Función para manejar el botón de volver atrás
   const handleGoBack = () => {
     navigation.goBack()
-  }
-
-  // Función para manejar el botón de documentación
-  const handleDocumentation = () => {
-    setLoadingDocs(true)
-
-    // Simulamos una carga
-    setTimeout(() => {
-      setLoadingDocs(false)
-      // Aquí podrías navegar a una pantalla de documentación
-      navigation.navigate("UserDoc", { employeeId: employee.id })
-    }, 800)
-  }
-
-  // Función para manejar el botón de editar
-  const handleEdit = () => {
-    Alert.alert("Editar empleado", `¿Deseas editar la información de ${employee.name}?`, [
-      { text: "Cancelar", style: "cancel" },
-      { text: "Editar", onPress: () => console.log("Editar empleado") },
-    ])
-  }
-
-  // Función para manejar el botón de eliminar
-  const handleDelete = () => {
-    Alert.alert("Eliminar empleado", `¿Estás seguro de que deseas eliminar a ${employee.name}?`, [
-      { text: "Cancelar", style: "cancel" },
-      {
-        text: "Eliminar",
-        onPress: () => {
-          console.log("Eliminar empleado")
-          navigation.goBack()
-        },
-        style: "destructive",
-      },
-    ])
   }
 
   // Modificar el componente View principal para aplicar estilos condicionales
@@ -87,7 +94,20 @@ const EmployeeDetailScreen = () => {
         <View style={{ width: 24 }} />
       </View>
 
-      {responsive.isDesktop ? (
+      {isLoading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={Colors.PRIMARYCOLOR} />
+          <Text style={styles.loadingText}>Cargando información...</Text>
+        </View>
+      ) : error ? (
+        <View style={styles.errorContainer}>
+          <MaterialIcons name="error-outline" size={60} color="#FF3B30" />
+          <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={handleGoBack}>
+            <Text style={styles.retryButtonText}>Volver</Text>
+          </TouchableOpacity>
+        </View>
+      ) : responsive.isDesktop ? (
         // Layout para desktop - dos columnas
         <View style={styles.desktopContainer}>
           {/* Columna izquierda - Perfil e información de contacto */}
@@ -96,16 +116,16 @@ const EmployeeDetailScreen = () => {
             <View style={[styles.profileSection, styles.profileSectionDesktop]}>
               <View style={[styles.avatarLarge, styles.avatarLargeDesktop]}>
                 <Text style={[styles.avatarLargeText, styles.avatarLargeTextDesktop]}>
-                  {employee.name
+                  {employeeData.name
                     .split(" ")
                     .map((name) => name[0])
                     .join("")}
                 </Text>
               </View>
-              <Text style={[styles.employeeName, styles.employeeNameDesktop]}>{employee.name}</Text>
-              <Text style={[styles.employeeRole, styles.employeeRoleDesktop]}>{employee.role}</Text>
+              <Text style={[styles.employeeName, styles.employeeNameDesktop]}>{employeeData.name}</Text>
+              <Text style={[styles.employeeRole, styles.employeeRoleDesktop]}>{employeeData.role}</Text>
               <View style={styles.codeContainer}>
-                <Text style={styles.codeText}>{employee.code}</Text>
+                <Text style={styles.codeText}>{employeeData.code}</Text>
               </View>
             </View>
 
@@ -119,7 +139,7 @@ const EmployeeDetailScreen = () => {
                 </View>
                 <View style={styles.infoContent}>
                   <Text style={styles.infoLabel}>Teléfono</Text>
-                  <Text style={styles.infoValue}>{employee.phone}</Text>
+                  <Text style={styles.infoValue}>{employeeData.phone}</Text>
                 </View>
               </View>
 
@@ -129,7 +149,17 @@ const EmployeeDetailScreen = () => {
                 </View>
                 <View style={styles.infoContent}>
                   <Text style={styles.infoLabel}>Email</Text>
-                  <Text style={styles.infoValue}>{employee.email || "No disponible"}</Text>
+                  <Text style={styles.infoValue}>{employeeData.email || "No disponible"}</Text>
+                </View>
+              </View>
+
+              <View style={styles.infoItem}>
+                <View style={styles.infoIconContainer}>
+                  <MaterialIcons name="badge" size={20} color={Colors.PRIMARYCOLOR} />
+                </View>
+                <View style={styles.infoContent}>
+                  <Text style={styles.infoLabel}>DNI</Text>
+                  <Text style={styles.infoValue}>{employeeData.dni || "No disponible"}</Text>
                 </View>
               </View>
 
@@ -139,13 +169,13 @@ const EmployeeDetailScreen = () => {
                 </View>
                 <View style={styles.infoContent}>
                   <Text style={styles.infoLabel}>Dirección</Text>
-                  <Text style={styles.infoValue}>{employee.address || "No disponible"}</Text>
+                  <Text style={styles.infoValue}>{employeeData.address || "No disponible"}</Text>
                 </View>
               </View>
             </View>
           </View>
 
-          {/* Columna derecha - Detalles laborales y botones de acción */}
+          {/* Columna derecha - Detalles laborales */}
           <View style={styles.desktopRightColumn}>
             {/* Sección de detalles laborales */}
             <View style={[styles.infoSection, styles.infoSectionDesktop]}>
@@ -157,7 +187,7 @@ const EmployeeDetailScreen = () => {
                 </View>
                 <View style={styles.infoContent}>
                   <Text style={styles.infoLabel}>Departamento</Text>
-                  <Text style={styles.infoValue}>{employee.department || "No asignado"}</Text>
+                  <Text style={styles.infoValue}>{employeeData.department || "No asignado"}</Text>
                 </View>
               </View>
 
@@ -167,7 +197,7 @@ const EmployeeDetailScreen = () => {
                 </View>
                 <View style={styles.infoContent}>
                   <Text style={styles.infoLabel}>Fecha de Inicio</Text>
-                  <Text style={styles.infoValue}>{employee.startDate || "No disponible"}</Text>
+                  <Text style={styles.infoValue}>{employeeData.startDate || "No disponible"}</Text>
                 </View>
               </View>
 
@@ -177,7 +207,7 @@ const EmployeeDetailScreen = () => {
                 </View>
                 <View style={styles.infoContent}>
                   <Text style={styles.infoLabel}>Cargo</Text>
-                  <Text style={styles.infoValue}>{employee.role}</Text>
+                  <Text style={styles.infoValue}>{employeeData.role}</Text>
                 </View>
               </View>
 
@@ -187,7 +217,7 @@ const EmployeeDetailScreen = () => {
                 </View>
                 <View style={styles.infoContent}>
                   <Text style={styles.infoLabel}>Código de Empleado</Text>
-                  <Text style={styles.infoValue}>{employee.code}</Text>
+                  <Text style={styles.infoValue}>{employeeData.code}</Text>
                 </View>
               </View>
             </View>
@@ -202,7 +232,7 @@ const EmployeeDetailScreen = () => {
                 </View>
                 <View style={styles.historyContent}>
                   <Text style={styles.historyTitle}>Incorporación a la empresa</Text>
-                  <Text style={styles.historyDescription}>Se unió al equipo como {employee.role}</Text>
+                  <Text style={styles.historyDescription}>Se unió al equipo como {employeeData.role}</Text>
                 </View>
               </View>
 
@@ -214,30 +244,6 @@ const EmployeeDetailScreen = () => {
                   <Text style={styles.historyTitle}>Capacitación completada</Text>
                   <Text style={styles.historyDescription}>Completó el programa de capacitación inicial</Text>
                 </View>
-              </View>
-            </View>
-
-            {/* Botones de acción */}
-            <View style={styles.desktopActionContainer}>
-              <TouchableOpacity
-                style={[styles.documentationButton, styles.documentationButtonDesktop]}
-                onPress={handleDocumentation}
-                disabled={loadingDocs}
-              >
-                <MaterialIcons name="description" size={20} color="#fff" style={styles.buttonIcon} />
-                <Text style={styles.documentationButtonText}>{loadingDocs ? "Cargando..." : "Documentación"}</Text>
-              </TouchableOpacity>
-
-              <View style={[styles.actionButtons, styles.actionButtonsDesktop]}>
-                <TouchableOpacity style={[styles.editButton, styles.actionButtonDesktop]} onPress={handleEdit}>
-                  <MaterialIcons name="edit" size={20} color="#fff" style={styles.buttonIcon} />
-                  <Text style={styles.editButtonText}>Editar</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity style={[styles.deleteButton, styles.actionButtonDesktop]} onPress={handleDelete}>
-                  <MaterialIcons name="delete" size={20} color="#fff" style={styles.buttonIcon} />
-                  <Text style={styles.deleteButtonText}>Eliminar</Text>
-                </TouchableOpacity>
               </View>
             </View>
           </View>
@@ -253,16 +259,16 @@ const EmployeeDetailScreen = () => {
           <View style={styles.profileSection}>
             <View style={styles.avatarLarge}>
               <Text style={styles.avatarLargeText}>
-                {employee.name
+                {employeeData.name
                   .split(" ")
                   .map((name) => name[0])
                   .join("")}
               </Text>
             </View>
-            <Text style={styles.employeeName}>{employee.name}</Text>
-            <Text style={styles.employeeRole}>{employee.role}</Text>
+            <Text style={styles.employeeName}>{employeeData.name}</Text>
+            <Text style={styles.employeeRole}>{employeeData.role}</Text>
             <View style={styles.codeContainer}>
-              <Text style={styles.codeText}>{employee.code}</Text>
+              <Text style={styles.codeText}>{employeeData.code}</Text>
             </View>
           </View>
 
@@ -276,7 +282,7 @@ const EmployeeDetailScreen = () => {
               </View>
               <View style={styles.infoContent}>
                 <Text style={styles.infoLabel}>Teléfono</Text>
-                <Text style={styles.infoValue}>{employee.phone}</Text>
+                <Text style={styles.infoValue}>{employeeData.phone}</Text>
               </View>
             </View>
 
@@ -286,7 +292,17 @@ const EmployeeDetailScreen = () => {
               </View>
               <View style={styles.infoContent}>
                 <Text style={styles.infoLabel}>Email</Text>
-                <Text style={styles.infoValue}>{employee.email || "No disponible"}</Text>
+                <Text style={styles.infoValue}>{employeeData.email || "No disponible"}</Text>
+              </View>
+            </View>
+
+            <View style={styles.infoItem}>
+              <View style={styles.infoIconContainer}>
+                <MaterialIcons name="badge" size={20} color={Colors.PRIMARYCOLOR} />
+              </View>
+              <View style={styles.infoContent}>
+                <Text style={styles.infoLabel}>DNI</Text>
+                <Text style={styles.infoValue}>{employeeData.dni || "No disponible"}</Text>
               </View>
             </View>
 
@@ -296,7 +312,7 @@ const EmployeeDetailScreen = () => {
               </View>
               <View style={styles.infoContent}>
                 <Text style={styles.infoLabel}>Dirección</Text>
-                <Text style={styles.infoValue}>{employee.address || "No disponible"}</Text>
+                <Text style={styles.infoValue}>{employeeData.address || "No disponible"}</Text>
               </View>
             </View>
           </View>
@@ -311,7 +327,7 @@ const EmployeeDetailScreen = () => {
               </View>
               <View style={styles.infoContent}>
                 <Text style={styles.infoLabel}>Departamento</Text>
-                <Text style={styles.infoValue}>{employee.department || "No asignado"}</Text>
+                <Text style={styles.infoValue}>{employeeData.department || "No asignado"}</Text>
               </View>
             </View>
 
@@ -321,42 +337,29 @@ const EmployeeDetailScreen = () => {
               </View>
               <View style={styles.infoContent}>
                 <Text style={styles.infoLabel}>Fecha de Inicio</Text>
-                <Text style={styles.infoValue}>{employee.startDate || "No disponible"}</Text>
+                <Text style={styles.infoValue}>{employeeData.startDate || "No disponible"}</Text>
               </View>
             </View>
-          </View>
 
-          {/* Botón de documentación */}
-          <TouchableOpacity
-            style={[
-              styles.documentationButton,
-              responsive.isWeb && { marginBottom: 16 },
-              responsive.isDesktop && styles.documentationButtonDesktop,
-            ]}
-            onPress={handleDocumentation}
-            disabled={loadingDocs}
-          >
-            <MaterialIcons name="description" size={20} color="#fff" style={styles.buttonIcon} />
-            <Text style={styles.documentationButtonText}>{loadingDocs ? "Cargando..." : "Documentación"}</Text>
-          </TouchableOpacity>
+            <View style={styles.infoItem}>
+              <View style={styles.infoIconContainer}>
+                <MaterialIcons name="work" size={20} color={Colors.PRIMARYCOLOR} />
+              </View>
+              <View style={styles.infoContent}>
+                <Text style={styles.infoLabel}>Cargo</Text>
+                <Text style={styles.infoValue}>{employeeData.role}</Text>
+              </View>
+            </View>
 
-          {/* Botones de acción */}
-          <View
-            style={[
-              styles.actionButtons,
-              responsive.isWeb && { marginBottom: 60 },
-              responsive.isDesktop && styles.actionButtonsDesktop,
-            ]}
-          >
-            <TouchableOpacity style={styles.editButton} onPress={handleEdit}>
-              <MaterialIcons name="edit" size={20} color="#fff" style={styles.buttonIcon} />
-              <Text style={styles.editButtonText}>Editar</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
-              <MaterialIcons name="delete" size={20} color="#fff" style={styles.buttonIcon} />
-              <Text style={styles.deleteButtonText}>Eliminar</Text>
-            </TouchableOpacity>
+            <View style={styles.infoItem}>
+              <View style={styles.infoIconContainer}>
+                <MaterialIcons name="badge" size={20} color={Colors.PRIMARYCOLOR} />
+              </View>
+              <View style={styles.infoContent}>
+                <Text style={styles.infoLabel}>Código de Empleado</Text>
+                <Text style={styles.infoValue}>{employeeData.code}</Text>
+              </View>
+            </View>
           </View>
         </ScrollView>
       )}
@@ -408,9 +411,6 @@ const styles = StyleSheet.create({
   },
   desktopRightColumn: {
     flex: 1,
-  },
-  desktopActionContainer: {
-    marginTop: 24,
   },
   // Estilos para móvil
   scrollView: {
@@ -574,95 +574,41 @@ const styles = StyleSheet.create({
     color: "#666",
     lineHeight: 20,
   },
-  // Botones
-  documentationButton: {
-    backgroundColor: Colors.PRIMARYCOLOR,
-    flexDirection: "row",
-    alignItems: "center",
+  // Estilos para estados de carga y error
+  loadingContainer: {
+    flex: 1,
     justifyContent: "center",
-    paddingVertical: 14,
-    borderRadius: 12,
-    marginHorizontal: 16,
-    marginTop: 24,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
-    elevation: 3,
+    alignItems: "center",
+    padding: 20,
   },
-  documentationButtonDesktop: {
-    marginHorizontal: 0,
-    marginTop: 0,
-    marginBottom: 16,
-    borderRadius: 8,
-    boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
-  },
-  documentationButtonText: {
-    color: "#fff",
+  loadingText: {
     fontSize: 16,
-    fontWeight: "bold",
-  },
-  buttonIcon: {
-    marginRight: 8,
-  },
-  actionButtons: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginHorizontal: 16,
+    color: "#666",
     marginTop: 16,
-    marginBottom: 30,
   },
-  actionButtonsDesktop: {
-    marginHorizontal: 0,
-    marginTop: 0,
-    marginBottom: 0,
-  },
-  editButton: {
-    backgroundColor: "#4CAF50",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 12,
+  errorContainer: {
     flex: 1,
-    marginRight: 8,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  deleteButton: {
-    backgroundColor: "#F44336",
-    flexDirection: "row",
-    alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 12,
-    flex: 1,
-    marginLeft: 8,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
-    elevation: 2,
+    alignItems: "center",
+    padding: 20,
   },
-  actionButtonDesktop: {
+  errorText: {
+    fontSize: 16,
+    color: "#FF3B30",
+    marginTop: 16,
+    textAlign: "center",
+    marginBottom: 16,
+  },
+  retryButton: {
+    backgroundColor: Colors.PRIMARYCOLOR,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
     borderRadius: 8,
-    boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
-    transition: "all 0.2s ease",
   },
-  editButtonText: {
-    color: "#fff",
+  retryButtonText: {
+    color: "#FFFFFF",
     fontSize: 16,
-    fontWeight: "bold",
-  },
-  deleteButtonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "bold",
+    fontWeight: "600",
   },
   scrollViewContent: {
     paddingBottom: 50,
@@ -671,4 +617,3 @@ const styles = StyleSheet.create({
 })
 
 export default EmployeeDetailScreen
-

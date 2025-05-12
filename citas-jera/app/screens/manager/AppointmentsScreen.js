@@ -1,7 +1,6 @@
 "use client"
 
-// AppointmentsScreen.js - Updated to match the HomeUser design
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import {
   View,
   Text,
@@ -12,124 +11,16 @@ import {
   Platform,
   StatusBar,
   Dimensions,
+  ActivityIndicator,
 } from "react-native"
 import { Calendar } from "react-native-calendars"
 import { Ionicons, FontAwesome5, MaterialCommunityIcons } from "@expo/vector-icons"
 import Header from "@components/HeaderUser.js"
 import Colors from "@styles/colors"
 import AppointmentModalAdmin from "@components/AppointmentModalAdmin"
-
-// Sample appointment data
-const APPOINTMENTS = [
-  {
-    id: "1",
-    employee: "Juan Pérez",
-    date: "2025-04-10",
-    time: "14:00",
-    category: "psychology",
-    phone: "123-456-7890",
-    title: "Cita de Psicología",
-    client: "María García",
-    status: "confirmed",
-    state: true,
-  },
-  {
-    id: "2",
-    employee: "Ana López",
-    date: "2025-04-10",
-    time: "14:00",
-    category: "nutrition",
-    phone: "098-765-4321",
-    title: "Cita de Nutrición",
-    client: "Carlos Rodríguez",
-    status: "confirmed",
-    state: true,
-  },
-  {
-    id: "3",
-    employee: "Juan Pérez",
-    date: "2025-04-10",
-    time: "16:30",
-    category: "psychology",
-    phone: "123-456-7890",
-    title: "Terapia Cognitiva",
-    client: "Laura Martínez",
-    status: "pending",
-    state: false,
-  },
-  {
-    id: "4",
-    employee: "Juan Pérez",
-    date: "2025-04-12",
-    time: "16:30",
-    category: "psychology",
-    phone: "123-456-7890",
-    title: "Terapia Cognitiva",
-    client: "Laura Martínez",
-    status: "pending",
-    state: false,
-  },
-  {
-    id: "5",
-    employee: "Juan Pérez",
-    date: "2025-04-15",
-    time: "16:30",
-    category: "psychology",
-    phone: "123-456-7890",
-    title: "Terapia Cognitiva",
-    client: "Laura Martínez",
-    status: "pending",
-    state: false,
-  },
-  {
-    id: "6",
-    employee: "Ana López",
-    date: "2025-04-15",
-    time: "16:30",
-    category: "nutrition",
-    phone: "123-456-7890",
-    title: "Consulta Nutricional",
-    client: "Pedro Sánchez",
-    status: "pending",
-    state: false,
-  },
-  {
-    id: "7",
-    employee: "Juan Pérez",
-    date: "2025-04-18",
-    time: "16:30",
-    category: "psychology",
-    phone: "123-456-7890",
-    title: "Terapia Cognitiva",
-    client: "Laura Martínez",
-    status: "pending",
-    state: false,
-  },
-  {
-    id: "8",
-    employee: "Ana López",
-    date: "2025-04-18",
-    time: "16:30",
-    category: "nutrition",
-    phone: "123-456-7890",
-    title: "Consulta Nutricional",
-    client: "Sofía Rodríguez",
-    status: "confirmed",
-    state: true,
-  },
-  {
-    id: "9",
-    employee: "Juan Pérez",
-    date: "2025-04-20",
-    time: "16:30",
-    category: "psychology",
-    phone: "123-456-7890",
-    title: "Terapia Cognitiva",
-    client: "Laura Martínez",
-    status: "pending",
-    state: false,
-  },
-]
+import { db, auth } from "../../../firebaseConfig.js"
+// Modificar las importaciones para incluir onSnapshot
+import { collection, query, where, getDoc, doc, onSnapshot } from "firebase/firestore"
 
 // Función para formatear la fecha en formato dd/mm/yyyy
 const formatDate = (dateString) => {
@@ -145,21 +36,226 @@ const formatDate = (dateString) => {
   return `${day}/${month}/${year}`
 }
 
+// Función para formatear la hora en formato HH:MM
+const formatTime = (dateString) => {
+  if (!dateString) return "Sin hora"
+
+  const date = new Date(dateString)
+  // Check if date is valid
+  if (isNaN(date.getTime())) return "Sin hora"
+
+  const hours = String(date.getHours()).padStart(2, "0")
+  const minutes = String(date.getMinutes()).padStart(2, "0")
+  return `${hours}:${minutes}`
+}
+
 const AppointmentsScreen = () => {
   // Estados
   const [activeFilter, setActiveFilter] = useState("all")
   const [statusFilter, setStatusFilter] = useState("all") // 'all', 'confirmed', 'pending'
-  const [appointments] = useState(APPOINTMENTS)
+  const [appointments, setAppointments] = useState([])
   const [selectedDate, setSelectedDate] = useState("")
   const [markedDates, setMarkedDates] = useState({})
   const [selectedAppointment, setSelectedAppointment] = useState(null)
   const [modalVisible, setModalVisible] = useState(false)
-  const [listOnlyView, setListOnlyView] = useState(false) // Estado para controlar la vista
+  const [listOnlyView, setListOnlyView] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [currentUser, setCurrentUser] = useState(null)
+  const [companyId, setCompanyId] = useState(null)
+  // Estado para indicar cuando hay actualizaciones en tiempo real
+  const [isUpdating, setIsUpdating] = useState(false)
 
   // Get screen dimensions for responsive design
   const screenWidth = Dimensions.get("window").width
   const isDesktop = screenWidth >= 768
   const isWeb = Platform.OS === "web"
+
+  // Fetch current user and company ID
+  useEffect(() => {
+    const fetchCurrentUser = async () => {
+      try {
+        const user = auth.currentUser
+        if (user) {
+          const userDocRef = doc(db, "users", user.uid)
+          const userDocSnap = await getDoc(userDocRef)
+
+          if (userDocSnap.exists()) {
+            const userData = userDocSnap.data()
+            setCurrentUser(userData)
+            setCompanyId(userData.companyId)
+          } else {
+            setError("No se encontró información del usuario")
+          }
+        } else {
+          setError("No hay usuario autenticado")
+        }
+      } catch (err) {
+        console.error("Error fetching current user:", err)
+        setError("Error al obtener información del usuario")
+      }
+    }
+
+    fetchCurrentUser()
+  }, [])
+
+  // Función para configurar los listeners de citas en tiempo real
+  const setupAppointmentsListeners = useCallback(() => {
+    if (!companyId) return () => {}
+
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      // Primero, obtener todos los usuarios con rol 'user' de la misma compañía
+      const usersQuery = query(
+        collection(db, "users"),
+        where("role", "==", "user"),
+        where("companyId", "==", companyId),
+      )
+
+      // Crear un listener para la consulta de usuarios
+      const unsubscribeUsers = onSnapshot(
+        usersQuery,
+        async (userSnapshot) => {
+          const userIds = []
+          userSnapshot.forEach((doc) => {
+            userIds.push(doc.id)
+          })
+
+          if (userIds.length === 0) {
+            setAppointments([])
+            setIsLoading(false)
+            return
+          }
+
+          // Array para almacenar todas las funciones de desuscripción
+          const unsubscribeFunctions = []
+          // Objeto para almacenar todas las citas
+          const allAppointments = {}
+
+          // Para cada usuario, configurar un listener para sus citas
+          for (const userId of userIds) {
+            const datesQuery = query(collection(db, "dates"), where("userId", "==", userId), where("date", "!=", null))
+
+            const unsubscribeDates = onSnapshot(
+              datesQuery,
+              async (dateSnapshot) => {
+                setIsUpdating(true)
+
+                // Procesar los cambios en las citas
+                for (const change of dateSnapshot.docChanges()) {
+                  const appointmentDoc = change.doc
+                  const appointmentData = appointmentDoc.data()
+                  const appointmentId = appointmentDoc.id
+
+                  // Si la cita fue eliminada, eliminarla del objeto
+                  if (change.type === "removed") {
+                    delete allAppointments[appointmentId]
+                    continue
+                  }
+
+                  // Obtener detalles del usuario
+                  const userDocRef = doc(db, "users", appointmentData.userId)
+                  const userDocSnap = await getDoc(userDocRef)
+                  const userData = userDocSnap.exists() ? userDocSnap.data() : {}
+
+                  // Obtener detalles del profesional si está disponible
+                  let teacherData = {}
+                  if (appointmentData.teacherId && appointmentData.teacherId.trim() !== "") {
+                    const teacherDocRef = doc(db, "users", appointmentData.teacherId)
+                    const teacherDocSnap = await getDoc(teacherDocRef)
+                    teacherData = teacherDocSnap.exists() ? teacherDocSnap.data() : {}
+                  }
+
+                  // Formatear los datos de la cita
+                  let formattedDate = null
+                  let formattedTime = ""
+
+                  // Manejar el timestamp de Firestore
+                  if (appointmentData.date && typeof appointmentData.date.toDate === "function") {
+                    const dateObj = appointmentData.date.toDate()
+                    formattedDate = dateObj.toISOString().split("T")[0]
+
+                    // Formatear la hora en formato HH:MM
+                    const hours = String(dateObj.getHours()).padStart(2, "0")
+                    const minutes = String(dateObj.getMinutes()).padStart(2, "0")
+                    formattedTime = `${hours}:${minutes}`
+                  }
+
+                  // Guardar la cita en el objeto
+                  allAppointments[appointmentId] = {
+                    id: appointmentId,
+                    date: formattedDate,
+                    time: formattedTime,
+                    category: appointmentData.service || "",
+                    state: appointmentData.state,
+                    title: `Cita de ${appointmentData.service ? appointmentData.service.charAt(0).toUpperCase() + appointmentData.service.slice(1) : "Servicio"}`,
+                    client: `${userData.name || ""} ${userData.lastName || ""}`.trim() || "Cliente sin nombre",
+                    employee: teacherData.name
+                      ? `${teacherData.name} ${teacherData.lastName || ""}`.trim()
+                      : "Sin asignar",
+                    phone: userData.phone || "Sin teléfono",
+                    status: appointmentData.state ? "confirmed" : "pending",
+                    userId: appointmentData.userId,
+                    teacherId: appointmentData.teacherId,
+                    rawData: appointmentData,
+                  }
+                }
+
+                // Actualizar el estado con todas las citas
+                setAppointments(Object.values(allAppointments))
+                setIsLoading(false)
+                setIsUpdating(false)
+              },
+              (error) => {
+                console.error("Error listening to appointments:", error)
+                setError("Error al escuchar cambios en las citas")
+                setIsLoading(false)
+                setIsUpdating(false)
+              },
+            )
+
+            unsubscribeFunctions.push(unsubscribeDates)
+          }
+
+          // Devolver una función que desuscribe todos los listeners
+          return () => {
+            unsubscribeFunctions.forEach((unsubscribe) => unsubscribe())
+          }
+        },
+        (error) => {
+          console.error("Error listening to users:", error)
+          setError("Error al escuchar cambios en los usuarios")
+          setIsLoading(false)
+        },
+      )
+
+      // Devolver una función que desuscribe el listener de usuarios
+      return () => {
+        unsubscribeUsers()
+      }
+    } catch (err) {
+      console.error("Error setting up appointment listeners:", err)
+      setError("Error al configurar los listeners de citas")
+      setIsLoading(false)
+      return () => {}
+    }
+  }, [companyId])
+
+  // Configurar los listeners cuando se obtiene el companyId
+  useEffect(() => {
+    let unsubscribe = () => {}
+
+    if (companyId) {
+      unsubscribe = setupAppointmentsListeners()
+    }
+
+    // Limpiar los listeners cuando el componente se desmonte o cuando cambie companyId
+    return () => {
+      unsubscribe()
+    }
+  }, [companyId, setupAppointmentsListeners])
 
   // Preparar las fechas marcadas en el calendario
   useEffect(() => {
@@ -279,11 +375,40 @@ const AppointmentsScreen = () => {
   const renderAppointmentsList = () => {
     const filteredAppointments = getFilteredAppointments()
 
+    if (isLoading) {
+      return (
+        <View style={styles.iosLoadingContainer}>
+          <ActivityIndicator size="large" color={Colors.PRIMARYCOLOR} />
+          <Text style={styles.iosLoadingText}>Cargando citas...</Text>
+        </View>
+      )
+    }
+
+    if (error) {
+      return (
+        <View style={styles.iosErrorContainer}>
+          <Ionicons name="alert-circle-outline" size={48} color="#FF3B30" />
+          <Text style={styles.iosErrorText}>{error}</Text>
+          <TouchableOpacity
+            style={styles.iosRetryButton}
+            onPress={() => {
+              setIsLoading(true)
+              setError(null)
+              // Trigger a re-fetch by updating the companyId state
+              setCompanyId((prev) => prev)
+            }}
+          >
+            <Text style={styles.iosRetryButtonText}>Reintentar</Text>
+          </TouchableOpacity>
+        </View>
+      )
+    }
+
     return (
       <View style={styles.iosAppointmentsList}>
         <View style={styles.iosSelectedDateHeader}>
           <View style={styles.iosTitleContainer}>
-            
+            {selectedDate && <Text style={styles.iosSelectedDateText}>{formatDate(selectedDate)}</Text>}
             {selectedDate && (
               <TouchableOpacity style={styles.iosClearDateButton} onPress={clearDateSelection}>
                 <Ionicons name="close-circle" size={18} color="#8E8E93" />
@@ -307,25 +432,38 @@ const AppointmentsScreen = () => {
               ]}
               onPress={() => setStatusFilter("confirmed")}
             >
-              <Ionicons name="checkmark-circle" size={18} color={statusFilter === "confirmed" ? "#FFFFFF" : "#8E8E93"} />
-              <Text style={[styles.iosStatusFilterText, statusFilter === "confirmed" && styles.iosStatusFilterTextActive]}>
+              <Ionicons
+                name="checkmark-circle"
+                size={18}
+                color={statusFilter === "confirmed" ? "#FFFFFF" : "#8E8E93"}
+              />
+              <Text
+                style={[styles.iosStatusFilterText, statusFilter === "confirmed" && styles.iosStatusFilterTextActive]}
+              >
                 Confirmadas
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[
-                styles.iosStatusFilterButton,
-                statusFilter === "pending" && styles.iosStatusFilterButtonPending,
-              ]}
+              style={[styles.iosStatusFilterButton, statusFilter === "pending" && styles.iosStatusFilterButtonPending]}
               onPress={() => setStatusFilter("pending")}
             >
               <Ionicons name="time" size={18} color={statusFilter === "pending" ? "#FFFFFF" : "#8E8E93"} />
-              <Text style={[styles.iosStatusFilterText, statusFilter === "pending" && styles.iosStatusFilterTextActive]}>
+              <Text
+                style={[styles.iosStatusFilterText, statusFilter === "pending" && styles.iosStatusFilterTextActive]}
+              >
                 Pendientes
               </Text>
             </TouchableOpacity>
           </View>
         </View>
+
+        {/* Indicador de actualización en tiempo real */}
+        {isUpdating && (
+          <View style={styles.iosUpdatingContainer}>
+            <ActivityIndicator size="small" color={Colors.PRIMARYCOLOR} />
+            <Text style={styles.iosUpdatingText}>Actualizando...</Text>
+          </View>
+        )}
 
         {filteredAppointments.length === 0 ? (
           <View style={styles.iosEmptyStateContainer}>
@@ -419,7 +557,7 @@ const AppointmentsScreen = () => {
 
       <View style={styles.iosHeaderContainer}>
         <Header
-          userName="Administrador"
+          userName={currentUser ? `${currentUser.name || ""} ${currentUser.lastName || ""}`.trim() : "Administrador"}
           screenName="Citas"
           headerStyle={styles.iosHeader}
           titleStyle={styles.iosHeaderTitle}
@@ -640,6 +778,7 @@ const AppointmentsScreen = () => {
   )
 }
 
+// Estilos de la pantalla
 const styles = StyleSheet.create({
   // Estilos generales con estilo iOS
   iosSafeArea: {
@@ -1037,6 +1176,64 @@ const styles = StyleSheet.create({
   },
   iosStatusFilterTextActive: {
     color: "#FFFFFF",
+  },
+
+  // Estilos para estados de carga y error
+  iosLoadingContainer: {
+    padding: 24,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 16,
+  },
+  iosLoadingText: {
+    fontSize: 17,
+    color: "#3A3A3C",
+    marginTop: 12,
+  },
+  iosErrorContainer: {
+    padding: 24,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 16,
+  },
+  iosErrorText: {
+    fontSize: 17,
+    color: "#FF3B30",
+    marginTop: 12,
+    marginBottom: 16,
+    textAlign: "center",
+  },
+  iosRetryButton: {
+    backgroundColor: Colors.PRIMARYCOLOR,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+  },
+  iosRetryButtonText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  // Estilos para el indicador de actualización en tiempo real
+  iosUpdatingContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 8,
+    backgroundColor: "rgba(255, 255, 255, 0.9)",
+    borderRadius: 20,
+    marginBottom: 8,
+    alignSelf: "center",
+  },
+  iosUpdatingText: {
+    fontSize: 14,
+    color: Colors.PRIMARYCOLOR,
+    marginLeft: 8,
+    fontWeight: "500",
   },
 })
 

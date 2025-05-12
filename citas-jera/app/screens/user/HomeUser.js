@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import {
   View,
   StyleSheet,
@@ -12,6 +12,7 @@ import {
   ScrollView,
   SafeAreaView,
   Dimensions,
+  ActivityIndicator,
 } from "react-native"
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs"
 import { Ionicons, FontAwesome5, MaterialCommunityIcons } from "@expo/vector-icons"
@@ -25,7 +26,7 @@ import LogoutModal from "@components/LogOutModal"
 import ServiceSelectionModal from "@components/RequestServiceModal"
 import AppointmentCalendarScreen from "@components/AppoimentCalendarScreen"
 import { db, auth } from "../../../firebaseConfig.js"
-import { collection, getDocs, addDoc, query, where, getDoc, doc } from "firebase/firestore"
+import { collection, addDoc, query, where, getDoc, doc, onSnapshot } from "firebase/firestore"
 
 const Tab = createBottomTabNavigator()
 
@@ -144,7 +145,8 @@ const AppointmentsScreen = () => {
   const [calendarVisible, setCalendarVisible] = useState(false)
   const [selectedService, setSelectedService] = useState(null)
   const [error, setError] = useState(null)
-  const [listOnlyView, setListOnlyView] = useState(false) // Nuevo estado para controlar la vista
+  const [listOnlyView, setListOnlyView] = useState(false) // Estado para controlar la vista
+  const [isUpdating, setIsUpdating] = useState(false) // Estado para indicar actualizaciones en tiempo real
 
   // Estados para el modal de cierre de sesión
   const [logoutModalVisible, setLogoutModalVisible] = useState(false)
@@ -155,7 +157,8 @@ const AppointmentsScreen = () => {
   const isDesktop = screenWidth >= 768
   const isWeb = Platform.OS === "web"
 
-  const fetchAppointments = async () => {
+  // Función para configurar el listener de citas en tiempo real
+  const setupAppointmentsListener = useCallback(() => {
     try {
       setLoading(true)
       setError(null)
@@ -164,51 +167,84 @@ const AppointmentsScreen = () => {
       if (!currentUser) {
         console.log("No user is signed in")
         setLoading(false)
-        return
+        return () => {}
       }
 
-      const userDoc = await getDoc(doc(db, "users", currentUser.uid))
-      if (userDoc.exists()) {
-        const userData = userDoc.data()
-        setUser({
-          name: userData.name || userData.firstName || "Usuario",
-          id: currentUser.uid,
-          role: userData.role || "user",
-        })
+      // Obtener datos del usuario actual
+      const fetchUserData = async () => {
+        const userDoc = await getDoc(doc(db, "users", currentUser.uid))
+        if (userDoc.exists()) {
+          const userData = userDoc.data()
+          setUser({
+            name: userData.name || userData.firstName || "Usuario",
+            id: currentUser.uid,
+            role: userData.role || "user",
+          })
+        }
       }
 
+      fetchUserData()
+
+      // Configurar el listener para las citas del usuario
       const appointmentsQuery = query(collection(db, "dates"), where("userId", "==", currentUser.uid))
-      const querySnapshot = await getDocs(appointmentsQuery)
-      const appointmentsData = []
+      
+      const unsubscribe = onSnapshot(
+        appointmentsQuery,
+        (snapshot) => {
+          // Indicar que hay una actualización en curso
+          if (!snapshot.empty) {
+            setIsUpdating(true)
+          }
 
-      querySnapshot.forEach((doc) => {
-        const data = doc.data()
+          const appointmentsData = []
 
-        appointmentsData.push({
-          id: doc.id,
-          title: `Consulta de ${data.service === "psychology" ? "Psicología" : "Nutrición"}`,
-          date: data.date ? formatFirestoreDate(data.date) : "Sin fecha",
-          category: data.service || "other",
-          time: data.date ? extractTime(data.date) : "Sin hora",
-          doctor: data.teacherId ? `Dr. ${data.teacherId}` : "Sin asignar",
-          state: data.state,
-          rawData: data,
-        })
-      })
+          // Procesar los documentos
+          snapshot.forEach((doc) => {
+            const data = doc.data()
 
-      setAppointments(appointmentsData)
+            appointmentsData.push({
+              id: doc.id,
+              title: `Consulta de ${data.service === "psychology" ? "Psicología" : "Nutrición"}`,
+              date: data.date ? formatFirestoreDate(data.date) : "Sin fecha",
+              category: data.service || "other",
+              time: data.date ? extractTime(data.date) : "Sin hora",
+              doctor: data.teacherId ? `Dr. ${data.teacherId}` : "Sin asignar",
+              state: data.state,
+              rawData: data,
+            })
+          })
+
+          setAppointments(appointmentsData)
+          setLoading(false)
+          setIsUpdating(false)
+        },
+        (err) => {
+          console.error("Error listening to appointments:", err)
+          setError("Error al escuchar cambios en las citas. Por favor, intente de nuevo.")
+          setLoading(false)
+          setIsUpdating(false)
+        }
+      )
+
+      // Devolver la función de limpieza
+      return unsubscribe
     } catch (err) {
-      console.error("Error fetching data:", err)
-      setError("Error al cargar los datos. Por favor, intente de nuevo.")
-    } finally {
+      console.error("Error setting up appointments listener:", err)
+      setError("Error al configurar el listener de citas. Por favor, intente de nuevo.")
       setLoading(false)
+      return () => {}
     }
-  }
-
-  // Fetch user data and appointments from Firebase
-  useEffect(() => {
-    fetchAppointments()
   }, [])
+
+  // Configurar el listener cuando el componente se monta
+  useEffect(() => {
+    const unsubscribe = setupAppointmentsListener()
+
+    // Limpiar el listener cuando el componente se desmonta
+    return () => {
+      unsubscribe()
+    }
+  }, [setupAppointmentsListener])
 
   // Preparar las fechas marcadas en el calendario
   useEffect(() => {
@@ -319,7 +355,7 @@ const AppointmentsScreen = () => {
     setListOnlyView(!listOnlyView)
   }
 
-  // Modify the handleServiceConfirm function to show the calendar screen
+  // Función para manejar la confirmación del servicio
   const handleServiceConfirm = async (serviceType) => {
     const serviceDisplayName = serviceType === "psychology" ? "Psicología" : "Nutrición"
     setSelectedService(serviceDisplayName)
@@ -343,8 +379,7 @@ const AppointmentsScreen = () => {
           date: null, // placeholder hasta que se asigne
         })
         alert("Solicitud enviada correctamente.")
-        // Aquí puedes refrescar la lista si es necesario
-        fetchAppointments()
+        // No es necesario refrescar manualmente, el listener detectará el cambio
       } catch (error) {
         console.error("Error al crear cita:", error)
         alert("Error al crear la cita.")
@@ -354,12 +389,12 @@ const AppointmentsScreen = () => {
     }
   }
 
-  // Add a function to handle when the calendar is closed
+  // Función para manejar el cierre del calendario
   const handleCalendarClose = () => {
     setCalendarVisible(false)
   }
 
-  // Add a function to handle when an appointment is confirmed
+  // Función para manejar la confirmación de una cita
   const handleAppointmentConfirm = async (appointmentDate) => {
     console.log(`Cita confirmada para: ${appointmentDate}`)
     setCalendarVisible(false)
@@ -381,14 +416,7 @@ const AppointmentsScreen = () => {
       })
 
       alert("Cita creada correctamente.")
-
-      // Opcional: refrescar lista de citas si es necesario
-      if (typeof fetchAppointments === "function") {
-        fetchAppointments() // Reemplaza con tu función real de recarga
-      } else {
-        console.warn("Función fetchAppointments no definida.")
-      }
-      // fetchAppointments();
+      // No es necesario refrescar manualmente, el listener detectará el cambio
     } catch (error) {
       console.error("Error al guardar la cita:", error)
       alert("Error al guardar la cita.")
@@ -445,6 +473,7 @@ const AppointmentsScreen = () => {
   const renderLoading = () => {
     return (
       <View style={styles.iosLoadingContainer}>
+        <ActivityIndicator size="large" color={Colors.PRIMARYCOLOR} />
         <Text style={styles.iosLoadingText}>Cargando citas...</Text>
       </View>
     )
@@ -454,14 +483,15 @@ const AppointmentsScreen = () => {
   const renderError = () => {
     return (
       <View style={styles.iosErrorContainer}>
+        <Ionicons name="alert-circle-outline" size={48} color="#FF3B30" />
         <Text style={styles.iosErrorText}>{error}</Text>
         <TouchableOpacity
           style={styles.iosRetryButton}
           onPress={() => {
-            // Refresh appointments
+            // Reiniciar el listener
             setLoading(true)
             setError(null)
-            // Re-fetch data (this would trigger the useEffect)
+            setupAppointmentsListener()
           }}
         >
           <Text style={styles.iosRetryButtonText}>Reintentar</Text>
@@ -525,6 +555,14 @@ const AppointmentsScreen = () => {
             </TouchableOpacity>
           </View>
         </View>
+
+        {/* Indicador de actualización en tiempo real */}
+        {isUpdating && (
+          <View style={styles.iosUpdatingContainer}>
+            <ActivityIndicator size="small" color={Colors.PRIMARYCOLOR} />
+            <Text style={styles.iosUpdatingText}>Actualizando...</Text>
+          </View>
+        )}
 
         {filteredAppointments.length === 0 ? (
           <View style={styles.iosEmptyStateContainer}>
@@ -608,7 +646,7 @@ const AppointmentsScreen = () => {
     )
   }
 
-  // Modificar la función renderAppointments para hacer las citas más compactas
+  // Renderizar las citas
   const renderAppointments = () => {
     if (loading) {
       return renderLoading()
@@ -1817,6 +1855,23 @@ const styles = StyleSheet.create({
   },
   iosStatusFilterActive: {
     backgroundColor: "#F2F2F7",
+  },
+  // Estilos para el indicador de actualización en tiempo real
+  iosUpdatingContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 8,
+    backgroundColor: "rgba(255, 255, 255, 0.9)",
+    borderRadius: 20,
+    marginBottom: 8,
+    alignSelf: "center",
+  },
+  iosUpdatingText: {
+    fontSize: 14,
+    color: Colors.PRIMARYCOLOR,
+    marginLeft: 8,
+    fontWeight: "500",
   },
 })
 
