@@ -1,7 +1,6 @@
 "use client"
 
-// EmployeesScreen.js - Updated to match the reference design
-import { useState } from "react"
+import { useState, useEffect, useCallback } from "react"
 import {
   View,
   Text,
@@ -9,20 +8,17 @@ import {
   FlatList,
   TouchableOpacity,
   StyleSheet,
-  Modal,
   StatusBar,
   ActivityIndicator,
-  KeyboardAvoidingView,
-  ScrollView,
-  Platform,
-  TouchableWithoutFeedback,
-  Keyboard,
 } from "react-native"
 import { Feather, MaterialIcons } from "@expo/vector-icons"
 import Header from "@components/HeaderAdmin.js"
 import Colors from "@styles/colors"
 import { useNavigation } from "@react-navigation/native"
 import { useResponsive } from "../../hooks/use-responsive"
+import { db, auth } from "../../../firebaseConfig.js"
+// Modificar las importaciones para incluir onSnapshot
+import { collection, query, where, getDoc, doc, onSnapshot } from "firebase/firestore"
 
 const EmployeesScreen = () => {
   const navigation = useNavigation()
@@ -32,28 +28,131 @@ const EmployeesScreen = () => {
   const [searchQuery, setSearchQuery] = useState("")
 
   // Estado que almacena la lista de empleados existentes
-  const [employees, setEmployees] = useState([
-    { id: "1", name: "Juan Pérez", code: "JP001", phone: "123-456-7890", role: "Gerente" },
-    { id: "2", name: "Ana López", code: "AL002", phone: "098-765-4321", role: "Operador" },
-    { id: "3", name: "Carlos Mendoza", code: "CM003", phone: "555-123-4567", role: "Asistente" },
-    { id: "4", name: "María García", code: "MG004", phone: "777-888-9999", role: "Supervisor" },
-    { id: "5", name: "Roberto Díaz", code: "RD005", phone: "555-444-3333", role: "Gerente" },
-    { id: "6", name: "Laura Torres", code: "LT006", phone: "222-333-4444", role: "Asistente" },
-    { id: "7", name: "Miguel Sánchez", code: "MS007", phone: "111-222-3333", role: "Operador" },
-    { id: "8", name: "Patricia Gómez", code: "PG008", phone: "999-888-7777", role: "Supervisor" },
-  ])
-
-  // Estado para manejar la visibilidad del modal de agregar empleados
-  const [modalVisible, setModalVisible] = useState(false)
-
-  // Estado para almacenar los datos del nuevo empleado que se va a agregar
-  const [newEmployee, setNewEmployee] = useState({ name: "", code: "", phone: "", role: "" })
-
-  // Estado para indicar si los datos están cargando (para demostración)
-  const [isLoading, setIsLoading] = useState(false)
+  const [employees, setEmployees] = useState([])
 
   // Estado para el empleado seleccionado (para vista de detalles en desktop)
   const [selectedEmployeeId, setSelectedEmployeeId] = useState(null)
+
+  // Estado para indicar si los datos están cargando
+  const [isLoading, setIsLoading] = useState(true)
+
+  // Estado para manejar errores
+  const [error, setError] = useState(null)
+
+  // Estado para almacenar el ID de la compañía del usuario actual
+  const [companyId, setCompanyId] = useState(null)
+
+  // Estado para almacenar la información del usuario actual
+  const [currentUser, setCurrentUser] = useState(null)
+
+  // Obtener el usuario actual y su companyId
+  useEffect(() => {
+    const fetchCurrentUser = async () => {
+      try {
+        const user = auth.currentUser
+        if (user) {
+          const userDocRef = doc(db, "users", user.uid)
+          const userDocSnap = await getDoc(userDocRef)
+
+          if (userDocSnap.exists()) {
+            const userData = userDocSnap.data()
+            setCurrentUser(userData)
+            setCompanyId(userData.companyId)
+          } else {
+            setError("No se encontró información del usuario")
+          }
+        } else {
+          setError("No hay usuario autenticado")
+        }
+      } catch (err) {
+        console.error("Error fetching current user:", err)
+        setError("Error al obtener información del usuario")
+      }
+    }
+
+    fetchCurrentUser()
+  }, [])
+
+  // Reemplazar la función fetchEmployees con una versión que use onSnapshot
+  const fetchEmployees = useCallback(() => {
+    if (!companyId) return () => {} // Retornar una función de limpieza vacía si no hay companyId
+
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      // Consultar usuarios con el mismo companyId
+      const employeesQuery = query(
+        collection(db, "users"),
+        where("role", "in", ["user", "externalUser"]),
+      )
+
+      // Establecer un listener en tiempo real con onSnapshot
+      const unsubscribe = onSnapshot(
+        employeesQuery,
+        async (snapshot) => {
+          const employeesData = []
+
+          // Procesar los cambios
+          for (const docSnapshot of snapshot.docs) {
+            const employeeData = docSnapshot.data()
+            employeesData.push({
+              id: docSnapshot.id,
+              name: `${employeeData.name || ""} ${employeeData.lastName || ""}`.trim(),
+              code: employeeData.workerId || "Sin código",
+              phone: employeeData.phone || "Sin teléfono",
+              role: employeeData.role || "Sin rol",
+              email: employeeData.email || "Sin email",
+              dni: employeeData.dni || "Sin DNI",
+              companyId: employeeData.companyId,
+              // Incluir todos los campos originales para referencia
+              rawData: employeeData,
+            })
+          }
+
+          setEmployees(employeesData)
+          setIsLoading(false)
+        },
+        (error) => {
+          console.error("Error listening to employees:", error)
+          setError("Error al escuchar cambios en los empleados")
+          setIsLoading(false)
+        },
+      )
+
+      // Retornar la función de limpieza para desuscribirse cuando el componente se desmonte
+      return unsubscribe
+    } catch (err) {
+      console.error("Error setting up employee listener:", err)
+      setError("Error al configurar el listener de empleados")
+      setIsLoading(false)
+      return () => {} // Retornar una función de limpieza vacía en caso de error
+    }
+  }, [companyId])
+
+  // Reemplazar el useEffect que carga empleados para manejar la limpieza del listener
+  useEffect(() => {
+    let unsubscribe = () => {}
+
+    if (companyId) {
+      unsubscribe = fetchEmployees()
+    }
+
+    // Limpiar el listener cuando el componente se desmonte o cuando cambie companyId
+    return () => {
+      unsubscribe()
+    }
+  }, [companyId, fetchEmployees])
+
+  // Eliminar o comentar el useFocusEffect ya que no es necesario con los listeners en tiempo real
+  // useFocusEffect(
+  //   useCallback(() => {
+  //     if (companyId) {
+  //       fetchEmployees();
+  //     }
+  //     return () => {}
+  //   }, [companyId, fetchEmployees]),
+  // );
 
   // Filtra la lista de empleados según el texto ingresado en la búsqueda
   const filteredEmployees = employees.filter(
@@ -109,35 +208,45 @@ const EmployeesScreen = () => {
     </TouchableOpacity>
   )
 
-  // Función para agregar un nuevo empleado a la lista
-  const addEmployee = () => {
-    if (newEmployee.name && newEmployee.code && newEmployee.phone) {
-      setIsLoading(true)
-
-      // Simular retraso de llamada a API
-      setTimeout(() => {
-        const newEmployeeWithId = { ...newEmployee, id: Date.now().toString() }
-        setEmployees([...employees, newEmployeeWithId])
-        setNewEmployee({ name: "", code: "", phone: "", role: "" })
-        setModalVisible(false)
-        setIsLoading(false)
-
-        // Si estamos en desktop, seleccionamos automáticamente el nuevo empleado
-        if (responsive.isDesktop) {
-          setSelectedEmployeeId(newEmployeeWithId.id)
-        }
-      }, 600)
-    }
-  }
-
   // Función para renderizar el estado vacío
-  const renderEmptyList = () => (
-    <View style={styles.emptyContainer}>
-      <MaterialIcons name="people-outline" size={60} color="#CCCCCC" />
-      <Text style={styles.emptyText}>No se encontraron empleados</Text>
-      <Text style={styles.emptySubtext}>Intenta con otra búsqueda o agrega un nuevo empleado</Text>
-    </View>
-  )
+  const renderEmptyList = () => {
+    if (isLoading) {
+      return (
+        <View style={styles.emptyContainer}>
+          <ActivityIndicator size="large" color={Colors.PRIMARYCOLOR} />
+          <Text style={styles.emptyText}>Cargando empleados...</Text>
+        </View>
+      )
+    }
+
+    if (error) {
+      return (
+        <View style={styles.emptyContainer}>
+          <MaterialIcons name="error-outline" size={60} color="#FF3B30" />
+          <Text style={styles.emptyText}>{error}</Text>
+          <TouchableOpacity
+            style={styles.retryButton}
+            onPress={() => {
+              setIsLoading(true)
+              setError(null)
+              // Trigger a re-fetch by updating the companyId state
+              setCompanyId((prev) => prev)
+            }}
+          >
+            <Text style={styles.retryButtonText}>Reintentar</Text>
+          </TouchableOpacity>
+        </View>
+      )
+    }
+
+    return (
+      <View style={styles.emptyContainer}>
+        <MaterialIcons name="people-outline" size={60} color="#CCCCCC" />
+        <Text style={styles.emptyText}>No se encontraron empleados</Text>
+        <Text style={styles.emptySubtext}>Intenta con otra búsqueda</Text>
+      </View>
+    )
+  }
 
   // Renderizar los detalles del empleado seleccionado (solo para desktop)
   const renderEmployeeDetails = () => {
@@ -176,7 +285,11 @@ const EmployeesScreen = () => {
             </View>
             <View style={styles.detailsItem}>
               <MaterialIcons name="email" size={20} color={Colors.PRIMARYCOLOR} />
-              <Text style={styles.detailsItemText}>{selectedEmployee.code.toLowerCase()}@senda.com</Text>
+              <Text style={styles.detailsItemText}>{selectedEmployee.email}</Text>
+            </View>
+            <View style={styles.detailsItem}>
+              <MaterialIcons name="badge" size={20} color={Colors.PRIMARYCOLOR} />
+              <Text style={styles.detailsItemText}>DNI: {selectedEmployee.dni}</Text>
             </View>
           </View>
 
@@ -191,13 +304,6 @@ const EmployeesScreen = () => {
               <Text style={styles.detailsItemText}>Cargo: {selectedEmployee.role}</Text>
             </View>
           </View>
-
-          <View style={styles.detailsActions}>
-            <TouchableOpacity style={styles.detailsActionButton}>
-              <MaterialIcons name="edit" size={20} color="#fff" />
-              <Text style={styles.detailsActionButtonText}>Editar</Text>
-            </TouchableOpacity>
-          </View>
         </View>
       </View>
     )
@@ -205,7 +311,7 @@ const EmployeesScreen = () => {
 
   return (
     <View style={styles.mainContainer}>
-      <StatusBar backgroundColor={Colors.PRIMARYCOLOR} barStyle="light-content" />
+      <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
 
       {/* Encabezado de la pantalla */}
       <View style={[styles.headerCitas, responsive.isDesktop && styles.headerCitasDesktop]}>
@@ -281,92 +387,6 @@ const EmployeesScreen = () => {
           />
         </View>
       )}
-
-      {/* Modal para añadir un nuevo empleado */}
-      <Modal
-        animationType="slide"
-        transparent={true}
-        visible={modalVisible}
-        onRequestClose={() => setModalVisible(false)}
-      >
-        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1 }}>
-          <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-            <View style={styles.centeredView}>
-              <View style={[styles.modalView, responsive.isDesktop && styles.modalViewDesktop]}>
-                <Text style={styles.modalTitle}>Nuevo Empleado</Text>
-
-                <ScrollView style={styles.formScrollView}>
-                  {/* Campos de entrada para registrar un nuevo empleado */}
-                  <View style={styles.inputContainer}>
-                    <Text style={styles.inputLabel}>Nombre</Text>
-                    <TextInput
-                      style={styles.input}
-                      placeholder="Nombre completo"
-                      value={newEmployee.name}
-                      onChangeText={(text) => setNewEmployee({ ...newEmployee, name: text })}
-                    />
-                  </View>
-
-                  <View style={styles.inputContainer}>
-                    <Text style={styles.inputLabel}>Código</Text>
-                    <TextInput
-                      style={styles.input}
-                      placeholder="Código de empleado"
-                      value={newEmployee.code}
-                      onChangeText={(text) => setNewEmployee({ ...newEmployee, code: text })}
-                    />
-                  </View>
-
-                  <View style={styles.inputContainer}>
-                    <Text style={styles.inputLabel}>Cargo</Text>
-                    <TextInput
-                      style={styles.input}
-                      placeholder="Cargo o puesto"
-                      value={newEmployee.role}
-                      onChangeText={(text) => setNewEmployee({ ...newEmployee, role: text })}
-                    />
-                  </View>
-
-                  <View style={styles.inputContainer}>
-                    <Text style={styles.inputLabel}>Teléfono</Text>
-                    <TextInput
-                      style={styles.input}
-                      placeholder="Número de teléfono"
-                      value={newEmployee.phone}
-                      onChangeText={(text) => setNewEmployee({ ...newEmployee, phone: text })}
-                      keyboardType="phone-pad"
-                    />
-                  </View>
-
-                  <View style={styles.buttonContainer}>
-                    {/* Botón para confirmar la adición del nuevo empleado */}
-                    <TouchableOpacity
-                      style={[styles.modalButton, styles.addModalButton]}
-                      onPress={addEmployee}
-                      disabled={isLoading}
-                    >
-                      {isLoading ? (
-                        <ActivityIndicator size="small" color="#fff" />
-                      ) : (
-                        <Text style={styles.modalButtonText}>Añadir</Text>
-                      )}
-                    </TouchableOpacity>
-
-                    {/* Botón para cerrar el modal sin agregar empleado */}
-                    <TouchableOpacity
-                      style={[styles.modalButton, styles.cancelModalButton]}
-                      onPress={() => setModalVisible(false)}
-                      disabled={isLoading}
-                    >
-                      <Text style={styles.cancelButtonText}>Cancelar</Text>
-                    </TouchableOpacity>
-                  </View>
-                </ScrollView>
-              </View>
-            </View>
-          </TouchableWithoutFeedback>
-        </KeyboardAvoidingView>
-      </Modal>
     </View>
   )
 }
@@ -384,7 +404,7 @@ const styles = StyleSheet.create({
   },
   headerCitas: {
     paddingTop: "10%",
-    backgroundColor: Colors.PRIMARYCOLOR,
+    backgroundColor: "#ffffff",
   },
   headerCitasDesktop: {
     paddingTop: 0,
@@ -438,36 +458,6 @@ const styles = StyleSheet.create({
     height: "100%",
     fontSize: 16,
     color: "#333",
-  },
-  addButton: {
-    backgroundColor: Colors.PRIMARYCOLOR,
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    borderRadius: 25,
-    marginBottom: 16,
-    alignItems: "center",
-    flexDirection: "row",
-    justifyContent: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
-    elevation: 3,
-  },
-  addButtonDesktop: {
-    borderRadius: 8,
-    paddingVertical: 12,
-    marginBottom: 20,
-    boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
-    transition: "all 0.2s ease",
-  },
-  buttonIcon: {
-    marginRight: 8,
-  },
-  addButtonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "bold",
   },
   listContainer: {
     flexGrow: 1,
@@ -557,89 +547,6 @@ const styles = StyleSheet.create({
   employeePhoneDesktop: {
     fontSize: 13,
   },
-  centeredView: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-  },
-  modalView: {
-    backgroundColor: "white",
-    borderRadius: 20,
-    padding: 24,
-    width: "85%",
-    maxHeight: "80%", // Limitar la altura máxima
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  modalViewDesktop: {
-    width: "40%",
-    maxWidth: 500,
-    borderRadius: 12,
-    boxShadow: "0 4px 20px rgba(0, 0, 0, 0.15)",
-  },
-  formScrollView: {
-    width: "100%",
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: "#333",
-    marginBottom: 16,
-    textAlign: "center",
-  },
-  inputContainer: {
-    marginBottom: 16,
-  },
-  inputLabel: {
-    fontSize: 14,
-    color: "#666",
-    marginBottom: 6,
-    fontWeight: "500",
-  },
-  input: {
-    height: 50,
-    width: "100%",
-    borderColor: "#E0E0E0",
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 15,
-    backgroundColor: "#fff",
-    fontSize: 16,
-    color: "#333",
-  },
-  buttonContainer: {
-    marginTop: 8,
-    marginBottom: 20, // Añadir espacio adicional al final
-  },
-  modalButton: {
-    padding: 14,
-    borderRadius: 12,
-    marginTop: 10,
-    width: "100%",
-    alignItems: "center",
-  },
-  addModalButton: {
-    backgroundColor: Colors.PRIMARYCOLOR,
-  },
-  cancelModalButton: {
-    backgroundColor: "#fff",
-    borderWidth: 1,
-    borderColor: "#E0E0E0",
-  },
-  modalButtonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-  cancelButtonText: {
-    color: "#666",
-    fontSize: 16,
-    fontWeight: "bold",
-  },
   emptyContainer: {
     flex: 1,
     justifyContent: "center",
@@ -658,6 +565,18 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginTop: 8,
     maxWidth: "80%",
+  },
+  retryButton: {
+    backgroundColor: Colors.PRIMARYCOLOR,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    marginTop: 16,
+  },
+  retryButtonText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "600",
   },
   // Estilos para el panel de detalles en desktop
   noSelectionContainer: {
@@ -738,26 +657,6 @@ const styles = StyleSheet.create({
     color: "#555",
     marginLeft: 12,
   },
-  detailsActions: {
-    marginTop: 24,
-    flexDirection: "row",
-    justifyContent: "flex-end",
-  },
-  detailsActionButton: {
-    backgroundColor: Colors.PRIMARYCOLOR,
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-  },
-  detailsActionButtonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "500",
-    marginLeft: 8,
-  },
 })
 
 export default EmployeesScreen
-

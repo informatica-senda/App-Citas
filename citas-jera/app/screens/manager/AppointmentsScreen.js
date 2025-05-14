@@ -407,14 +407,7 @@ const AppointmentsScreen = () => {
     return (
       <View style={styles.iosAppointmentsList}>
         <View style={styles.iosSelectedDateHeader}>
-          <View style={styles.iosTitleContainer}>
-            {selectedDate && <Text style={styles.iosSelectedDateText}>{formatDate(selectedDate)}</Text>}
-            {selectedDate && (
-              <TouchableOpacity style={styles.iosClearDateButton} onPress={clearDateSelection}>
-                <Ionicons name="close-circle" size={18} color="#8E8E93" />
-              </TouchableOpacity>
-            )}
-          </View>
+          
           <View style={styles.iosStatusFilterContainer}>
             <TouchableOpacity
               style={[styles.iosStatusFilterButton, statusFilter === "all" && styles.iosStatusFilterButtonActive]}
