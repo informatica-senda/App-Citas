@@ -19,6 +19,7 @@ import Colors from "@styles/colors"
 import { useResponsive } from "../../hooks/use-responsive"
 import { db } from "../../../firebaseConfig.js"
 import { doc, getDoc, collection, query, where, onSnapshot } from "firebase/firestore"
+import { auth } from "../../../firebaseConfig"
 
 // Create a completely separate web-specific component for the appointments button
 const WebAppointmentsButton = ({ onPress }) => {
@@ -107,6 +108,7 @@ const EmployeeDetailScreen = () => {
   const [loadingAppointments, setLoadingAppointments] = useState(false)
   const [appointmentsError, setAppointmentsError] = useState(null)
   const [sortOrder, setSortOrder] = useState("newest")
+  const [authUser, setAuthUser] = useState(null)
 
   // Cargar datos adicionales del empleado si es necesario
   useEffect(() => {
@@ -148,6 +150,28 @@ const EmployeeDetailScreen = () => {
     fetchAdditionalData()
   }, [employee])
 
+  // Fetch authenticated user data
+  useEffect(() => {
+    const fetchAuthUser = async () => {
+      try {
+        const user = auth.currentUser
+        if (user) {
+          const userDocRef = doc(db, "users", user.uid)
+          const userDocSnap = await getDoc(userDocRef)
+
+          if (userDocSnap.exists()) {
+            const userData = userDocSnap.data()
+            setAuthUser(userData)
+          }
+        }
+      } catch (err) {
+        console.error("Error fetching authenticated user:", err)
+      }
+    }
+
+    fetchAuthUser()
+  }, [])
+
   // Fetch confirmed appointments for this employee
   const fetchEmployeeAppointments = useCallback(() => {
     if (!employeeData.id) return () => {}
@@ -156,34 +180,41 @@ const EmployeeDetailScreen = () => {
     setAppointmentsError(null)
 
     try {
-      // Get the current user's role and subject from employeeData
-      const currentUserRole = employeeData.rawData?.role || ""
+      // Get the current user's role and subject from employeeData, with null checks
+      const currentUserRole = authUser?.role || ""
       console.log("Current User Role:", currentUserRole)
-      const currentUserSubject = employeeData.rawData?.subject || ""
+      const currentUserSubject = authUser?.subject || ""
+      const currentUser = auth.currentUser
+      const userId = currentUser?.uid
 
       // Base query - filter by teacherId and state
-      let appointmentsQuery = query(
-        collection(db, "dates"),
-        where("state", "==", true),
-      )
+      let appointmentsQuery = query(collection(db, "dates"), where("state", "==", true))
 
       // Add additional filtering for teachers based on subject
       if (currentUserRole === "teacher") {
         if (currentUserSubject === "psychology") {
           appointmentsQuery = query(
             collection(db, "dates"),
-            where("teacherId", "==", employeeData.id),
+            where("teacherId", "==", userId),
             where("state", "==", true),
             where("service", "==", "psychology"),
+            where("userId", "==", employeeData.id),
           )
         } else if (currentUserSubject === "nutrition") {
           appointmentsQuery = query(
             collection(db, "dates"),
-            where("teacherId", "==", employeeData.id),
+            where("teacherId", "==", userId),
             where("state", "==", true),
             where("service", "==", "nutrition"),
+            where("userId", "==", employeeData.id),
           )
         }
+      }else{
+        appointmentsQuery = query(
+            collection(db, "dates"),
+            where("state", "==", true),
+            where("userId", "==", employeeData.id),
+          )
       }
 
       // Set up real-time listener
@@ -251,7 +282,7 @@ const EmployeeDetailScreen = () => {
       setLoadingAppointments(false)
       return () => {}
     }
-  }, [employeeData.id])
+  }, [employeeData.id, authUser])
 
   const toggleSortOrder = () => {
     setSortOrder(sortOrder === "newest" ? "oldest" : "newest")
@@ -391,6 +422,38 @@ const EmployeeDetailScreen = () => {
           <Text style={styles.infoValue}>{employeeData.code}</Text>
         </View>
       </View>
+
+      {authUser && (
+        <>
+          <View style={styles.infoItem}>
+            <View style={styles.infoIconContainer}>
+              <MaterialIcons name="person" size={20} color={Colors.PRIMARYCOLOR} />
+            </View>
+            <View style={styles.infoContent}>
+              <Text style={styles.infoLabel}>Tu Rol</Text>
+              <Text style={styles.infoValue}>{authUser.role || "No asignado"}</Text>
+            </View>
+          </View>
+
+          {authUser.subject && (
+            <View style={styles.infoItem}>
+              <View style={styles.infoIconContainer}>
+                <MaterialIcons name="school" size={20} color={Colors.PRIMARYCOLOR} />
+              </View>
+              <View style={styles.infoContent}>
+                <Text style={styles.infoLabel}>Tu Especialidad</Text>
+                <Text style={styles.infoValue}>
+                  {authUser.subject === "psychology"
+                    ? "Psicología"
+                    : authUser.subject === "nutrition"
+                      ? "Nutrición"
+                      : authUser.subject}
+                </Text>
+              </View>
+            </View>
+          )}
+        </>
+      )}
     </View>
   )
 
@@ -497,6 +560,29 @@ const EmployeeDetailScreen = () => {
                   </Text>
                 </View>
               )}
+
+              {authUser && (
+                <>
+                  <View style={styles.webInfoRow}>
+                    <MaterialIcons name="person" size={20} color={Colors.PRIMARYCOLOR} />
+                    <Text style={styles.webInfoText}>Tu Rol: {authUser.role || "No asignado"}</Text>
+                  </View>
+
+                  {authUser.subject && (
+                    <View style={styles.webInfoRow}>
+                      <MaterialIcons name="school" size={20} color={Colors.PRIMARYCOLOR} />
+                      <Text style={styles.webInfoText}>
+                        Tu Especialidad:{" "}
+                        {authUser.subject === "psychology"
+                          ? "Psicología"
+                          : authUser.subject === "nutrition"
+                            ? "Nutrición"
+                            : authUser.subject}
+                      </Text>
+                    </View>
+                  )}
+                </>
+              )}
             </View>
 
             {/* Appointments Button - Web Specific */}
@@ -507,7 +593,7 @@ const EmployeeDetailScreen = () => {
         {/* Modal para mostrar las citas confirmadas */}
         <Modal
           visible={showAppointments}
-          animationType="slide"
+          animationType="fade"
           transparent={true}
           onRequestClose={() => setShowAppointments(false)}
         >
@@ -676,7 +762,7 @@ const EmployeeDetailScreen = () => {
       {/* Modal para mostrar las citas confirmadas */}
       <Modal
         visible={showAppointments}
-        animationType="slide"
+        animationType="fade"
         transparent={true}
         onRequestClose={() => setShowAppointments(false)}
       >
@@ -1122,10 +1208,10 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   psychologyBadge: {
-    backgroundColor: Colors.PSICOLOGIA || "#9C27B0",
+    backgroundColor: Colors.PSICOLOGIA || "#8996F2",
   },
   nutritionBadge: {
-    backgroundColor: Colors.NUTRICIÓN || "#4CAF50",
+    backgroundColor: Colors.NUTRICIÓN || "#6EB566",
   },
   categoryText: {
     color: "#FFFFFF",
@@ -1157,6 +1243,215 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "500",
     marginLeft: 6,
+  },
+
+  // Web-specific styles for the desktop split-screen layout
+  webDesktopContainer: {
+    flex: 1,
+    backgroundColor: "#FFFFFF",
+    height: "100%",
+  },
+  webDesktopScrollView: {
+    flex: 1,
+    padding: 20,
+  },
+  webProfileHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 30,
+  },
+  webAvatarContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: Colors.PRIMARYCOLOR,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 20,
+  },
+  webAvatarText: {
+    color: "#FFFFFF",
+    fontSize: 32,
+    fontWeight: "bold",
+  },
+  webProfileInfo: {
+    flex: 1,
+  },
+  webEmployeeName: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#333333",
+    marginBottom: 4,
+  },
+  webEmployeeRole: {
+    fontSize: 16,
+    color: "#666666",
+  },
+  webSection: {
+    marginBottom: 30,
+    borderBottom: "1px solid #EEEEEE",
+    paddingBottom: 20,
+  },
+  webSectionTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#333333",
+    marginBottom: 15,
+  },
+  webInfoRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  webInfoText: {
+    fontSize: 16,
+    color: "#333333",
+    marginLeft: 12,
+  },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.6)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalContent: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
+    width: "90%",
+    maxWidth: 550,
+    maxHeight: "85%",
+    padding: 0,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 10,
+    overflow: "hidden",
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 24,
+    paddingVertical: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: "#EAEAEA",
+    backgroundColor: "#FFFFFF",
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#222222",
+    letterSpacing: 0.2,
+  },
+  modalCloseButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#F5F5F5",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  emptyAppointmentsContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 60,
+  },
+  emptyAppointmentsText: {
+    fontSize: 16,
+    color: "#666",
+    marginTop: 16,
+    textAlign: "center",
+    lineHeight: 24,
+  },
+  appointmentsList: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 24,
+  },
+  appointmentItem: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 10,
+    padding: 0,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#EAEAEA",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
+    overflow: "hidden",
+  },
+  appointmentHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F2F2F2",
+    backgroundColor: "#FAFAFA",
+  },
+  appointmentTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#333333",
+    flex: 1,
+  },
+  categoryBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 6,
+    marginLeft: 8,
+  },
+  psychologyBadge: {
+    backgroundColor: Colors.PSICOLOGIA,
+  },
+  nutritionBadge: {
+    backgroundColor: Colors.NUTRICIÓN,
+  },
+  categoryText: {
+    color: "#FFFFFF",
+    fontSize: 12,
+    fontWeight: "600",
+    letterSpacing: 0.3,
+  },
+  appointmentDetail: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F5F5F5",
+  },
+  appointmentDetailText: {
+    fontSize: 14,
+    color: "#555555",
+    marginLeft: 12,
+    letterSpacing: 0.2,
+    flex: 1,
+  },
+  sortButton: {
+    backgroundColor: Colors.PRIMARYCOLOR,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    marginBottom: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  sortButtonText: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "600",
+    marginLeft: 8,
   },
 
   // Web-specific styles for the desktop split-screen layout

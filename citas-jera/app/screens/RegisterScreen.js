@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef, useState } from "react"
+import { useRef, useState, useEffect } from "react"
 import {
   View,
   Text,
@@ -15,82 +15,247 @@ import {
   Modal,
   ActivityIndicator,
   Alert,
+  Animated,
 } from "react-native"
 import { useNavigation } from "@react-navigation/native"
 import Input from "@components/Inputs.js"
 import Colors from "@styles/colors.js"
 import { createUserWithEmailAndPassword } from "firebase/auth"
 import { db, auth } from "../../firebaseConfig.js"
-import { doc, setDoc } from "firebase/firestore"
+import { doc, setDoc, collection, getDocs } from "firebase/firestore"
 import { useResponsive } from "../hooks/use-responsive"
+import { Picker } from "@react-native-picker/picker"
 
-// Componente principal de la pantalla de registro
+// Main registration screen component with two-step process
 const RegisterScreen = () => {
   const responsive = useResponsive()
   const [isLoading, setIsLoading] = useState(false)
   const navigation = useNavigation()
+  const [companies, setCompanies] = useState([])
+  const [selectedCompany, setSelectedCompany] = useState("")
+  const [selectedRole, setSelectedRole] = useState("user")
+  
+  // State for registration steps
+  const [currentStep, setCurrentStep] = useState(1)
+  const [formData, setFormData] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
+    phone: "",
+    companyId: "",
+    companyCode: "",
+    role: "user"
+  })
+  
+  // State for error messages
+  const [errors, setErrors] = useState({})
+  const [showError, setShowError] = useState(false)
+  const errorOpacity = useState(new Animated.Value(0))[0]
 
-  // Referencias para los campos de entrada
-  const fullNameRef = useRef()
+  // References for input fields
+  const firstNameRef = useRef()
+  const lastNameRef = useRef()
   const emailRef = useRef()
-  const dniRef = useRef()
+  const phoneRef = useRef()
   const companyCodeRef = useRef()
   const passwordRef = useRef()
   const confirmPasswordRef = useRef()
 
-  // Estado que controla la visibilidad de las contraseñas
+  // State for password visibility
   const [hidePassword, setHidePassword] = useState(true)
   const [hideConfirmPassword, setHideConfirmPassword] = useState(true)
+  
+  // State for mobile pickers visibility
+  const [isCompanyPickerOpen, setIsCompanyPickerOpen] = useState(false)
+  const [isRolePickerOpen, setIsRolePickerOpen] = useState(false)
 
-  /**
-   * Función que maneja el proceso de registro.
-   */
+  // Progress indicator animation
+  const progressAnimation = useState(new Animated.Value(0.5))[0]
+
+  // Fetch companies from Firestore
+  useEffect(() => {
+    const fetchCompanies = async () => {
+      try {
+        setIsLoading(true)
+        const companiesCollection = collection(db, "companies")
+        const companiesSnapshot = await getDocs(companiesCollection)
+        const companiesList = companiesSnapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }))
+        setCompanies(companiesList)
+        setIsLoading(false)
+      } catch (error) {
+        console.error("Error fetching companies:", error)
+        setIsLoading(false)
+        showErrorMessage("No se pudieron cargar las compañías")
+      }
+    }
+
+    fetchCompanies()
+  }, [])
+
+  // Update progress animation when step changes
+  useEffect(() => {
+    Animated.timing(progressAnimation, {
+      toValue: currentStep === 1 ? 0.5 : 1,
+      duration: 300,
+      useNativeDriver: false,
+    }).start()
+  }, [currentStep])
+
+  // Function to show error messages with animation
+  const showErrorMessage = (message, field = null) => {
+    if (field) {
+      setErrors(prev => ({ ...prev, [field]: message }))
+    } else {
+      setErrors(prev => ({ ...prev, global: message }))
+      setShowError(true)
+      Animated.sequence([
+        Animated.timing(errorOpacity, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        Animated.delay(3000),
+        Animated.timing(errorOpacity, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+      ]).start(() => {
+        setShowError(false)
+      })
+    }
+  }
+
+  // Function to validate a field
+  const validateField = (field, value, rules) => {
+    if (rules.required && !value) {
+      showErrorMessage(`${rules.label} es requerido`, field)
+      return false
+    }
+    
+    if (rules.pattern && !rules.pattern.test(value)) {
+      showErrorMessage(rules.message, field)
+      return false
+    }
+    
+    // Clear error if valid
+    setErrors(prev => {
+      const newErrors = { ...prev }
+      delete newErrors[field]
+      return newErrors
+    })
+    
+    return true
+  }
+
+  // Function to update form data
+  const updateFormData = () => {
+    const updatedData = {
+      ...formData,
+      firstName: firstNameRef.current?.getValue() || "",
+      lastName: lastNameRef.current?.getValue() || "",
+      email: emailRef.current?.getValue() || "",
+      password: passwordRef.current?.getValue() || "",
+      confirmPassword: confirmPasswordRef.current?.getValue() || "",
+      phone: phoneRef.current?.getValue() || "",
+      companyId: selectedCompany,
+      companyCode: companyCodeRef.current?.getValue() || "",
+      role: selectedRole
+    }
+    
+    setFormData(updatedData)
+    return updatedData
+  }
+
+  // Function to validate step 1
+  const validateStep1 = () => {
+    const data = updateFormData()
+    
+    // Validate first step fields
+    const isFirstNameValid = validateField('firstName', data.firstName, { required: true, label: 'Nombre' })
+    const isLastNameValid = validateField('lastName', data.lastName, { required: true, label: 'Apellidos' })
+    const isEmailValid = validateField('email', data.email, { 
+      required: true, 
+      label: 'Email',
+      pattern: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+      message: 'Por favor, introduce un email válido'
+    })
+    const isPasswordValid = validateField('password', data.password, { 
+      required: true, 
+      label: 'Contraseña',
+      pattern: /.{6,}/,
+      message: 'La contraseña debe tener al menos 6 caracteres'
+    })
+    
+    // Validate that passwords match
+    if (data.password !== data.confirmPassword) {
+      showErrorMessage("Las contraseñas no coinciden", "confirmPassword")
+      return false
+    }
+    
+    return isFirstNameValid && isLastNameValid && isEmailValid && isPasswordValid && 
+           data.password === data.confirmPassword
+  }
+
+  // Function to validate step 2
+  const validateStep2 = () => {
+    const data = updateFormData()
+    
+    // Validate second step fields
+    const isPhoneValid = validateField('phone', data.phone, { required: true, label: 'Teléfono' })
+    const isCompanyValid = validateField('company', data.companyId, { required: true, label: 'Compañía' })
+    const isCompanyCodeValid = validateField('companyCode', data.companyCode, { required: true, label: 'Código de compañía' })
+    
+    // Verify company code
+    const selectedCompanyData = companies.find((company) => company.id === data.companyId)
+    if (selectedCompanyData && selectedCompanyData.code !== data.companyCode) {
+      showErrorMessage("El código de compañía no es válido", "companyCode")
+      return false
+    }
+    
+    return isPhoneValid && isCompanyValid && isCompanyCodeValid &&
+           (!selectedCompanyData || selectedCompanyData.code === data.companyCode)
+  }
+
+  // Function to handle next step
+  const handleNextStep = () => {
+    if (validateStep1()) {
+      setCurrentStep(2)
+    }
+  }
+
+  // Function to handle previous step
+  const handlePrevStep = () => {
+    setCurrentStep(1)
+  }
+
+  // Function to handle registration
   const handleRegister = async () => {
-    const fullName = fullNameRef.current?.getValue()
-    const email = emailRef.current?.getValue()
-    const dni = dniRef.current?.getValue()
-    const companyCode = companyCodeRef.current?.getValue()
-    const password = passwordRef.current?.getValue()
-    const confirmPassword = confirmPasswordRef.current?.getValue()
-
-    // Validar que todos los campos estén completos
-    if (!fullName || !email || !dni || !companyCode || !password || !confirmPassword) {
-      Alert.alert("Error", "Por favor, completa todos los campos")
+    if (!validateStep2()) {
       return
     }
-
-    // Validar que las contraseñas coincidan
-    if (password !== confirmPassword) {
-      Alert.alert("Error", "Las contraseñas no coinciden")
-      return
-    }
-
-    // Validar formato de email
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(email)) {
-      Alert.alert("Error", "Por favor, introduce un email válido")
-      return
-    }
-
-    // Validar formato de DNI (8 números y una letra)
-    const dniRegex = /^[0-9]{8}[A-Za-z]$/
-    if (!dniRegex.test(dni)) {
-      Alert.alert("Error", "Por favor, introduce un DNI válido (8 números y una letra)")
-      return
-    }
-
+    
+    const data = updateFormData()
+    
     try {
       setIsLoading(true)
-      // Crear usuario en Firebase Authentication
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password)
+      // Create user in Firebase Authentication
+      const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password)
 
-      // Guardar información adicional en Firestore
+      // Save additional information in Firestore
       await setDoc(doc(db, "users", userCredential.user.uid), {
-        fullName,
-        email,
-        dni,
-        companyCode,
-        role: "user", // Por defecto, todos los usuarios registrados son usuarios normales
+        firstName: data.firstName,
+        lastName: data.lastName,
+        email: data.email,
+        phone: data.phone,
+        companyId: data.companyId,
+        companyCode: data.companyCode,
+        role: data.role,
         createdAt: new Date().toISOString(),
       })
 
@@ -108,23 +273,349 @@ const RegisterScreen = () => {
         errorMessage = "La contraseña debe tener al menos 6 caracteres"
       }
 
-      Alert.alert("Error", errorMessage)
+      showErrorMessage(errorMessage)
     }
   }
 
-  // Función para volver a la pantalla de login
+  // Function to navigate to login screen
   const navigateToLogin = () => {
     navigation.replace("LoginScreen")
+  }
+
+  // Component for role selector
+  const RoleSelector = ({ style }) => {
+    if (responsive.isDesktop) {
+      return (
+        <View style={[styles.iosInputContainer, style]}>
+          <Text style={styles.iosInputLabel}>Rol</Text>
+          <View style={styles.pickerContainer}>
+            <Picker
+              selectedValue={selectedRole}
+              onValueChange={(itemValue) => setSelectedRole(itemValue)}
+              style={styles.picker}
+            >
+              <Picker.Item label="Usuario (citas gestionadas)" value="user" />
+              <Picker.Item label="Usuario Externo (autogestión)" value="externalUser" />
+            </Picker>
+          </View>
+        </View>
+      )
+    } else {
+      // Mobile version with custom dropdown
+      return (
+        <View style={[styles.iosInputContainer, style]}>
+          <Text style={styles.iosInputLabel}>Rol</Text>
+          <TouchableOpacity 
+            style={styles.mobilePickerButton}
+            onPress={() => setIsRolePickerOpen(!isRolePickerOpen)}
+          >
+            <Text style={styles.mobilePickerButtonText}>
+              {selectedRole === 'user' ? 'Usuario (citas gestionadas)' : 'Usuario Externo (autogestión)'}
+            </Text>
+          </TouchableOpacity>
+          
+          {isRolePickerOpen && (
+            <View style={styles.mobilePickerDropdown}>
+              <TouchableOpacity 
+                style={styles.mobilePickerItem}
+                onPress={() => {
+                  setSelectedRole('user')
+                  setIsRolePickerOpen(false)
+                }}
+              >
+                <Text style={[
+                  styles.mobilePickerItemText,
+                  selectedRole === 'user' && styles.mobilePickerItemTextSelected
+                ]}>
+                  Usuario (citas gestionadas)
+                </Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.mobilePickerItem}
+                onPress={() => {
+                  setSelectedRole('externalUser')
+                  setIsRolePickerOpen(false)
+                }}
+              >
+                <Text style={[
+                  styles.mobilePickerItemText,
+                  selectedRole === 'externalUser' && styles.mobilePickerItemTextSelected
+                ]}>
+                  Usuario Externo (autogestión)
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+      )
+    }
+  }
+
+  // Component for company selector
+  const CompanySelector = ({ style }) => {
+    if (responsive.isDesktop) {
+      return (
+        <View style={[styles.iosInputContainer, style]}>
+          <Text style={styles.iosInputLabel}>Compañía</Text>
+          <View style={styles.pickerContainer}>
+            <Picker
+              selectedValue={selectedCompany}
+              onValueChange={(itemValue) => setSelectedCompany(itemValue)}
+              style={styles.picker}
+              enabled={!isLoading}
+            >
+              <Picker.Item label="Selecciona una compañía" value="" />
+              {companies.map((company) => (
+                <Picker.Item key={company.id} label={company.name} value={company.id} />
+              ))}
+            </Picker>
+          </View>
+          {errors.company && <Text style={styles.errorText}>{errors.company}</Text>}
+        </View>
+      )
+    } else {
+      // Mobile version with custom dropdown
+      const selectedCompanyName = selectedCompany 
+        ? companies.find(c => c.id === selectedCompany)?.name 
+        : "Selecciona una compañía";
+        
+      return (
+        <View style={[styles.iosInputContainer, style]}>
+          <Text style={styles.iosInputLabel}>Compañía</Text>
+          <TouchableOpacity 
+            style={styles.mobilePickerButton}
+            onPress={() => setIsCompanyPickerOpen(!isCompanyPickerOpen)}
+            disabled={isLoading}
+          >
+            <Text style={[
+              styles.mobilePickerButtonText,
+              !selectedCompany && styles.mobilePickerPlaceholder
+            ]}>
+              {selectedCompanyName}
+            </Text>
+          </TouchableOpacity>
+          
+          {isCompanyPickerOpen && (
+            <View style={styles.mobilePickerDropdown}>
+              {companies.map((company) => (
+                <TouchableOpacity 
+                  key={company.id}
+                  style={styles.mobilePickerItem}
+                  onPress={() => {
+                    setSelectedCompany(company.id)
+                    setIsCompanyPickerOpen(false)
+                  }}
+                >
+                  <Text style={[
+                    styles.mobilePickerItemText,
+                    selectedCompany === company.id && styles.mobilePickerItemTextSelected
+                  ]}>
+                    {company.name}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+          {errors.company && <Text style={styles.errorText}>{errors.company}</Text>}
+        </View>
+      )
+    }
+  }
+
+  // Component for progress indicator
+  const ProgressIndicator = () => {
+    return (
+      <View style={styles.progressContainer}>
+        <View style={styles.progressSteps}>
+          <View style={[styles.progressStep, styles.progressStepActive]}>
+            <Text style={styles.progressStepText}>1</Text>
+          </View>
+          <View style={styles.progressLine}>
+            <Animated.View 
+              style={[
+                styles.progressLineFill, 
+                { width: progressAnimation.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: ['0%', '100%']
+                }) }
+              ]} 
+            />
+          </View>
+          <View style={[
+            styles.progressStep, 
+            currentStep === 2 && styles.progressStepActive
+          ]}>
+            <Text style={styles.progressStepText}>2</Text>
+          </View>
+        </View>
+        <View style={styles.progressLabels}>
+          <Text style={styles.progressLabel}>Información básica</Text>
+          <Text style={styles.progressLabel}>Detalles adicionales</Text>
+        </View>
+      </View>
+    )
+  }
+
+  // Component for error message
+  const ErrorMessage = () => {
+    if (!showError) return null;
+    
+    return (
+      <Animated.View style={[styles.errorToast, { opacity: errorOpacity }]}>
+        <Text style={styles.errorToastText}>{errors.global}</Text>
+      </Animated.View>
+    );
+  };
+
+  // Render step 1 form
+  const renderStep1 = () => {
+    return (
+      <>
+        <View style={styles.iosFormRow}>
+          <View style={styles.iosFormColumn}>
+            <Input
+              title={"Nombre"}
+              ref={firstNameRef}
+              containerStyle={styles.iosInputContainer}
+              inputStyle={styles.iosInput}
+              titleStyle={styles.iosInputLabel}
+              defaultValue={formData.firstName}
+            />
+            {errors.firstName && <Text style={styles.errorText}>{errors.firstName}</Text>}
+          </View>
+          <View style={styles.iosFormColumn}>
+            <Input
+              title={"Apellidos"}
+              ref={lastNameRef}
+              containerStyle={styles.iosInputContainer}
+              inputStyle={styles.iosInput}
+              titleStyle={styles.iosInputLabel}
+              defaultValue={formData.lastName}
+            />
+            {errors.lastName && <Text style={styles.errorText}>{errors.lastName}</Text>}
+          </View>
+        </View>
+
+        <View style={styles.iosFormRow}>
+          <View style={styles.iosFormColumn}>
+            <Input
+              title={"Correo Electrónico"}
+              ref={emailRef}
+              containerStyle={styles.iosInputContainer}
+              inputStyle={styles.iosInput}
+              titleStyle={styles.iosInputLabel}
+              keyboardType="email-address"
+              defaultValue={formData.email}
+            />
+            {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
+          </View>
+        </View>
+
+        <View style={styles.iosFormRow}>
+          <View style={styles.iosFormColumn}>
+            <Input
+              secureTextEntry={hidePassword}
+              handleAction={() => setHidePassword(!hidePassword)}
+              ref={passwordRef}
+              title={"Contraseña"}
+              icon={hidePassword ? "eye" : "eye-slash"}
+              containerStyle={styles.iosInputContainer}
+              inputStyle={styles.iosInput}
+              titleStyle={styles.iosInputLabel}
+              defaultValue={formData.password}
+            />
+            {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
+          </View>
+          <View style={styles.iosFormColumn}>
+            <Input
+              secureTextEntry={hideConfirmPassword}
+              handleAction={() => setHideConfirmPassword(!hideConfirmPassword)}
+              ref={confirmPasswordRef}
+              title={"Confirmar Contraseña"}
+              icon={hideConfirmPassword ? "eye" : "eye-slash"}
+              containerStyle={styles.iosInputContainer}
+              inputStyle={styles.iosInput}
+              titleStyle={styles.iosInputLabel}
+              defaultValue={formData.confirmPassword}
+            />
+            {errors.confirmPassword && <Text style={styles.errorText}>{errors.confirmPassword}</Text>}
+          </View>
+        </View>
+
+        <TouchableOpacity style={styles.iosNextButton} onPress={handleNextStep} activeOpacity={0.8}>
+          <Text style={styles.iosButtonText}>Continuar</Text>
+        </TouchableOpacity>
+      </>
+    )
+  }
+
+  // Render step 2 form
+  const renderStep2 = () => {
+    return (
+      <>
+        <View style={styles.iosFormRow}>
+          <View style={styles.iosFormColumn}>
+            <Input
+              title={"Teléfono"}
+              ref={phoneRef}
+              containerStyle={styles.iosInputContainer}
+              inputStyle={styles.iosInput}
+              titleStyle={styles.iosInputLabel}
+              keyboardType="phone-pad"
+              defaultValue={formData.phone}
+            />
+            {errors.phone && <Text style={styles.errorText}>{errors.phone}</Text>}
+          </View>
+        </View>
+
+        <View style={styles.iosFormRow}>
+          <View style={styles.iosFormColumn}>
+            <CompanySelector />
+          </View>
+          <View style={styles.iosFormColumn}>
+            <RoleSelector />
+          </View>
+        </View>
+
+        <View style={styles.iosFormRow}>
+          <View style={styles.iosFormColumn}>
+            <Input
+              title={"Código de Compañía"}
+              ref={companyCodeRef}
+              containerStyle={styles.iosInputContainer}
+              inputStyle={styles.iosInput}
+              titleStyle={styles.iosInputLabel}
+              defaultValue={formData.companyCode}
+            />
+            {errors.companyCode && <Text style={styles.errorText}>{errors.companyCode}</Text>}
+          </View>
+        </View>
+
+        <View style={styles.buttonGroup}>
+          <TouchableOpacity style={styles.iosBackButton} onPress={handlePrevStep} activeOpacity={0.8}>
+            <Text style={styles.iosBackButtonText}>Volver</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity style={styles.iosRegisterButton} onPress={handleRegister} activeOpacity={0.8}>
+            <Text style={styles.iosButtonText}>Crear Cuenta</Text>
+          </TouchableOpacity>
+        </View>
+      </>
+    )
   }
 
   return (
     <SafeAreaView style={[styles.iosSafeArea, responsive.isDesktop && styles.containerDesktop]}>
       <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
 
+      {/* Global error message */}
+      <ErrorMessage />
+
       {responsive.isDesktop ? (
-        // Layout para escritorio - diseño de dos columnas con estilo iOS
+        // Desktop layout - two-column design with iOS style
         <View style={styles.desktopLayout}>
-          {/* Panel lateral con imagen/branding */}
+          {/* Sidebar with branding */}
           <View style={styles.desktopSidebar}>
             <View style={styles.sidebarContent}>
               <View style={styles.logoContainerDesktop}>
@@ -140,66 +631,17 @@ const RegisterScreen = () => {
             </View>
           </View>
 
-          {/* Panel de formulario con estilo iOS */}
+          {/* Form panel with iOS style */}
           <View style={styles.desktopFormPanel}>
             <View style={styles.formContainer}>
               <Text style={styles.desktopFormTitle}>Crear Cuenta</Text>
               <Text style={styles.desktopFormSubtitle}>Completa el formulario para registrarte en el sistema</Text>
+              
+              {/* Progress indicator */}
+              <ProgressIndicator />
 
               <View style={styles.formFields}>
-                <View style={styles.iosFormRow}>
-                  <View style={styles.iosFormColumn}>
-                    <Input
-                      title={"Nombre y Apellidos"}
-                      ref={fullNameRef}
-                      containerStyle={styles.iosInputContainer}
-                      inputStyle={styles.iosInput}
-                      titleStyle={styles.iosInputLabel}
-                    />
-                  </View>
-                  <View style={styles.iosFormColumn}>
-                    <Input
-                      title={"Correo Electrónico"}
-                      ref={emailRef}
-                      containerStyle={styles.iosInputContainer}
-                      inputStyle={styles.iosInput}
-                      titleStyle={styles.iosInputLabel}
-                    />
-                  </View>
-                </View>
-
-                
-
-                <View style={styles.iosFormRow}>
-                  <View style={styles.iosFormColumn}>
-                    <Input
-                      secureTextEntry={hidePassword}
-                      handleAction={() => setHidePassword(!hidePassword)}
-                      ref={passwordRef}
-                      title={"Contraseña"}
-                      icon={hidePassword ? "eye" : "eye-slash"}
-                      containerStyle={styles.iosInputContainer}
-                      inputStyle={styles.iosInput}
-                      titleStyle={styles.iosInputLabel}
-                    />
-                  </View>
-                  <View style={styles.iosFormColumn}>
-                    <Input
-                      secureTextEntry={hideConfirmPassword}
-                      handleAction={() => setHideConfirmPassword(!hideConfirmPassword)}
-                      ref={confirmPasswordRef}
-                      title={"Confirmar Contraseña"}
-                      icon={hideConfirmPassword ? "eye" : "eye-slash"}
-                      containerStyle={styles.iosInputContainer}
-                      inputStyle={styles.iosInput}
-                      titleStyle={styles.iosInputLabel}
-                    />
-                  </View>
-                </View>
-
-                <TouchableOpacity style={styles.iosRegisterButton} onPress={handleRegister} activeOpacity={0.8}>
-                  <Text style={styles.iosRegisterButtonText}>Crear Cuenta</Text>
-                </TouchableOpacity>
+                {currentStep === 1 ? renderStep1() : renderStep2()}
               </View>
 
               <View style={styles.iosLoginSection}>
@@ -216,7 +658,7 @@ const RegisterScreen = () => {
           </View>
         </View>
       ) : (
-        // Layout para móvil - diseño iOS
+        // Mobile layout - iOS style
         <KeyboardAvoidingView
           style={styles.iosContent}
           behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -227,63 +669,125 @@ const RegisterScreen = () => {
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
-            {/* Encabezado con el logo */}
+            {/* Header with logo */}
             <View style={styles.iosHeader}>
               <Image source={require("@assets/icon.png")} style={styles.iosLogo} resizeMode="contain" />
             </View>
 
-            {/* Título de la aplicación */}
+            {/* App title */}
             <Text style={styles.iosAppTitle}>Senda Servicios</Text>
             <Text style={styles.iosAppSubtitle}>Crear una nueva cuenta</Text>
+            
+            {/* Progress indicator */}
+            <ProgressIndicator />
 
-            {/* Campos de entrada con estilo iOS */}
+            {/* Form fields with iOS style */}
             <View style={styles.iosMobileFormContainer}>
-              <Input
-                title={"Nombre y Apellidos"}
-                ref={fullNameRef}
-                containerStyle={styles.iosInputContainer}
-                inputStyle={styles.iosInput}
-                titleStyle={styles.iosInputLabel}
-              />
+              {currentStep === 1 ? (
+                // Step 1 - Mobile
+                <>
+                  <Input
+                    title={"Nombre"}
+                    ref={firstNameRef}
+                    containerStyle={styles.iosInputContainer}
+                    inputStyle={styles.iosInput}
+                    titleStyle={styles.iosInputLabel}
+                    defaultValue={formData.firstName}
+                  />
+                  {errors.firstName && <Text style={styles.errorText}>{errors.firstName}</Text>}
 
-              <Input
-                title={"Correo Electrónico"}
-                ref={emailRef}
-                containerStyle={styles.iosInputContainer}
-                inputStyle={styles.iosInput}
-                titleStyle={styles.iosInputLabel}
-              />
+                  <Input
+                    title={"Apellidos"}
+                    ref={lastNameRef}
+                    containerStyle={styles.iosInputContainer}
+                    inputStyle={styles.iosInput}
+                    titleStyle={styles.iosInputLabel}
+                    defaultValue={formData.lastName}
+                  />
+                  {errors.lastName && <Text style={styles.errorText}>{errors.lastName}</Text>}
 
-              
+                  <Input
+                    title={"Correo Electrónico"}
+                    ref={emailRef}
+                    containerStyle={styles.iosInputContainer}
+                    inputStyle={styles.iosInput}
+                    titleStyle={styles.iosInputLabel}
+                    keyboardType="email-address"
+                    defaultValue={formData.email}
+                  />
+                  {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
 
-              <Input
-                secureTextEntry={hidePassword}
-                handleAction={() => setHidePassword(!hidePassword)}
-                ref={passwordRef}
-                title={"Contraseña"}
-                icon={hidePassword ? "eye" : "eye-slash"}
-                containerStyle={styles.iosInputContainer}
-                inputStyle={styles.iosInput}
-                titleStyle={styles.iosInputLabel}
-              />
+                  <Input
+                    secureTextEntry={hidePassword}
+                    handleAction={() => setHidePassword(!hidePassword)}
+                    ref={passwordRef}
+                    title={"Contraseña"}
+                    icon={hidePassword ? "eye" : "eye-slash"}
+                    containerStyle={styles.iosInputContainer}
+                    inputStyle={styles.iosInput}
+                    titleStyle={styles.iosInputLabel}
+                    defaultValue={formData.password}
+                  />
+                  {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
 
-              <Input
-                secureTextEntry={hideConfirmPassword}
-                handleAction={() => setHideConfirmPassword(!hideConfirmPassword)}
-                ref={confirmPasswordRef}
-                title={"Confirmar Contraseña"}
-                icon={hideConfirmPassword ? "eye" : "eye-slash"}
-                containerStyle={styles.iosInputContainer}
-                inputStyle={styles.iosInput}
-                titleStyle={styles.iosInputLabel}
-              />
+                  <Input
+                    secureTextEntry={hideConfirmPassword}
+                    handleAction={() => setHideConfirmPassword(!hideConfirmPassword)}
+                    ref={confirmPasswordRef}
+                    title={"Confirmar Contraseña"}
+                    icon={hideConfirmPassword ? "eye" : "eye-slash"}
+                    containerStyle={styles.iosInputContainer}
+                    inputStyle={styles.iosInput}
+                    titleStyle={styles.iosInputLabel}
+                    defaultValue={formData.confirmPassword}
+                  />
+                  {errors.confirmPassword && <Text style={styles.errorText}>{errors.confirmPassword}</Text>}
 
-              {/* Botón de registro con estilo iOS */}
-              <TouchableOpacity style={styles.iosRegisterButton} onPress={handleRegister} activeOpacity={0.8}>
-                <Text style={styles.iosRegisterButtonText}>Crear Cuenta</Text>
-              </TouchableOpacity>
+                  <TouchableOpacity style={styles.iosNextButton} onPress={handleNextStep} activeOpacity={0.8}>
+                    <Text style={styles.iosButtonText}>Continuar</Text>
+                  </TouchableOpacity>
+                </>
+              ) : (
+                // Step 2 - Mobile
+                <>
+                  <Input
+                    title={"Teléfono"}
+                    ref={phoneRef}
+                    containerStyle={styles.iosInputContainer}
+                    inputStyle={styles.iosInput}
+                    titleStyle={styles.iosInputLabel}
+                    keyboardType="phone-pad"
+                    defaultValue={formData.phone}
+                  />
+                  {errors.phone && <Text style={styles.errorText}>{errors.phone}</Text>}
 
-              {/* Sección de login para móvil con estilo iOS */}
+                  <CompanySelector style={styles.mobileSelector} />
+
+                  <RoleSelector style={styles.mobileSelector} />
+
+                  <Input
+                    title={"Código de Compañía"}
+                    ref={companyCodeRef}
+                    containerStyle={styles.iosInputContainer}
+                    inputStyle={styles.iosInput}
+                    titleStyle={styles.iosInputLabel}
+                    defaultValue={formData.companyCode}
+                  />
+                  {errors.companyCode && <Text style={styles.errorText}>{errors.companyCode}</Text>}
+
+                  <View style={styles.mobileButtonGroup}>
+                    <TouchableOpacity style={styles.iosMobileBackButton} onPress={handlePrevStep} activeOpacity={0.8}>
+                      <Text style={styles.iosBackButtonText}>Volver</Text>
+                    </TouchableOpacity>
+                    
+                    <TouchableOpacity style={styles.iosMobileRegisterButton} onPress={handleRegister} activeOpacity={0.8}>
+                      <Text style={styles.iosButtonText}>Crear Cuenta</Text>
+                    </TouchableOpacity>
+                  </View>
+                </>
+              )}
+
+              {/* Login section for mobile */}
               <View style={styles.iosLoginSection}>
                 <Text style={styles.iosLoginText}>¿Ya tienes una cuenta?</Text>
                 <TouchableOpacity onPress={navigateToLogin}>
@@ -295,7 +799,7 @@ const RegisterScreen = () => {
         </KeyboardAvoidingView>
       )}
 
-      {/* Modal de carga con estilo iOS */}
+      {/* Loading modal with iOS style */}
       <Modal visible={isLoading} transparent={true} animationType="fade">
         <View style={styles.iosModalContainer}>
           <View style={styles.iosModalContent}>
@@ -308,9 +812,9 @@ const RegisterScreen = () => {
   )
 }
 
-// Definición de estilos para la pantalla de registro con estilo iOS
+// Styles for the registration screen with iOS style
 const styles = StyleSheet.create({
-  // Estilos generales con estilo iOS
+  // General styles with iOS style
   iosSafeArea: {
     flex: 1,
     backgroundColor: "#FFFFFF",
@@ -350,7 +854,7 @@ const styles = StyleSheet.create({
     fontSize: 17,
     color: "#3A3A3C",
     textAlign: "center",
-    marginBottom: 40,
+    marginBottom: 20,
   },
   iosMobileFormContainer: {
     width: "100%",
@@ -386,8 +890,10 @@ const styles = StyleSheet.create({
     color: "#3A3A3C",
     marginBottom: 8,
     fontWeight: "500",
+    paddingHorizontal: 16,
+    paddingTop: 12,
   },
-  iosRegisterButton: {
+  iosNextButton: {
     backgroundColor: Colors.PRIMARYCOLOR,
     borderRadius: 10,
     paddingVertical: 16,
@@ -399,8 +905,64 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     elevation: 2,
   },
-  iosRegisterButtonText: {
+  iosRegisterButton: {
+    flex: 1,
+    backgroundColor: Colors.PRIMARYCOLOR,
+    borderRadius: 10,
+    paddingVertical: 16,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  iosBackButton: {
+    flex: 1,
+    backgroundColor: "#F2F2F7",
+    borderRadius: 10,
+    paddingVertical: 16,
+    alignItems: "center",
+    marginRight: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  iosMobileRegisterButton: {
+    flex: 2,
+    backgroundColor: Colors.PRIMARYCOLOR,
+    borderRadius: 10,
+    paddingVertical: 16,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  iosMobileBackButton: {
+    flex: 1,
+    backgroundColor: "#F2F2F7",
+    borderRadius: 10,
+    paddingVertical: 16,
+    alignItems: "center",
+    marginRight: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  iosButtonText: {
     color: "#FFFFFF",
+    fontSize: 17,
+    fontWeight: "600",
+    letterSpacing: 0.5,
+  },
+  iosBackButtonText: {
+    color: "#3A3A3C",
     fontSize: 17,
     fontWeight: "600",
     letterSpacing: 0.5,
@@ -430,8 +992,16 @@ const styles = StyleSheet.create({
     color: "#8E8E93",
     textAlign: "center",
   },
+  buttonGroup: {
+    flexDirection: "row",
+    marginTop: 24,
+  },
+  mobileButtonGroup: {
+    flexDirection: "row",
+    marginTop: 24,
+  },
 
-  // Modal con estilo iOS
+  // Modal with iOS style
   iosModalContainer: {
     flex: 1,
     justifyContent: "center",
@@ -454,7 +1024,7 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
 
-  // Estilos para desktop
+  // Desktop styles
   desktopLayout: {
     flexDirection: "row",
     height: "100%",
@@ -533,13 +1103,180 @@ const styles = StyleSheet.create({
     width: "100%",
   },
 
-  // Estilos para el formulario en columnas (desktop)
+  // Form layout styles (desktop)
   iosFormRow: {
     flexDirection: "row",
     marginBottom: 20,
     gap: 20,
   },
   iosFormColumn: {
+    flex: 1,
+  },
+
+  // Picker styles
+  pickerContainer: {
+    paddingHorizontal: 12,
+    paddingBottom: 12,
+  },
+  picker: {
+    height: 50,
+  },
+  mobileSelector: {
+    marginBottom: 20,
+  },
+  
+  // Mobile picker custom styles
+  mobilePickerButton: {
+    backgroundColor: "#F5F5F5",
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#E5E5EA",
+  },
+  mobilePickerButtonText: {
+    fontSize: 17,
+    color: "#000000",
+  },
+  mobilePickerPlaceholder: {
+    color: "#8E8E93",
+  },
+  mobilePickerDropdown: {
+    position: "absolute",
+    top: "100%",
+    left: 0,
+    right: 0,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#E5E5EA",
+    marginTop: 4,
+    zIndex: 1000,
+    elevation: 5,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    maxHeight: 200,
+  },
+  mobilePickerItem: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F2F2F7",
+  },
+  mobilePickerItemText: {
+    fontSize: 16,
+    color: "#000000",
+  },
+  mobilePickerItemTextSelected: {
+    color: Colors.PRIMARYCOLOR,
+    fontWeight: "600",
+  },
+  
+  // Error message styles
+  errorText: {
+    color: "#FF3B30",
+    fontSize: 13,
+    marginTop: -16,
+    marginBottom: 16,
+    marginLeft: 16,
+  },
+  errorToast: {
+    position: "absolute",
+    top: Platform.OS === "ios" ? 50 : 30,
+    left: 20,
+    right: 20,
+    backgroundColor: "rgba(255, 59, 48, 0.9)",
+    borderRadius: 8,
+    padding: 12,
+    zIndex: 9999,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  errorToastText: {
+    color: "#FFFFFF",
+    fontSize: 15,
+    fontWeight: "500",
+    textAlign: "center",
+  },
+  
+  // Progress indicator styles
+  progressContainer: {
+    marginBottom: 30,
+    marginTop: 10,
+  },
+  progressSteps: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  progressStep: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#F2F2F7",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#E5E5EA",
+  },
+  progressStepActive: {
+    backgroundColor: Colors.PRIMARYCOLOR,
+    borderColor: Colors.PRIMARYCOLOR,
+  },
+  progressStepText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#8E8E93",
+  },
+  progressStepActive: {
+    backgroundColor: Colors.PRIMARYCOLOR,
+  },
+  progressStepText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#8E8E93",
+  },
+  progressStepActive: {
+    backgroundColor: Colors.PRIMARYCOLOR,
+  },
+  progressStepText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#8E8E93",
+  },
+  progressStepActive: {
+    backgroundColor: Colors.PRIMARYCOLOR,
+  },
+  progressLine: {
+    height: 4,
+    backgroundColor: "#F2F2F7",
+    flex: 1,
+    marginHorizontal: 10,
+    position: "relative",
+    overflow: "hidden",
+  },
+  progressLineFill: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    height: "100%",
+    backgroundColor: Colors.PRIMARYCOLOR,
+  },
+  progressLabels: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 8,
+    paddingHorizontal: 10,
+  },
+  progressLabel: {
+    fontSize: 14,
+    color: "#8E8E93",
+    textAlign: "center",
     flex: 1,
   },
 })

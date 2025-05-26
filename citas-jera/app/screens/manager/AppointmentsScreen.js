@@ -358,6 +358,10 @@ const AppointmentsScreen = () => {
     setModalVisible(true)
   }
 
+  const handleDeleteAppointment = (id) => {
+  setAppointments((prev) => prev.filter((appointment) => appointment.id !== id))
+}
+
   // Filtrar citas según el filtro activo, la fecha seleccionada y el estado
   const getFilteredAppointments = () => {
     return appointments.filter((appointment) => {
@@ -760,6 +764,7 @@ const AppointmentsScreen = () => {
         appointment={selectedAppointment}
         visible={modalVisible}
         onClose={() => setModalVisible(false)}
+        onDelete={handleDeleteAppointment}
         modalStyle={styles.iosModal}
         contentStyle={styles.iosModalContent}
         titleStyle={styles.iosModalTitle}
