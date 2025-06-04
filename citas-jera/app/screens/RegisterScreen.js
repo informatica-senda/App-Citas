@@ -261,7 +261,7 @@ const RegisterScreen = () => {
 
       setIsLoading(false)
       Alert.alert("Registro exitoso", "Tu cuenta ha sido creada correctamente", [
-        { text: "OK", onPress: () => navigation.navigate("Login") },
+        { text: "OK", onPress: () => navigation.replace("LoginScreen") },
       ])
     } catch (error) {
       setIsLoading(false)
