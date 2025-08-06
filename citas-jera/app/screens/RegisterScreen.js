@@ -22,7 +22,14 @@ import Input from "@components/Inputs.js"
 import Colors from "@styles/colors.js"
 import { createUserWithEmailAndPassword } from "firebase/auth"
 import { db, auth } from "../../firebaseConfig.js"
-import { doc, setDoc, collection, getDocs } from "firebase/firestore"
+import {
+  collection,
+  getDocs,
+  query,
+  where,
+  doc,
+  setDoc
+} from "firebase/firestore"
 import { useResponsive } from "../hooks/use-responsive"
 import { Picker } from "@react-native-picker/picker"
 
@@ -74,28 +81,42 @@ const RegisterScreen = () => {
   // Progress indicator animation
   const progressAnimation = useState(new Animated.Value(0.5))[0]
 
-  // Fetch companies from Firestore
   useEffect(() => {
-    const fetchCompanies = async () => {
-      try {
-        setIsLoading(true)
-        const companiesCollection = collection(db, "companies")
-        const companiesSnapshot = await getDocs(companiesCollection)
-        const companiesList = companiesSnapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }))
-        setCompanies(companiesList)
-        setIsLoading(false)
-      } catch (error) {
-        console.error("Error fetching companies:", error)
-        setIsLoading(false)
-        showErrorMessage("No se pudieron cargar las compañías")
-      }
-    }
+  const fetchCompanies = async () => {
+    setIsLoading(true);
+    try {
+      const companiesCollection = collection(db, "companies");
+      const companiesSnapshot  = await getDocs(companiesCollection);
+      const companiesList = companiesSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      setCompanies(companiesList);
 
-    fetchCompanies()
-  }, [])
+    } catch (error) {
+      // Diferenciamos entre entornos
+      if (process.env.NODE_ENV === 'development') {
+        // En desarrollo mostramos el stack completo
+        console.error("Error fetching companies (full error):", error);
+      } else {
+        // En producción solo el mensaje y código
+        console.error(`Error fetching companies: [${error.code || 'UNKNOWN'}] ${error.message}`);
+      }
+
+      // Mostramos al usuario un mensaje enriquecido con el código de error
+      showErrorMessage(
+        `Ha ocurrido un error cargando las compañías. ` +
+        `Código: ${error.code || 'sin código'}. ` +
+        `Detalle: ${error.message || 'no disponible'}.`
+      );
+
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  fetchCompanies();
+}, []);
 
   // Update progress animation when step changes
   useEffect(() => {
@@ -235,47 +256,103 @@ const RegisterScreen = () => {
   }
 
   // Function to handle registration
-  const handleRegister = async () => {
-    if (!validateStep2()) {
-      return
-    }
-    
-    const data = updateFormData()
-    
-    try {
-      setIsLoading(true)
-      // Create user in Firebase Authentication
-      const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password)
+const handleRegister = async () => {
+  // 1. Actualizamos formData
+  const data = updateFormData(); // debe traer phone y companyCode
 
-      // Save additional information in Firestore
-      await setDoc(doc(db, "users", userCredential.user.uid), {
-        firstName: data.firstName,
-        lastName: data.lastName,
-        email: data.email,
-        phone: data.phone,
-        companyId: data.companyId,
-        companyCode: data.companyCode,
-        role: data.role,
-        createdAt: new Date().toISOString(),
-      })
-
-      setIsLoading(false)
-      Alert.alert("Registro exitoso", "Tu cuenta ha sido creada correctamente", [
-        { text: "OK", onPress: () => navigation.replace("LoginScreen") },
-      ])
-    } catch (error) {
-      setIsLoading(false)
-      let errorMessage = "Ha ocurrido un error durante el registro"
-
-      if (error.code === "auth/email-already-in-use") {
-        errorMessage = "Este email ya está registrado"
-      } else if (error.code === "auth/weak-password") {
-        errorMessage = "La contraseña debe tener al menos 6 caracteres"
-      }
-
-      showErrorMessage(errorMessage)
-    }
+  // 2. Validaciones básicas
+  if (!validateStep1()) return;
+  if (!data.phone) {
+    showErrorMessage("El teléfono es requerido", "phone");
+    return;
   }
+  if (!data.companyCode) {
+    showErrorMessage("El código de compañía es requerido", "companyCode");
+    return;
+  }
+
+  setIsLoading(true);
+
+  try {
+    // 3. Comprobar existencia de la empresa por código o código de admin
+    const companiesRef = collection(db, "companies");
+
+    // Primero buscamos por campo `code`
+    let q = query(companiesRef, where("code", "==", data.companyCode));
+    let snapshot = await getDocs(q);
+    let isAdminCode = false;
+
+    // Si no encontramos con `code`, probamos con `codeAdmin`
+    if (snapshot.empty) {
+      q = query(companiesRef, where("codeAdmin", "==", data.companyCode));
+      snapshot = await getDocs(q);
+      if (snapshot.empty) {
+        throw {
+          code: "COMPANY_NOT_FOUND",
+          message: "No existe ninguna empresa con ese código"
+        };
+      }
+      isAdminCode = true;
+    }
+
+    const companyDoc  = snapshot.docs[0];
+    const companyData = companyDoc.data();
+
+    // 4. Crear usuario en Auth
+    const userCredential = await createUserWithEmailAndPassword(
+      auth,
+      data.email,
+      data.password
+    );
+    const uid = userCredential.user.uid;
+
+    // 5. Escribir usuario en Firestore, asignando rol según tipo de código
+    await setDoc(doc(db, "users", uid), {
+      firstName:    data.firstName,
+      lastName:     data.lastName,
+      email:        data.email,
+      phone:        data.phone,
+      companyId:    companyDoc.id,
+      companyName:  companyData.name,
+      companyCode:  data.companyCode,
+      role:         isAdminCode
+                    ? "manager"
+                    : companyData.defaultRole,
+      createdAt:    new Date().toISOString(),
+    });
+
+    setIsLoading(false);
+    Alert.alert(
+      "Registro exitoso",
+      "Tu cuenta ha sido creada correctamente",
+      [{ text: "OK", onPress: () => navigation.replace("LoginScreen") }]
+    );
+
+  } catch (error) {
+    setIsLoading(false);
+
+    // 6. Si el usuario se había creado en Auth, lo borramos
+    const currentUser = auth.currentUser;
+    if (currentUser) {
+      try {
+        await currentUser.delete();
+        console.log("User deleted after failed registration");
+      } catch (e) { /* ignoramos */ }
+    }
+
+    // 7. Mostrar mensaje de error
+    let errorMessage = error.message || "Ha ocurrido un error durante el registro";
+    if (error.code === "auth/email-already-in-use") {
+      errorMessage = "Este email ya está registrado";
+    } else if (error.code === "auth/weak-password") {
+      errorMessage = "La contraseña debe tener al menos 6 caracteres";
+    } else if (error.code === "COMPANY_NOT_FOUND") {
+      errorMessage = error.message;
+    }
+    showErrorMessage(errorMessage);
+  }
+};
+
 
   // Function to navigate to login screen
   const navigateToLogin = () => {
@@ -353,7 +430,7 @@ const RegisterScreen = () => {
   }
 
   // Component for company selector
-  const CompanySelector = ({ style }) => {
+  /**const CompanySelector = ({ style }) => {
     if (responsive.isDesktop) {
       return (
         <View style={[styles.iosInputContainer, style]}>
@@ -421,7 +498,7 @@ const RegisterScreen = () => {
         </View>
       )
     }
-  }
+  }*/
 
   // Component for progress indicator
   const ProgressIndicator = () => {
@@ -569,14 +646,14 @@ const RegisterScreen = () => {
           </View>
         </View>
 
-        <View style={styles.iosFormRow}>
+        {/*<View style={styles.iosFormRow}>
           <View style={styles.iosFormColumn}>
             <CompanySelector />
           </View>
           <View style={styles.iosFormColumn}>
             <RoleSelector />
           </View>
-        </View>
+        </View>*/}
 
         <View style={styles.iosFormRow}>
           <View style={styles.iosFormColumn}>
@@ -687,6 +764,7 @@ const RegisterScreen = () => {
                 // Step 1 - Mobile
                 <>
                   <Input
+                  key={"firstName"}
                     title={"Nombre"}
                     ref={firstNameRef}
                     containerStyle={styles.iosInputContainer}
@@ -697,6 +775,7 @@ const RegisterScreen = () => {
                   {errors.firstName && <Text style={styles.errorText}>{errors.firstName}</Text>}
 
                   <Input
+                    key={"lastName"}
                     title={"Apellidos"}
                     ref={lastNameRef}
                     containerStyle={styles.iosInputContainer}
@@ -707,6 +786,7 @@ const RegisterScreen = () => {
                   {errors.lastName && <Text style={styles.errorText}>{errors.lastName}</Text>}
 
                   <Input
+                    key={"email"}
                     title={"Correo Electrónico"}
                     ref={emailRef}
                     containerStyle={styles.iosInputContainer}
@@ -718,6 +798,7 @@ const RegisterScreen = () => {
                   {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
 
                   <Input
+                    key={"password"}
                     secureTextEntry={hidePassword}
                     handleAction={() => setHidePassword(!hidePassword)}
                     ref={passwordRef}
@@ -731,6 +812,7 @@ const RegisterScreen = () => {
                   {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
 
                   <Input
+                    key={"confirmPassword"}
                     secureTextEntry={hideConfirmPassword}
                     handleAction={() => setHideConfirmPassword(!hideConfirmPassword)}
                     ref={confirmPasswordRef}
@@ -751,6 +833,7 @@ const RegisterScreen = () => {
                 // Step 2 - Mobile
                 <>
                   <Input
+                    key={"phone"}
                     title={"Teléfono"}
                     ref={phoneRef}
                     containerStyle={styles.iosInputContainer}
@@ -761,11 +844,13 @@ const RegisterScreen = () => {
                   />
                   {errors.phone && <Text style={styles.errorText}>{errors.phone}</Text>}
 
-                  <CompanySelector style={styles.mobileSelector} />
+                  {/*<CompanySelector style={styles.mobileSelector} />
+                  
 
-                  <RoleSelector style={styles.mobileSelector} />
+                  <RoleSelector style={styles.mobileSelector} />*/}
 
                   <Input
+                    key={"companyCode"}
                     title={"Código de Compañía"}
                     ref={companyCodeRef}
                     containerStyle={styles.iosInputContainer}
@@ -810,6 +895,8 @@ const RegisterScreen = () => {
       </Modal>
     </SafeAreaView>
   )
+
+  
 }
 
 // Styles for the registration screen with iOS style

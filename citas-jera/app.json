@@ -19,23 +19,28 @@
       }
     },
     "plugins": [
-      
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera"
+        }
+      ],
       "expo-font",
       [
-      "expo-build-properties",
-      {
-        "android": {
-          "minSdkVersion": 24,
-          "compileSdkVersion": 35,
-          "googleServicesFile": "./google-services.json"
-        },
-        "ios": {
-          "deploymentTarget": "15.1",
-          "useFrameworks": "static",
-          "googleServicesFile":"./GoogleService-Info.plist"
+        "expo-build-properties",
+        {
+          "android": {
+            "minSdkVersion": 24,
+            "compileSdkVersion": 35,
+            "googleServicesFile": "./google-services.json"
+          },
+          "ios": {
+            "deploymentTarget": "15.1",
+            "useFrameworks": "static",
+            "googleServicesFile":"./GoogleService-Info.plist"
+          }
         }
-      }
-    ]
+      ]
     ],
     "splash": {
       "image": "./assets/splash.png",

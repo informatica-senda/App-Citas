@@ -73,7 +73,7 @@ const LoginScreen = () => {
               admin: "HomeManager",       // Si quieres mantener "admin" como alias de manager
               manager: "HomeManager",
               user: "HomeUser",
-              externalUser: "HomeUser",
+              employee: "HomeEmployee",
               teacher: "HomeTeacher"
             }
   
@@ -101,7 +101,7 @@ const LoginScreen = () => {
   
   // Función para navegar a la pantalla de registro
   const navigateToRegister = () => {
-    navigation.replace("RegisterScreen")
+    navigation.navigate("RegisterScreen")
   }
 
   // Manejador de eventos de teclado para detectar la tecla Enter
