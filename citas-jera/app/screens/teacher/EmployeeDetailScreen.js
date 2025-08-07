@@ -96,11 +96,25 @@ const EmployeeDetailScreen = () => {
       email: "No disponible",
       department: "No asignado",
       startDate: "No disponible",
+    },
+  }
+
+  const { company } = route.params || {
+    // Valores por defecto en caso de que no se pasen parámetros
+    employee: {
+      name: "Empresa Demo",
+      code: "DEMO25",
+      phone: "No disponible",
+      role: "No asignado",
+      email: "No disponible",
+      department: "No asignado",
+      startDate: "No disponible",
       address: "No disponible",
     },
   }
 
   const [employeeData, setEmployeeData] = useState(employee)
+  const [companyData, setCompanyData] = useState(company)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState(null)
   const [showAppointments, setShowAppointments] = useState(false)
@@ -122,18 +136,22 @@ const EmployeeDetailScreen = () => {
       if (employee.id) {
         setIsLoading(true)
         try {
+          const companyDocRef = doc(db, "companies", employee.companyId)
+          const companyDocSnap = await getDoc(companyDocRef)
           const employeeDocRef = doc(db, "users", employee.id)
           const employeeDocSnap = await getDoc(employeeDocRef)
 
-          if (employeeDocSnap.exists()) {
+          if (employeeDocSnap.exists()&& companyDocSnap.exists()) {
             const data = employeeDocSnap.data()
+            const companyData = companyDocSnap.data()
+            consoleq.log("Company Data:", companyData)
             setEmployeeData({
               ...employee,
               email: data.email || "No disponible",
               dni: data.dni || "No disponible",
               department: data.department || "No asignado",
               startDate: data.startDate || "No disponible",
-              address: data.address || "No disponible",
+              address: companyData.address || "No disponible",
               subject: data.subject || "No asignado",
               rawData: data,
             })
@@ -182,7 +200,6 @@ const EmployeeDetailScreen = () => {
     try {
       // Get the current user's role and subject from employeeData, with null checks
       const currentUserRole = authUser?.role || ""
-      console.log("Current User Role:", currentUserRole)
       const currentUserSubject = authUser?.subject || ""
       const currentUser = auth.currentUser
       const userId = currentUser?.uid

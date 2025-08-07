@@ -9,7 +9,8 @@ if (!config.resolver.sourceExts.includes('cjs')) {
   config.resolver.sourceExts.push('cjs');
 }
 
-// Desactivar la resolución de exports inestables
-config.resolver.unstable_enablePackageExports = false;
+// Activar la resolución de exports inestables
+config.resolver.unstable_enablePackageExports = true;
+
 
 module.exports = config;

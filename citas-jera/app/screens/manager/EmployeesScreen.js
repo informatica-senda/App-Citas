@@ -56,7 +56,7 @@ const EmployeesScreen = () => {
 
           if (userDocSnap.exists()) {
             const userData = userDocSnap.data()
-            setCurrentUser(userData)
+            setCurrentUser(userData.firstName)
             setCompanyId(userData.companyId)
           } else {
             setError("No se encontró información del usuario")
@@ -85,7 +85,7 @@ const EmployeesScreen = () => {
       const employeesQuery = query(
         collection(db, "users"),
         where("companyId", "==", companyId),
-        where("role", "==", "user"),
+        where("role", "in", ["user", "employee"]),
       )
 
       // Establecer un listener en tiempo real con onSnapshot

@@ -3,7 +3,7 @@
     "name": "Senda Servicio Empleados",
     "slug": "SendaServicioEmpleados",
     "version": "1.0.0",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "scheme": "senda-servicio-empleados",
     "ios": {
       "googleServicesFile": "./GoogleService-Info.plist",
@@ -16,7 +16,11 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#FFFFFF"
-      }
+      },
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "plugins": [
       [
@@ -37,7 +41,7 @@
           "ios": {
             "deploymentTarget": "15.1",
             "useFrameworks": "static",
-            "googleServicesFile":"./GoogleService-Info.plist"
+            "googleServicesFile": "./GoogleService-Info.plist"
           }
         }
       ]
@@ -46,6 +50,11 @@
       "image": "./assets/splash.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "b000852e-3a53-47cb-89b4-da33da235158"
+      }
     }
   }
 }
