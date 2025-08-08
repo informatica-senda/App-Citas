@@ -281,6 +281,8 @@ const RegisterScreen = () => {
 
     setIsLoading(true);
 
+    navigateToScanner();
+
     try {
       // 3. Comprobar existencia de la empresa por código o código de admin
       const companiesRef = collection(db, "companies");
@@ -303,14 +305,11 @@ const RegisterScreen = () => {
         isAdminCode = true;
       }
 
-
-      navigateToScanner();
-
       const companyDoc = snapshot.docs[0];
       const companyData = companyDoc.data();
 
       // 4. Crear usuario en Auth
-      /**const userCredential = await createUserWithEmailAndPassword(
+      const userCredential = await createUserWithEmailAndPassword(
         auth,
         data.email,
         data.password
@@ -337,7 +336,7 @@ const RegisterScreen = () => {
         "Registro exitoso",
         "Tu cuenta ha sido creada correctamente",
         [{ text: "OK", onPress: () => navigation.replace("LoginScreen") }]
-      );*/
+      );
 
     } catch (error) {
       setIsLoading(false);
