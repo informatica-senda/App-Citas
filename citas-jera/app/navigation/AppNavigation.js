@@ -14,6 +14,7 @@ import HomeTeacher from '@screens/teacher/HomeTeacher.js';
 import EmployeeDetailScreen from '@screens/teacher/EmployeeDetailScreen.js';
 import AppointmentCalendarScreen from '@components/AppoimentCalendarScreen.js';
 import RegisterScreen from '@screens/RegisterScreen.js';
+import ScannerScreen from '@screens/ScannerScreen.js';
 
 // Creamos una instancia del stack navigator, que nos permitirá manejar la navegación entre distintas pantallas
 // Stack Navigator es una forma de navegación donde las pantallas se apilan unas sobre otras
@@ -50,6 +51,11 @@ function AppNavigator() {
       <Stack.Screen
         name="RegisterScreen"
         component={RegisterScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="ScannerScreen"
+        component={ScannerScreen}
         options={{ headerShown: false }}
       />
       <Stack.Screen

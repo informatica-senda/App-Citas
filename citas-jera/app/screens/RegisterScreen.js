@@ -32,6 +32,7 @@ import {
 } from "firebase/firestore"
 import { useResponsive } from "../hooks/use-responsive"
 import { Picker } from "@react-native-picker/picker"
+import { useCameraPermissions } from "expo-camera"
 
 // Main registration screen component with two-step process
 const RegisterScreen = () => {
@@ -41,7 +42,7 @@ const RegisterScreen = () => {
   const [companies, setCompanies] = useState([])
   const [selectedCompany, setSelectedCompany] = useState("")
   const [selectedRole, setSelectedRole] = useState("user")
-  
+
   // State for registration steps
   const [currentStep, setCurrentStep] = useState(1)
   const [formData, setFormData] = useState({
@@ -55,7 +56,7 @@ const RegisterScreen = () => {
     companyCode: "",
     role: "user"
   })
-  
+
   // State for error messages
   const [errors, setErrors] = useState({})
   const [showError, setShowError] = useState(false)
@@ -73,7 +74,7 @@ const RegisterScreen = () => {
   // State for password visibility
   const [hidePassword, setHidePassword] = useState(true)
   const [hideConfirmPassword, setHideConfirmPassword] = useState(true)
-  
+
   // State for mobile pickers visibility
   const [isCompanyPickerOpen, setIsCompanyPickerOpen] = useState(false)
   const [isRolePickerOpen, setIsRolePickerOpen] = useState(false)
@@ -81,42 +82,45 @@ const RegisterScreen = () => {
   // Progress indicator animation
   const progressAnimation = useState(new Animated.Value(0.5))[0]
 
+  const [permission, requestPermission] = useCameraPermissions();
+  const isCameraPermissionGranted = Boolean(permission?.granted);
+
   useEffect(() => {
-  const fetchCompanies = async () => {
-    setIsLoading(true);
-    try {
-      const companiesCollection = collection(db, "companies");
-      const companiesSnapshot  = await getDocs(companiesCollection);
-      const companiesList = companiesSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-      setCompanies(companiesList);
+    const fetchCompanies = async () => {
+      setIsLoading(true);
+      try {
+        const companiesCollection = collection(db, "companies");
+        const companiesSnapshot = await getDocs(companiesCollection);
+        const companiesList = companiesSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+        setCompanies(companiesList);
 
-    } catch (error) {
-      // Diferenciamos entre entornos
-      if (process.env.NODE_ENV === 'development') {
-        // En desarrollo mostramos el stack completo
-        console.error("Error fetching companies (full error):", error);
-      } else {
-        // En producción solo el mensaje y código
-        console.error(`Error fetching companies: [${error.code || 'UNKNOWN'}] ${error.message}`);
+      } catch (error) {
+        // Diferenciamos entre entornos
+        if (process.env.NODE_ENV === 'development') {
+          // En desarrollo mostramos el stack completo
+          console.error("Error fetching companies (full error):", error);
+        } else {
+          // En producción solo el mensaje y código
+          console.error(`Error fetching companies: [${error.code || 'UNKNOWN'}] ${error.message}`);
+        }
+
+        // Mostramos al usuario un mensaje enriquecido con el código de error
+        showErrorMessage(
+          `Ha ocurrido un error cargando las compañías. ` +
+          `Código: ${error.code || 'sin código'}. ` +
+          `Detalle: ${error.message || 'no disponible'}.`
+        );
+
+      } finally {
+        setIsLoading(false);
       }
+    };
 
-      // Mostramos al usuario un mensaje enriquecido con el código de error
-      showErrorMessage(
-        `Ha ocurrido un error cargando las compañías. ` +
-        `Código: ${error.code || 'sin código'}. ` +
-        `Detalle: ${error.message || 'no disponible'}.`
-      );
-
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  fetchCompanies();
-}, []);
+    fetchCompanies();
+  }, []);
 
   // Update progress animation when step changes
   useEffect(() => {
@@ -158,19 +162,19 @@ const RegisterScreen = () => {
       showErrorMessage(`${rules.label} es requerido`, field)
       return false
     }
-    
+
     if (rules.pattern && !rules.pattern.test(value)) {
       showErrorMessage(rules.message, field)
       return false
     }
-    
+
     // Clear error if valid
     setErrors(prev => {
       const newErrors = { ...prev }
       delete newErrors[field]
       return newErrors
     })
-    
+
     return true
   }
 
@@ -188,7 +192,7 @@ const RegisterScreen = () => {
       companyCode: companyCodeRef.current?.getValue() || "",
       role: selectedRole
     }
-    
+
     setFormData(updatedData)
     return updatedData
   }
@@ -196,51 +200,51 @@ const RegisterScreen = () => {
   // Function to validate step 1
   const validateStep1 = () => {
     const data = updateFormData()
-    
+
     // Validate first step fields
     const isFirstNameValid = validateField('firstName', data.firstName, { required: true, label: 'Nombre' })
     const isLastNameValid = validateField('lastName', data.lastName, { required: true, label: 'Apellidos' })
-    const isEmailValid = validateField('email', data.email, { 
-      required: true, 
+    const isEmailValid = validateField('email', data.email, {
+      required: true,
       label: 'Email',
       pattern: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
       message: 'Por favor, introduce un email válido'
     })
-    const isPasswordValid = validateField('password', data.password, { 
-      required: true, 
+    const isPasswordValid = validateField('password', data.password, {
+      required: true,
       label: 'Contraseña',
       pattern: /.{6,}/,
       message: 'La contraseña debe tener al menos 6 caracteres'
     })
-    
+
     // Validate that passwords match
     if (data.password !== data.confirmPassword) {
       showErrorMessage("Las contraseñas no coinciden", "confirmPassword")
       return false
     }
-    
-    return isFirstNameValid && isLastNameValid && isEmailValid && isPasswordValid && 
-           data.password === data.confirmPassword
+
+    return isFirstNameValid && isLastNameValid && isEmailValid && isPasswordValid &&
+      data.password === data.confirmPassword
   }
 
   // Function to validate step 2
   const validateStep2 = () => {
     const data = updateFormData()
-    
+
     // Validate second step fields
     const isPhoneValid = validateField('phone', data.phone, { required: true, label: 'Teléfono' })
     const isCompanyValid = validateField('company', data.companyId, { required: true, label: 'Compañía' })
     const isCompanyCodeValid = validateField('companyCode', data.companyCode, { required: true, label: 'Código de compañía' })
-    
+
     // Verify company code
     const selectedCompanyData = companies.find((company) => company.id === data.companyId)
     if (selectedCompanyData && selectedCompanyData.code !== data.companyCode) {
       showErrorMessage("El código de compañía no es válido", "companyCode")
       return false
     }
-    
+
     return isPhoneValid && isCompanyValid && isCompanyCodeValid &&
-           (!selectedCompanyData || selectedCompanyData.code === data.companyCode)
+      (!selectedCompanyData || selectedCompanyData.code === data.companyCode)
   }
 
   // Function to handle next step
@@ -250,108 +254,115 @@ const RegisterScreen = () => {
     }
   }
 
+  const navigateToScanner = () => {
+    navigation.navigate("ScannerScreen");
+  }
+
   // Function to handle previous step
   const handlePrevStep = () => {
     setCurrentStep(1)
   }
 
   // Function to handle registration
-const handleRegister = async () => {
-  // 1. Actualizamos formData
-  const data = updateFormData(); // debe traer phone y companyCode
+  const handleRegister = async () => {
+    // 1. Actualizamos formData
+    const data = updateFormData(); // debe traer phone y companyCode
 
-  // 2. Validaciones básicas
-  if (!validateStep1()) return;
-  if (!data.phone) {
-    showErrorMessage("El teléfono es requerido", "phone");
-    return;
-  }
-  if (!data.companyCode) {
-    showErrorMessage("El código de compañía es requerido", "companyCode");
-    return;
-  }
+    // 2. Validaciones básicas
+    if (!validateStep1()) return;
+    if (!data.phone) {
+      showErrorMessage("El teléfono es requerido", "phone");
+      return;
+    }
+    if (!data.companyCode) {
+      showErrorMessage("El código de compañía es requerido", "companyCode");
+      return;
+    }
 
-  setIsLoading(true);
+    setIsLoading(true);
 
-  try {
-    // 3. Comprobar existencia de la empresa por código o código de admin
-    const companiesRef = collection(db, "companies");
+    try {
+      // 3. Comprobar existencia de la empresa por código o código de admin
+      const companiesRef = collection(db, "companies");
 
-    // Primero buscamos por campo `code`
-    let q = query(companiesRef, where("code", "==", data.companyCode));
-    let snapshot = await getDocs(q);
-    let isAdminCode = false;
+      // Primero buscamos por campo `code`
+      let q = query(companiesRef, where("code", "==", data.companyCode));
+      let snapshot = await getDocs(q);
+      let isAdminCode = false;
 
-    // Si no encontramos con `code`, probamos con `codeAdmin`
-    if (snapshot.empty) {
-      q = query(companiesRef, where("codeAdmin", "==", data.companyCode));
-      snapshot = await getDocs(q);
+      // Si no encontramos con `code`, probamos con `codeAdmin`
       if (snapshot.empty) {
-        throw {
-          code: "COMPANY_NOT_FOUND",
-          message: "No existe ninguna empresa con ese código"
-        };
+        q = query(companiesRef, where("codeAdmin", "==", data.companyCode));
+        snapshot = await getDocs(q);
+        if (snapshot.empty) {
+          throw {
+            code: "COMPANY_NOT_FOUND",
+            message: "No existe ninguna empresa con ese código"
+          };
+        }
+        isAdminCode = true;
       }
-      isAdminCode = true;
+
+
+      navigateToScanner();
+
+      const companyDoc = snapshot.docs[0];
+      const companyData = companyDoc.data();
+
+      // 4. Crear usuario en Auth
+      /**const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        data.email,
+        data.password
+      );
+      const uid = userCredential.user.uid;
+
+      // 5. Escribir usuario en Firestore, asignando rol según tipo de código
+      await setDoc(doc(db, "users", uid), {
+        firstName: data.firstName,
+        lastName: data.lastName,
+        email: data.email,
+        phone: data.phone,
+        companyId: companyDoc.id,
+        companyName: companyData.name,
+        companyCode: data.companyCode,
+        role: isAdminCode
+          ? "manager"
+          : companyData.defaultRole,
+        createdAt: new Date().toISOString(),
+      });
+
+      setIsLoading(false);
+      Alert.alert(
+        "Registro exitoso",
+        "Tu cuenta ha sido creada correctamente",
+        [{ text: "OK", onPress: () => navigation.replace("LoginScreen") }]
+      );*/
+
+    } catch (error) {
+      setIsLoading(false);
+
+      // 6. Si el usuario se había creado en Auth, lo borramos
+      const currentUser = auth.currentUser;
+      if (currentUser) {
+        try {
+          await currentUser.delete();
+          console.log("User deleted after failed registration");
+        } catch (e) {  ignoramos }
+      }
+
+      // 7. Mostrar mensaje de error
+      let errorMessage = error.message || "Ha ocurrido un error durante el registro";
+      if (error.code === "auth/email-already-in-use") {
+        errorMessage = "Este email ya está registrado";
+      } else if (error.code === "auth/weak-password") {
+        errorMessage = "La contraseña debe tener al menos 6 caracteres";
+      } else if (error.code === "COMPANY_NOT_FOUND") {
+        errorMessage = error.message;
+      }
+      showErrorMessage(errorMessage);
     }
-
-    const companyDoc  = snapshot.docs[0];
-    const companyData = companyDoc.data();
-
-    // 4. Crear usuario en Auth
-    const userCredential = await createUserWithEmailAndPassword(
-      auth,
-      data.email,
-      data.password
-    );
-    const uid = userCredential.user.uid;
-
-    // 5. Escribir usuario en Firestore, asignando rol según tipo de código
-    await setDoc(doc(db, "users", uid), {
-      firstName:    data.firstName,
-      lastName:     data.lastName,
-      email:        data.email,
-      phone:        data.phone,
-      companyId:    companyDoc.id,
-      companyName:  companyData.name,
-      companyCode:  data.companyCode,
-      role:         isAdminCode
-                    ? "manager"
-                    : companyData.defaultRole,
-      createdAt:    new Date().toISOString(),
-    });
-
-    setIsLoading(false);
-    Alert.alert(
-      "Registro exitoso",
-      "Tu cuenta ha sido creada correctamente",
-      [{ text: "OK", onPress: () => navigation.replace("LoginScreen") }]
-    );
-
-  } catch (error) {
-    setIsLoading(false);
-
-    // 6. Si el usuario se había creado en Auth, lo borramos
-    const currentUser = auth.currentUser;
-    if (currentUser) {
-      try {
-        await currentUser.delete();
-        console.log("User deleted after failed registration");
-      } catch (e) { /* ignoramos */ }
-    }
-
-    // 7. Mostrar mensaje de error
-    let errorMessage = error.message || "Ha ocurrido un error durante el registro";
-    if (error.code === "auth/email-already-in-use") {
-      errorMessage = "Este email ya está registrado";
-    } else if (error.code === "auth/weak-password") {
-      errorMessage = "La contraseña debe tener al menos 6 caracteres";
-    } else if (error.code === "COMPANY_NOT_FOUND") {
-      errorMessage = error.message;
-    }
-    showErrorMessage(errorMessage);
-  }
-};
+  };
 
 
   // Function to navigate to login screen
@@ -382,7 +393,7 @@ const handleRegister = async () => {
       return (
         <View style={[styles.iosInputContainer, style]}>
           <Text style={styles.iosInputLabel}>Rol</Text>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.mobilePickerButton}
             onPress={() => setIsRolePickerOpen(!isRolePickerOpen)}
           >
@@ -390,10 +401,10 @@ const handleRegister = async () => {
               {selectedRole === 'user' ? 'Usuario (citas gestionadas)' : 'Usuario Externo (autogestión)'}
             </Text>
           </TouchableOpacity>
-          
+
           {isRolePickerOpen && (
             <View style={styles.mobilePickerDropdown}>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.mobilePickerItem}
                 onPress={() => {
                   setSelectedRole('user')
@@ -407,8 +418,8 @@ const handleRegister = async () => {
                   Usuario (citas gestionadas)
                 </Text>
               </TouchableOpacity>
-              
-              <TouchableOpacity 
+
+              <TouchableOpacity
                 style={styles.mobilePickerItem}
                 onPress={() => {
                   setSelectedRole('externalUser')
@@ -509,18 +520,20 @@ const handleRegister = async () => {
             <Text style={styles.progressStepText}>1</Text>
           </View>
           <View style={styles.progressLine}>
-            <Animated.View 
+            <Animated.View
               style={[
-                styles.progressLineFill, 
-                { width: progressAnimation.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: ['0%', '100%']
-                }) }
-              ]} 
+                styles.progressLineFill,
+                {
+                  width: progressAnimation.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: ['0%', '100%']
+                  })
+                }
+              ]}
             />
           </View>
           <View style={[
-            styles.progressStep, 
+            styles.progressStep,
             currentStep === 2 && styles.progressStepActive
           ]}>
             <Text style={styles.progressStepText}>2</Text>
@@ -537,7 +550,7 @@ const handleRegister = async () => {
   // Component for error message
   const ErrorMessage = () => {
     if (!showError) return null;
-    
+
     return (
       <Animated.View style={[styles.errorToast, { opacity: errorOpacity }]}>
         <Text style={styles.errorToastText}>{errors.global}</Text>
@@ -673,7 +686,7 @@ const handleRegister = async () => {
           <TouchableOpacity style={styles.iosBackButton} onPress={handlePrevStep} activeOpacity={0.8}>
             <Text style={styles.iosBackButtonText}>Volver</Text>
           </TouchableOpacity>
-          
+
           <TouchableOpacity style={styles.iosRegisterButton} onPress={handleRegister} activeOpacity={0.8}>
             <Text style={styles.iosButtonText}>Crear Cuenta</Text>
           </TouchableOpacity>
@@ -713,7 +726,7 @@ const handleRegister = async () => {
             <View style={styles.formContainer}>
               <Text style={styles.desktopFormTitle}>Crear Cuenta</Text>
               <Text style={styles.desktopFormSubtitle}>Completa el formulario para registrarte en el sistema</Text>
-              
+
               {/* Progress indicator */}
               <ProgressIndicator />
 
@@ -754,7 +767,7 @@ const handleRegister = async () => {
             {/* App title */}
             <Text style={styles.iosAppTitle}>Senda Servicios</Text>
             <Text style={styles.iosAppSubtitle}>Crear una nueva cuenta</Text>
-            
+
             {/* Progress indicator */}
             <ProgressIndicator />
 
@@ -764,7 +777,7 @@ const handleRegister = async () => {
                 // Step 1 - Mobile
                 <>
                   <Input
-                  key={"firstName"}
+                    key={"firstName"}
                     title={"Nombre"}
                     ref={firstNameRef}
                     containerStyle={styles.iosInputContainer}
@@ -864,7 +877,7 @@ const handleRegister = async () => {
                     <TouchableOpacity style={styles.iosMobileBackButton} onPress={handlePrevStep} activeOpacity={0.8}>
                       <Text style={styles.iosBackButtonText}>Volver</Text>
                     </TouchableOpacity>
-                    
+
                     <TouchableOpacity style={styles.iosMobileRegisterButton} onPress={handleRegister} activeOpacity={0.8}>
                       <Text style={styles.iosButtonText}>Crear Cuenta</Text>
                     </TouchableOpacity>
@@ -896,7 +909,7 @@ const handleRegister = async () => {
     </SafeAreaView>
   )
 
-  
+
 }
 
 // Styles for the registration screen with iOS style
@@ -1211,7 +1224,7 @@ const styles = StyleSheet.create({
   mobileSelector: {
     marginBottom: 20,
   },
-  
+
   // Mobile picker custom styles
   mobilePickerButton: {
     backgroundColor: "#F5F5F5",
@@ -1260,7 +1273,7 @@ const styles = StyleSheet.create({
     color: Colors.PRIMARYCOLOR,
     fontWeight: "600",
   },
-  
+
   // Error message styles
   errorText: {
     color: "#FF3B30",
@@ -1290,7 +1303,7 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     textAlign: "center",
   },
-  
+
   // Progress indicator styles
   progressContainer: {
     marginBottom: 30,
