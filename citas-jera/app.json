@@ -3,12 +3,14 @@
     "name": "Senda Servicio Empleados",
     "slug": "SendaServicioEmpleados",
     "version": "1.0.0",
-    "newArchEnabled": false,
     "scheme": "senda-servicio-empleados",
     "ios": {
       "googleServicesFile": "./GoogleService-Info.plist",
       "bundleIdentifier": "com.sendagestion.servicioempleadosenda",
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "googleServicesFile": "./google-services.json",
