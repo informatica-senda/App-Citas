@@ -1,142 +1,402 @@
-// RequestScreen.js - Updated to match the reference design
-import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, Modal, Alert, TextInput, ScrollView } from 'react-native';
-import { Ionicons, FontAwesome5, MaterialIcons } from '@expo/vector-icons';
-import Colors from '@styles/colors';
-import Header from '@components/HeaderAdmin.js';
-import ConfirmationModal from '@components/ConfirmationModal';
-import { useResponsive } from '../../hooks/use-responsive';
+"use client"
 
-// Datos de ejemplo para las solicitudes
-const initialRequestsData = [
-  {
-    id: "1",
-    name: "María García",
-    service: "Psicología",
-    date: "2023-06-15",
-    message: "Necesito una consulta para tratar problemas de ansiedad.",
-    phone: "123-456-7890",
-    email: "maria.garcia@email.com",
-  },
-  {
-    id: "2",
-    name: "Juan Rodríguez",
-    service: "Nutrición",
-    date: "2023-06-16",
-    message: "Quiero una consulta para mejorar mi alimentación y bajar de peso.",
-    phone: "098-765-4321",
-    email: "juan.rodriguez@email.com",
-  },
-  {
-    id: "3",
-    name: "Ana Martínez",
-    service: "Psicología",
-    date: "2023-06-17",
-    message: "Busco ayuda para problemas de estrés laboral.",
-    phone: "555-123-4567",
-    email: "ana.martinez@email.com",
-  },
-  {
-    id: "4",
-    name: "Carlos López",
-    service: "Nutrición",
-    date: "2023-06-18",
-    message: "Necesito un plan alimenticio para deportistas.",
-    phone: "777-888-9999",
-    email: "carlos.lopez@email.com",
-  },
-  {
-    id: "5",
-    name: "Laura Sánchez",
-    service: "Psicología",
-    date: "2023-06-19",
-    message: "Quiero terapia para mejorar mis relaciones interpersonales.",
-    phone: "111-222-3333",
-    email: "laura.sanchez@email.com",
-  },
-  {
-    id: "6",
-    name: "Pedro Fernández",
-    service: "Nutrición",
-    date: "2023-06-20",
-    message: "Busco asesoría para una dieta vegetariana balanceada.",
-    phone: "444-555-6666",
-    email: "pedro.fernandez@email.com",
-  },
-];
+import { useState, useEffect, useCallback } from "react"
+import {
+  View,
+  Text,
+  FlatList,
+  TouchableOpacity,
+  StyleSheet,
+  Modal,
+  Alert,
+  TextInput,
+  ScrollView,
+  ActivityIndicator,
+} from "react-native"
+import { Ionicons, FontAwesome5, MaterialIcons } from "@expo/vector-icons"
+import Colors from "@styles/colors"
+import Header from "@components/HeaderAdmin.js"
+import AppointmentCalendarScreen from "@components/AppoimentCalendarScreen"
+import ConfirmationModal from "@components/ConfirmationModal"
+import { useResponsive } from "../../hooks/use-responsive"
+import { db, auth } from "../../../firebaseConfig.js"
+// Modificar las importaciones para incluir onSnapshot
+import { collection, query, where, doc, updateDoc, getDoc, deleteDoc, onSnapshot, getDocs } from "firebase/firestore"
+import { format } from "date-fns"
 
 const RequestScreen = ({ navigation }) => {
   // Estados para manejar las solicitudes y los modales
-  const [requestsData, setRequestsData] = useState(initialRequestsData);
-  const [filteredRequests, setFilteredRequests] = useState(initialRequestsData);
-  const [selectedRequest, setSelectedRequest] = useState(null);
-  const [showActionModal, setShowActionModal] = useState(false);
-  const [showConfirmationModal, setShowConfirmationModal] = useState(false);
-  const [activeFilter, setActiveFilter] = useState("Todos");
-  const [searchText, setSearchText] = useState("");
-  const responsive = useResponsive();
+  const [requestsData, setRequestsData] = useState([])
+  const [filteredRequests, setFilteredRequests] = useState([])
+  const [selectedRequest, setSelectedRequest] = useState(null)
+  const [showActionModal, setShowActionModal] = useState(false)
+  const [showCalendar, setShowCalendar] = useState(false)
+  const [activeFilter, setActiveFilter] = useState("Todos")
+  const [searchText, setSearchText] = useState("")
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [companyId, setCompanyId] = useState(null)
+  const [showConfirmationModal, setShowConfirmationModal] = useState(false)
+  const [confirmedRequest, setConfirmedRequest] = useState(null)
+  const [isConfirming, setIsConfirming] = useState(false)
+  // Estado para indicar cuando hay actualizaciones en tiempo real
+  const [isUpdating, setIsUpdating] = useState(false)
+  const responsive = useResponsive()
+
+  // Obtener el usuario actual y su companyId
+  useEffect(() => {
+    const fetchCurrentUser = async () => {
+      try {
+        const user = auth.currentUser
+        if (user) {
+          const userDocRef = doc(db, "users", user.uid)
+          const userDocSnap = await getDoc(userDocRef)
+
+          if (userDocSnap.exists()) {
+            const userData = userDocSnap.data()
+            setCompanyId(userData.companyId)
+          } else {
+            setError("No se encontró información del usuario")
+          }
+        } else {
+          setError("No hay usuario autenticado")
+        }
+      } catch (err) {
+        console.error("Error fetching current user:", err)
+        setError("Error al obtener información del usuario")
+      }
+    }
+
+    fetchCurrentUser()
+  }, [])
+
+  // Función para configurar los listeners de solicitudes en tiempo real
+  const setupRequestsListeners = useCallback(() => {
+    if (!companyId) return () => {}
+
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      // Obtener usuarios con rol 'user' y 'externalUser' de la misma compañía
+      const usersQuery = query(
+        collection(db, "users"),
+        where("role", "in", ["user", "externalUser"]),
+      )
+
+      // Crear un listener para la consulta de usuarios
+      const unsubscribeUsers = onSnapshot(
+        usersQuery,
+        async (userSnapshot) => {
+          const userIds = []
+          const userRoles = {}
+
+          userSnapshot.forEach((doc) => {
+            userIds.push(doc.id)
+            userRoles[doc.id] = doc.data().role
+          })
+
+          if (userIds.length === 0) {
+            setRequestsData([])
+            setIsLoading(false)
+            return
+          }
+
+          // Array para almacenar todas las funciones de desuscripción
+          const unsubscribeFunctions = []
+          // Objeto para almacenar todas las solicitudes
+          const allRequests = {}
+
+          // Para cada usuario, configurar un listener para sus solicitudes según su rol
+          for (const userId of userIds) {
+            let requestsQuery
+
+            if (userRoles[userId] === "user") {
+              // Para usuarios con rol 'user', mostrar citas con fecha asignada
+              requestsQuery = query(collection(db, "dates"), where("userId", "==", userId), where("date", "!=", null), where("state", "==", false))
+            } else {
+              // Para usuarios con rol 'externalUser', mostrar todas las citas
+              requestsQuery = query(collection(db, "dates"), where("userId", "==", userId), where("state", "==", false))
+            }
+
+            const unsubscribeRequests = onSnapshot(
+              requestsQuery,
+              async (requestSnapshot) => {
+                setIsUpdating(true)
+
+                // Procesar los cambios en las solicitudes
+                for (const change of requestSnapshot.docChanges()) {
+                  const requestDoc = change.doc
+                  const requestData = requestDoc.data()
+                  const requestId = requestDoc.id
+
+                  // Si la solicitud fue eliminada, eliminarla del objeto
+                  if (change.type === "removed") {
+                    delete allRequests[requestId]
+                    continue
+                  }
+
+                  // Obtener detalles del usuario
+                  const userDocRef = doc(db, "users", requestData.userId)
+                  const userDocSnap = await getDoc(userDocRef)
+                  const userData = userDocSnap.exists() ? userDocSnap.data() : {}
+
+                  // Formatear la fecha y hora si existe
+                  let formattedDate = null
+                  let formattedTime = ""
+
+                  if (requestData.date && typeof requestData.date.toDate === "function") {
+                    const dateObj = requestData.date.toDate()
+                    formattedDate = format(dateObj, "dd/MM/yyyy")
+                    formattedTime = format(dateObj, "HH:mm")
+                  }
+
+                  // Guardar la solicitud en el objeto
+                  allRequests[requestId] = {
+                    id: requestId,
+                    name: `${userData.name || ""} ${userData.lastName || ""}`.trim() || "Cliente sin nombre",
+                    service:
+                      requestData.service === "psychology"
+                        ? "Psicología"
+                        : requestData.service === "nutrition"
+                          ? "Nutrición"
+                          : requestData.service || "Servicio",
+                    date: requestData.date ? requestData.date.toDate() : null,
+                    formattedDate: formattedDate,
+                    formattedTime: formattedTime,
+                    message: requestData.message || "Sin mensaje",
+                    phone: userData.phone || "Sin teléfono",
+                    email: userData.email || "Sin email",
+                    userId: requestData.userId,
+                    userRole: userRoles[requestData.userId],
+                    state: requestData.state,
+                    // Datos originales para referencia
+                    rawData: requestData,
+                  }
+                }
+
+                // Actualizar el estado con todas las solicitudes
+                setRequestsData(Object.values(allRequests))
+                setIsLoading(false)
+                setIsUpdating(false)
+              },
+              (error) => {
+                console.error("Error listening to requests:", error)
+                setError("Error al escuchar cambios en las solicitudes")
+                setIsLoading(false)
+                setIsUpdating(false)
+              },
+            )
+
+            unsubscribeFunctions.push(unsubscribeRequests)
+          }
+
+          // Devolver una función que desuscribe todos los listeners
+          return () => {
+            unsubscribeFunctions.forEach((unsubscribe) => unsubscribe())
+          }
+        },
+        (error) => {
+          console.error("Error listening to users:", error)
+          setError("Error al escuchar cambios en los usuarios")
+          setIsLoading(false)
+        },
+      )
+
+      // Devolver una función que desuscribe el listener de usuarios
+      return () => {
+        unsubscribeUsers()
+      }
+    } catch (err) {
+      console.error("Error setting up request listeners:", err)
+      setError("Error al configurar los listeners de solicitudes")
+      setIsLoading(false)
+      return () => {}
+    }
+  }, [companyId])
+
+  // Configurar los listeners cuando se obtiene el companyId
+  useEffect(() => {
+    let unsubscribe = () => {}
+
+    if (companyId) {
+      unsubscribe = setupRequestsListeners()
+    }
+
+    // Limpiar los listeners cuando el componente se desmonte o cuando cambie companyId
+    return () => {
+      unsubscribe()
+    }
+  }, [companyId, setupRequestsListeners])
 
   // Efecto para filtrar las solicitudes cuando cambia el filtro o el texto de búsqueda
   useEffect(() => {
-    let result = [...requestsData];
+    let result = [...requestsData]
 
     // Aplicar filtro por servicio
     if (activeFilter !== "Todos") {
-      result = result.filter((request) => request.service === activeFilter);
+      result = result.filter((request) => request.service === activeFilter)
     }
 
     // Aplicar filtro por texto de búsqueda
     if (searchText) {
-      const searchLower = searchText.toLowerCase();
-      result = result.filter((request) => request.name.toLowerCase().includes(searchLower));
+      const searchLower = searchText.toLowerCase()
+      result = result.filter((request) => request.name.toLowerCase().includes(searchLower))
     }
 
-    setFilteredRequests(result);
-  }, [requestsData, activeFilter, searchText]);
+    setFilteredRequests(result)
+  }, [requestsData, activeFilter, searchText])
 
   // Función para manejar el tap en una solicitud
   const handleRequestPress = (request) => {
-    setSelectedRequest(request);
-    setShowActionModal(true);
-  };
+    setSelectedRequest(request)
+    setShowActionModal(true)
+  }
 
-  // Función para denegar una solicitud
-  const handleDeny = () => {
+  // Función para denegar/cancelar una solicitud
+  const handleDeny = async () => {
     if (selectedRequest) {
-      // Filtrar la solicitud seleccionada para eliminarla
-      const updatedRequests = requestsData.filter((request) => request.id !== selectedRequest.id);
-      setRequestsData(updatedRequests);
+      try {
+        // Eliminar la cita de Firebase
+        const appointmentRef = doc(db, "dates", selectedRequest.id)
+        await deleteDoc(appointmentRef)
 
-      // Cerrar el modal y mostrar confirmación
-      setShowActionModal(false);
-      Alert.alert("Solicitud denegada", `La solicitud de ${selectedRequest.name} ha sido denegada.`);
-      setSelectedRequest(null);
+        // Cerrar el modal
+        setShowActionModal(false)
+        Alert.alert("Cita cancelada", `La cita de ${selectedRequest.name} ha sido cancelada.`)
+        setSelectedRequest(null)
+
+        // No es necesario actualizar el estado manualmente ya que el listener detectará el cambio
+      } catch (error) {
+        console.error("Error canceling appointment:", error)
+        Alert.alert("Error", "No se pudo cancelar la cita. Inténtalo de nuevo.")
+      }
     }
-  };
+  }
 
   // Función para confirmar una solicitud
   const handleConfirm = () => {
-    setShowActionModal(false);
-    setShowConfirmationModal(true);
-  };
+    setShowActionModal(false)
+    setShowCalendar(true)
+  }
 
-  // Función para cerrar el modal de confirmación y finalizar el proceso
-  const handleConfirmationDone = () => {
-    if (selectedRequest) {
-      // Eliminar la solicitud de la lista
-      const updatedRequests = requestsData.filter((request) => request.id !== selectedRequest.id);
-      setRequestsData(updatedRequests);
-      
-      // Cerrar el modal de confirmación
-      setShowConfirmationModal(false);
-      setSelectedRequest(null);
+  // Función para confirmar directamente una cita
+  const handleDirectConfirm = async () => {
+    if (!selectedRequest) return
+
+    setIsConfirming(true)
+
+    try {
+      // Actualizar el estado de la cita a confirmado
+      const appointmentRef = doc(db, "dates", selectedRequest.id)
+      await updateDoc(appointmentRef, {
+        state: true,
+      })
+
+      // Show the confirmation modal
+      setConfirmedRequest(selectedRequest)
+      setShowConfirmationModal(true)
+
+      // No es necesario actualizar el estado manualmente ya que el listener detectará el cambio
+    } catch (error) {
+      console.error("Error confirming appointment:", error)
+      Alert.alert("Error", "No se pudo confirmar la cita. Inténtalo de nuevo.")
+    } finally {
+      setIsConfirming(false)
+      setShowActionModal(false)
     }
-  };
+  }
+
+  // Función para manejar la selección de fecha
+  const handleDateConfirm = async (date) => {
+    if (selectedRequest) {
+      setIsConfirming(true)
+
+      try {
+        // Check if the selected date and time conflicts with any existing appointments
+        const formattedDate = format(date, "yyyy-MM-dd")
+        const formattedTime = format(date, "HH:mm")
+
+        // Query to check for existing appointments at the same time
+        const appointmentsQuery = query(
+          collection(db, "dates"),
+          where("state", "==", true), // Only check confirmed appointments
+        )
+
+        const appointmentSnapshots = await getDocs(appointmentsQuery)
+        let hasConflict = false
+
+        // Check each appointment for conflicts
+        appointmentSnapshots.forEach((doc) => {
+          // Skip the current appointment being confirmed
+          if (doc.id === selectedRequest.id) return
+
+          const appointmentData = doc.data()
+          if (appointmentData.date) {
+            const appointmentDate = appointmentData.date.toDate()
+            const appointmentFormattedDate = format(appointmentDate, "yyyy-MM-dd")
+            const appointmentFormattedTime = format(appointmentDate, "HH:mm")
+
+            // Check if date and time match
+            if (appointmentFormattedDate === formattedDate && appointmentFormattedTime === formattedTime) {
+              hasConflict = true
+            }
+          }
+        })
+
+        if (hasConflict) {
+          Alert.alert(
+            "Conflicto de horario",
+            "Ya existe una cita programada para esta fecha y hora. Por favor, selecciona otro horario.",
+            [
+              {
+                text: "Seleccionar otro horario",
+                onPress: () => {
+                  setIsConfirming(false)
+                  // Keep the calendar open to select another time
+                },
+              },
+            ],
+          )
+          return
+        }
+
+        // No conflict, proceed with updating the appointment
+        const appointmentRef = doc(db, "dates", selectedRequest.id)
+        await updateDoc(appointmentRef, {
+          date: date,
+          // state: true, // Commented out as per your original code
+        })
+
+        // Save the confirmed appointment for the modal
+        const confirmedAppointment = {
+          ...selectedRequest,
+          date: date,
+        }
+        setConfirmedRequest(confirmedAppointment)
+        setShowConfirmationModal(true)
+        setShowCalendar(false)
+
+        // No es necesario actualizar el estado manualmente ya que el listener detectará el cambio
+      } catch (error) {
+        console.error("Error confirming appointment with date:", error)
+        Alert.alert("Error", "No se pudo confirmar la cita. Inténtalo de nuevo.")
+      } finally {
+        setIsConfirming(false)
+      }
+    }
+  }
 
   // Función para cambiar el filtro activo
   const handleFilterChange = (filter) => {
-    setActiveFilter(filter);
-  };
+    setActiveFilter(filter)
+  }
+
+  // Función para formatear la fecha o devolver un string vacío si es null
+  const formatDate = (dateString) => {
+    if (!dateString) return ""
+    return new Date(dateString).toLocaleDateString()
+  }
 
   // Función para renderizar cada elemento de la lista
   const renderRequestItem = ({ item }) => (
@@ -147,9 +407,6 @@ const RequestScreen = ({ navigation }) => {
       <View style={styles.requestContent}>
         <View style={styles.requestHeader}>
           <Text style={[styles.requestName, responsive.isDesktop && styles.requestNameDesktop]}>{item.name}</Text>
-          <Text style={[styles.requestDate, responsive.isDesktop && styles.requestDateDesktop]}>
-            {new Date(item.date).toLocaleDateString()}
-          </Text>
         </View>
         <View style={styles.serviceContainer}>
           {item.service === "Psicología" ? (
@@ -161,6 +418,14 @@ const RequestScreen = ({ navigation }) => {
             {item.service}
           </Text>
         </View>
+        {item.formattedDate && (
+          <View style={styles.dateTimeContainer}>
+            <Ionicons name="calendar-outline" size={16} color={Colors.SECONDARYCOLOR} />
+            <Text style={styles.dateTimeText}>{item.formattedDate}</Text>
+            <Ionicons name="time-outline" size={16} color={Colors.SECONDARYCOLOR} style={styles.timeIcon} />
+            <Text style={styles.dateTimeText}>{item.formattedTime}</Text>
+          </View>
+        )}
         {responsive.isDesktop && (
           <Text style={styles.requestMessage} numberOfLines={2}>
             {item.message}
@@ -175,7 +440,7 @@ const RequestScreen = ({ navigation }) => {
         </View>
       )}
     </TouchableOpacity>
-  );
+  )
 
   // Renderizar el panel de detalles para desktop
   const renderDetailsPanel = () => {
@@ -185,7 +450,7 @@ const RequestScreen = ({ navigation }) => {
           <MaterialIcons name="description" size={80} color="#CCCCCC" />
           <Text style={styles.noSelectionText}>Selecciona una solicitud para ver sus detalles</Text>
         </View>
-      );
+      )
     }
 
     return (
@@ -212,17 +477,23 @@ const RequestScreen = ({ navigation }) => {
           </View>
 
           <View style={styles.detailsSection}>
-            <Text style={styles.detailsSectionTitle}>Información de la solicitud</Text>
+            <Text style={styles.detailsSectionTitle}>Información de la cita</Text>
             <View style={styles.detailsItem}>
               <MaterialIcons name="medical-services" size={20} color={Colors.PRIMARYCOLOR} />
               <Text style={styles.detailsItemText}>Servicio: {selectedRequest.service}</Text>
             </View>
-            <View style={styles.detailsItem}>
-              <MaterialIcons name="event" size={20} color={Colors.PRIMARYCOLOR} />
-              <Text style={styles.detailsItemText}>
-                Fecha de solicitud: {new Date(selectedRequest.date).toLocaleDateString()}
-              </Text>
-            </View>
+            {selectedRequest.formattedDate && (
+              <>
+                <View style={styles.detailsItem}>
+                  <MaterialIcons name="event" size={20} color={Colors.PRIMARYCOLOR} />
+                  <Text style={styles.detailsItemText}>Fecha: {selectedRequest.formattedDate}</Text>
+                </View>
+                <View style={styles.detailsItem}>
+                  <MaterialIcons name="access-time" size={20} color={Colors.PRIMARYCOLOR} />
+                  <Text style={styles.detailsItemText}>Hora: {selectedRequest.formattedTime}</Text>
+                </View>
+              </>
+            )}
           </View>
 
           <View style={styles.detailsSection}>
@@ -234,18 +505,81 @@ const RequestScreen = ({ navigation }) => {
 
           <View style={styles.detailsActions}>
             <TouchableOpacity style={[styles.detailsActionButton, styles.denyButton]} onPress={handleDeny}>
-              <Text style={styles.denyButtonText}>Denegar</Text>
+              <Text style={styles.denyButtonText}>Cancelar cita</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={[styles.detailsActionButton, styles.confirmButton]} onPress={handleConfirm}>
-              <Text style={styles.confirmButtonText}>Confirmar</Text>
+            <TouchableOpacity
+              style={[styles.detailsActionButton, styles.confirmButton]}
+              onPress={handleDirectConfirm}
+              disabled={isConfirming}
+            >
+              {isConfirming ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Text style={styles.confirmButtonText}>Confirmar</Text>
+              )}
             </TouchableOpacity>
           </View>
         </ScrollView>
       </View>
-    );
-  };
+    )
+  }
 
+  // Si el calendario está visible, renderizamos solo el calendario a pantalla completa
+  if (showCalendar && selectedRequest) {
+    return (
+      <AppointmentCalendarScreen
+        onClose={() => setShowCalendar(false)}
+        onConfirm={handleDateConfirm}
+        patientName={selectedRequest.name}
+        service={selectedRequest.service}
+        companyId={companyId}
+      />
+    )
+  }
+
+  // Renderizar el estado de carga
+  if (isLoading) {
+    return (
+      <>
+        <View style={[styles.headerCitas, responsive.isDesktop && styles.headerCitasDesktop]}>
+          <Header header_text={"Solicitudes"} />
+        </View>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={Colors.PRIMARYCOLOR} />
+          <Text style={styles.loadingText}>Cargando solicitudes...</Text>
+        </View>
+      </>
+    )
+  }
+
+  // Renderizar el estado de error
+  if (error) {
+    return (
+      <>
+        <View style={[styles.headerCitas, responsive.isDesktop && styles.headerCitasDesktop]}>
+          <Header header_text={"Solicitudes"} />
+        </View>
+        <View style={styles.errorContainer}>
+          <MaterialIcons name="error-outline" size={60} color="#FF3B30" />
+          <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity
+            style={styles.retryButton}
+            onPress={() => {
+              setIsLoading(true)
+              setError(null)
+              // Trigger a re-fetch by updating the companyId state
+              setCompanyId((prev) => prev)
+            }}
+          >
+            <Text style={styles.retryButtonText}>Reintentar</Text>
+          </TouchableOpacity>
+        </View>
+      </>
+    )
+  }
+
+  // De lo contrario, renderizamos la pantalla normal de solicitudes
   return (
     <>
       {/* Encabezado de la pantalla */}
@@ -266,7 +600,6 @@ const RequestScreen = ({ navigation }) => {
                 value={searchText}
                 onChangeText={setSearchText}
                 placeholderTextColor={Colors.SECONDARYCOLOR}
-                // Evitar el resaltado del navegador en la vista web
                 className="no-highlight"
               />
               {searchText ? (
@@ -275,6 +608,14 @@ const RequestScreen = ({ navigation }) => {
                 </TouchableOpacity>
               ) : null}
             </View>
+
+            {/* Indicador de actualización en tiempo real */}
+            {isUpdating && (
+              <View style={styles.updatingContainer}>
+                <ActivityIndicator size="small" color={Colors.PRIMARYCOLOR} />
+                <Text style={styles.updatingText}>Actualizando...</Text>
+              </View>
+            )}
 
             {/* Botones de filtro */}
             <View style={[styles.filterContainer, styles.filterContainerDesktop]}>
@@ -361,12 +702,11 @@ const RequestScreen = ({ navigation }) => {
           <View style={styles.searchContainer}>
             <Ionicons name="search" size={20} color={Colors.SECONDARYCOLOR} style={styles.searchIcon} />
             <TextInput
-              style={styles.searchInput}
+              style={[styles.searchInput, { outline: "none", WebkitTapHighlightColor: "transparent" }]}
               placeholder="Buscar por nombre..."
               value={searchText}
               onChangeText={setSearchText}
               placeholderTextColor={Colors.SECONDARYCOLOR}
-              // Evitar el resaltado del navegador en la vista web
               className="no-highlight"
             />
             {searchText ? (
@@ -375,6 +715,14 @@ const RequestScreen = ({ navigation }) => {
               </TouchableOpacity>
             ) : null}
           </View>
+
+          {/* Indicador de actualización en tiempo real */}
+          {isUpdating && (
+            <View style={styles.updatingContainerMobile}>
+              <ActivityIndicator size="small" color={Colors.PRIMARYCOLOR} />
+              <Text style={styles.updatingText}>Actualizando...</Text>
+            </View>
+          )}
 
           {/* Botones de filtro */}
           <View style={styles.filterContainer}>
@@ -438,7 +786,7 @@ const RequestScreen = ({ navigation }) => {
         </View>
       )}
 
-      {/* Modal de acciones (Denegar/Confirmar) - Solo para móvil */}
+      {/* Modal de acciones (Confirmar/Cancelar) - Solo para móvil */}
       {!responsive.isDesktop && (
         <Modal
           visible={showActionModal}
@@ -448,41 +796,60 @@ const RequestScreen = ({ navigation }) => {
         >
           <View style={styles.modalOverlay}>
             <View style={styles.modalContainer}>
-              <Text style={styles.modalTitle}>Solicitud de {selectedRequest?.name}</Text>
+              <Text style={styles.modalTitle}>Cita de {selectedRequest?.name}</Text>
               <Text style={styles.modalSubtitle}>Servicio: {selectedRequest?.service}</Text>
 
-              <Text style={styles.modalText}>¿Qué deseas hacer con esta solicitud?</Text>
+              {selectedRequest?.formattedDate && (
+                <View style={styles.modalDateContainer}>
+                  <Text style={styles.modalDateLabel}>Fecha y hora:</Text>
+                  <Text style={styles.modalDateText}>
+                    {selectedRequest.formattedDate} a las {selectedRequest.formattedTime}
+                  </Text>
+                </View>
+              )}
+
+              <Text style={styles.modalText}>¿Qué deseas hacer con esta cita?</Text>
 
               <View style={styles.modalButtonsContainer}>
                 <TouchableOpacity style={[styles.modalButton, styles.denyButton]} onPress={handleDeny}>
-                  <Text style={styles.denyButtonText}>Denegar</Text>
+                  <Text style={styles.denyButtonText}>Cancelar</Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity style={[styles.modalButton, styles.confirmButton]} onPress={handleConfirm}>
-                  <Text style={styles.confirmButtonText}>Confirmar</Text>
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.confirmButton]}
+                  onPress={handleDirectConfirm}
+                  disabled={isConfirming}
+                >
+                  {isConfirming ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <Text style={styles.confirmButtonText}>Confirmar</Text>
+                  )}
                 </TouchableOpacity>
               </View>
 
               <TouchableOpacity style={styles.cancelButton} onPress={() => setShowActionModal(false)}>
-                <Text style={styles.cancelButtonText}>Cancelar</Text>
+                <Text style={styles.cancelButtonText}>Cerrar</Text>
               </TouchableOpacity>
             </View>
           </View>
         </Modal>
       )}
 
-      {/* Modal de confirmación (para ambos, móvil y desktop) */}
+      {/* Modal de confirmación */}
       <ConfirmationModal
         visible={showConfirmationModal}
-        request={selectedRequest}
-        onClose={handleConfirmationDone}
-        onConfirm={handleConfirmationDone}
-        onDeny={() => setShowConfirmationModal(false)}
+        request={confirmedRequest}
+        onClose={() => {
+          setShowConfirmationModal(false)
+          setConfirmedRequest(null)
+        }}
       />
     </>
-  );
-};
+  )
+}
 
+// Estilos de la pantalla
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -490,7 +857,7 @@ const styles = StyleSheet.create({
   },
   headerCitas: {
     paddingTop: "10%",
-    backgroundColor: Colors.PRIMARYCOLOR,
+    backgroundColor: "#ffffff",
   },
   headerCitasDesktop: {
     paddingTop: 0,
@@ -544,7 +911,6 @@ const styles = StyleSheet.create({
     height: 40,
     fontSize: 16,
     color: Colors.TEXTCOLOR,
-    outlineStyle: 'none', // Evitar el resaltado del navegador en la vista web
   },
   // Estilos para los botones de filtro
   filterContainer: {
@@ -626,55 +992,58 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 8,
+    alignItems: "center",
   },
   requestName: {
-    fontSize: 16,
-    fontWeight: "bold",
+    fontSize: 18,
+    fontWeight: "600",
     color: Colors.TEXTCOLOR,
   },
   requestNameDesktop: {
-    fontSize: 15,
+    fontSize: 20,
   },
   requestDate: {
     fontSize: 14,
     color: Colors.SECONDARYCOLOR,
   },
   requestDateDesktop: {
-    fontSize: 13,
+    fontSize: 16,
   },
   serviceContainer: {
     flexDirection: "row",
     alignItems: "center",
+    marginTop: 5,
   },
   requestService: {
-    fontSize: 15,
+    marginLeft: 8,
+    fontSize: 16,
     color: Colors.PRIMARYCOLOR,
-    marginLeft: 6,
+    fontWeight: "500",
   },
   requestServiceDesktop: {
-    fontSize: 14,
+    fontSize: 18,
   },
   requestMessage: {
     fontSize: 14,
-    color: "#666",
+    color: Colors.TEXTCOLOR,
     marginTop: 8,
-    lineHeight: 20,
   },
   requestActions: {
-    marginLeft: 16,
+    flexDirection: "row",
+    alignItems: "center",
   },
   requestActionButton: {
     backgroundColor: Colors.PRIMARYCOLOR,
+    borderRadius: 8,
     paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 6,
+    paddingHorizontal: 12,
   },
   requestActionButtonText: {
-    color: "#fff",
-    fontSize: 14,
+    color: "white",
     fontWeight: "500",
+    fontSize: 14,
   },
+  // Estilos para "No hay solicitudes"
   emptyContainer: {
     flex: 1,
     justifyContent: "center",
@@ -686,159 +1055,248 @@ const styles = StyleSheet.create({
     color: Colors.SECONDARYCOLOR,
     textAlign: "center",
   },
-  // Estilos para el modal de acciones
+  // Estilos para modales
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
     justifyContent: "center",
     alignItems: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
   },
   modalContainer: {
     backgroundColor: "white",
     borderRadius: 15,
     padding: 20,
     width: "80%",
+    maxWidth: 400,
     alignItems: "center",
     shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
-    shadowRadius: 3.84,
+    shadowRadius: 4,
     elevation: 5,
   },
   modalTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    marginBottom: 5,
+    fontSize: 22,
+    fontWeight: "600",
+    marginBottom: 10,
     color: Colors.TEXTCOLOR,
+    textAlign: "center",
   },
   modalSubtitle: {
-    fontSize: 16,
-    color: Colors.PRIMARYCOLOR,
+    fontSize: 18,
+    fontWeight: "500",
     marginBottom: 15,
+    color: Colors.PRIMARYCOLOR,
+    textAlign: "center",
   },
   modalText: {
     fontSize: 16,
+    color: Colors.TEXTCOLOR,
     marginBottom: 20,
     textAlign: "center",
-    color: Colors.TEXTCOLOR,
   },
   modalButtonsContainer: {
     flexDirection: "row",
-    justifyContent: "space-between",
+    justifyContent: "space-around",
     width: "100%",
     marginBottom: 15,
   },
   modalButton: {
-    padding: 12,
     borderRadius: 10,
-    width: "48%",
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    minWidth: 120,
     alignItems: "center",
-  },
-  denyButton: {
-    backgroundColor: "#f8f8f8",
-    borderWidth: 1,
-    borderColor: "#ff6b6b",
   },
   confirmButton: {
     backgroundColor: Colors.PRIMARYCOLOR,
   },
-  denyButtonText: {
-    color: "#ff6b6b",
-    fontSize: 16,
-    fontWeight: "500",
-  },
   confirmButtonText: {
     color: "white",
-    fontSize: 16,
     fontWeight: "500",
+    fontSize: 16,
+  },
+  denyButton: {
+    backgroundColor: "#FF6347", // Tomato color
+  },
+  denyButtonText: {
+    color: "white",
+    fontWeight: "500",
+    fontSize: 16,
   },
   cancelButton: {
-    padding: 10,
+    marginTop: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 15,
   },
   cancelButtonText: {
     color: Colors.SECONDARYCOLOR,
-    fontSize: 14,
+    fontSize: 16,
   },
-  // Estilos para el panel de detalles en desktop
-  noSelectionContainer: {
+  // Estilos para el contenedor de carga
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: Colors.SECONDARYCOLOR,
+  },
+  // Estilos para el contenedor de error
+  errorContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
     padding: 20,
   },
-  noSelectionText: {
-    fontSize: 16,
-    color: "#666",
-    marginTop: 16,
+  errorText: {
+    fontSize: 18,
+    color: "#FF3B30",
+    marginTop: 10,
     textAlign: "center",
-    maxWidth: "80%",
   },
+  retryButton: {
+    backgroundColor: Colors.PRIMARYCOLOR,
+    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    marginTop: 20,
+  },
+  retryButtonText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "500",
+  },
+  // Estilos para el panel de detalles en desktop
   detailsContainer: {
-    flex: 1,
     backgroundColor: "#fff",
-    borderRadius: 12,
+    borderRadius: 8,
+    boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
     overflow: "hidden",
-    boxShadow: "0 2px 10px rgba(0, 0, 0, 0.08)",
+    height: "100%",
   },
   detailsHeader: {
     backgroundColor: Colors.PRIMARYCOLOR,
-    padding: 20,
+    padding: 15,
+    borderBottom: "1px solid rgba(0,0,0,0.1)",
   },
   detailsTitle: {
+    color: "white",
     fontSize: 20,
-    fontWeight: "bold",
-    color: "#fff",
+    fontWeight: "600",
+    textAlign: "center",
   },
   detailsContent: {
     padding: 20,
-    flex: 1,
   },
   detailsSection: {
-    marginBottom: 24,
+    marginBottom: 20,
   },
   detailsSectionTitle: {
     fontSize: 18,
-    fontWeight: "bold",
-    color: "#333",
-    marginBottom: 16,
-    borderBottom: "1px solid #eee",
-    paddingBottom: 8,
+    fontWeight: "500",
+    color: Colors.TEXTCOLOR,
+    marginBottom: 10,
   },
   detailsItem: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 12,
+    marginBottom: 8,
   },
   detailsItemText: {
     fontSize: 16,
-    color: "#555",
-    marginLeft: 12,
+    color: Colors.SECONDARYCOLOR,
+    marginLeft: 10,
   },
   detailsMessageContainer: {
-    backgroundColor: "#f9f9f9",
-    padding: 16,
+    backgroundColor: "#f0f0f0",
     borderRadius: 8,
-    borderLeft: `4px solid ${Colors.PRIMARYCOLOR}`,
+    padding: 15,
   },
   detailsMessage: {
-    fontSize: 15,
-    color: "#555",
-    lineHeight: 22,
+    fontSize: 16,
+    color: Colors.TEXTCOLOR,
   },
   detailsActions: {
+    marginTop: 20,
     flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: 24,
+    justifyContent: "space-around",
   },
   detailsActionButton: {
-    padding: 12,
     borderRadius: 8,
-    width: "48%",
+    paddingVertical: 12,
+    paddingHorizontal: 25,
+    minWidth: 120,
     alignItems: "center",
   },
-});
+  noSelectionContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  noSelectionText: {
+    fontSize: 18,
+    color: "#CCCCCC",
+    marginTop: 10,
+    textAlign: "center",
+  },
+  // Estilos para el indicador de actualización en tiempo real
+  updatingContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 8,
+    backgroundColor: "rgba(255, 255, 255, 0.9)",
+    borderRadius: 20,
+    marginBottom: 12,
+    alignSelf: "center",
+  },
+  updatingContainerMobile: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 8,
+    backgroundColor: "rgba(255, 255, 255, 0.9)",
+    borderRadius: 20,
+    marginHorizontal: 16,
+    marginBottom: 8,
+  },
+  updatingText: {
+    fontSize: 14,
+    color: Colors.PRIMARYCOLOR,
+    marginLeft: 8,
+    fontWeight: "500",
+  },
+  dateTimeContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 8,
+  },
+  dateTimeText: {
+    fontSize: 14,
+    color: Colors.SECONDARYCOLOR,
+    marginLeft: 4,
+  },
+  timeIcon: {
+    marginLeft: 12,
+  },
+  modalDateContainer: {
+    marginBottom: 15,
+    alignItems: "center",
+  },
+  modalDateLabel: {
+    fontSize: 16,
+    fontWeight: "500",
+    color: Colors.TEXTCOLOR,
+    marginBottom: 5,
+  },
+  modalDateText: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: Colors.PRIMARYCOLOR,
+  },
+})
 
-export default RequestScreen;
+export default RequestScreen

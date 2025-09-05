@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { View, StyleSheet } from 'react-native';
-import AwesomeAlert from 'react-native-awesome-alerts';
+import Dialog from 'react-native-dialog';
 import colors from '@styles/colors.js';
 import { useFocusEffect } from '@react-navigation/native';
 
-const LogoutConfirmation = ({onCancel, onLogout }) => {
+const LogoutConfirmation = ({ onCancel, onLogout }) => {
   const [showAlert, setShowAlert] = useState(false);
 
   useFocusEffect(
@@ -26,28 +26,22 @@ const LogoutConfirmation = ({onCancel, onLogout }) => {
 
   return (
     <View style={styles.container}>
-      <AwesomeAlert
-        show={showAlert}
-        showProgress={false}
-        title="Cerrar Sesión"
-        message="¿Estás seguro de que deseas cerrar sesión?"
-        closeOnTouchOutside={false}
-        closeOnHardwareBackPress={false}
-        showCancelButton={true}
-        showConfirmButton={true}
-        cancelText="No"
-        confirmText="Sí"
-        confirmButtonColor={colors.RED}
-        onCancelPressed={hideAlertHandler}
-        onConfirmPressed={confirmLogoutHandler}
-        titleStyle={styles.alertTitle}
-        messageStyle={styles.alertMessage}
-        contentContainerStyle={styles.alertContainer}
-        cancelButtonStyle={styles.cancelButton}
-        cancelButtonTextStyle={styles.cancelButtonText}
-        confirmButtonStyle={styles.confirmButton}
-        confirmButtonTextStyle={styles.confirmButtonText}
-      />
+      <Dialog.Container visible={showAlert}
+        onBackdropPress={hideAlertHandler}>
+        <Dialog.Title style={styles.alertTitle}>Cerrar Sesión</Dialog.Title>
+        <Dialog.Description style={styles.alertMessage}>
+          ¿Estás seguro de que deseas cerrar sesión?
+        </Dialog.Description>
+
+        <Dialog.Button label="No"
+          onPress={hideAlertHandler}
+          style={styles.cancelButtonText} />
+
+        <Dialog.Button label="Sí"
+          onPress={confirmLogoutHandler}
+          style={styles.confirmButtonText}
+          color={colors.RED} />
+      </Dialog.Container>
     </View>
   );
 };

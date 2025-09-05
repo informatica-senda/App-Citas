@@ -2,21 +2,29 @@ import { View, Text, Modal, StyleSheet, TouchableOpacity, Platform } from "react
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons"
 import Colors from "@styles/colors.js"
 import { useResponsive } from "../hooks/use-responsive"
+import { deleteDoc, doc } from "firebase/firestore"
+import { db } from "../../firebaseConfig" // Adjust this import path to your Firebase config
 
 const AppointmentModalAdmin = ({ appointment, visible, onClose, onDelete, onModify }) => {
   const responsive = useResponsive()
 
-  const handleDelete = () => {
-    if (onDelete) {
-      onDelete(appointment.id)
-      onClose()
-    }
-  }
+  const handleDelete = async () => {
+    if (onDelete && appointment?.id) {
+      try {
+        // Delete from Firebase
+        await deleteDoc(doc(db, "dates", appointment.id))
+        console.log("Appointment deleted successfully")
 
-  const handleModify = () => {
-    if (onModify) {
-      onModify(appointment)
-      onClose()
+        // Call the onDelete callback to update the UI
+        onDelete(appointment.id)
+
+        // Close the modal
+        onClose()
+      } catch (error) {
+        console.error("Error deleting appointment: ", error)
+        // You could add UI feedback for errors here if needed
+      }
+    }else{
     }
   }
 
@@ -84,7 +92,7 @@ const AppointmentModalAdmin = ({ appointment, visible, onClose, onDelete, onModi
               style={[
                 styles.categoryBadge,
                 {
-                  backgroundColor: appointment.category === "psychology" ? Colors.PRIMARYCOLOR : Colors.SECONDARYCOLOR,
+                  backgroundColor: appointment.category === "psychology" ? Colors.PRIMARYCOLOR : Colors.PRIMARYCOLOR,
                 },
                 responsive.isDesktop && styles.categoryBadgeDesktop,
               ]}
@@ -159,22 +167,17 @@ const AppointmentModalAdmin = ({ appointment, visible, onClose, onDelete, onModi
           {/* Botones de acción */}
           <View style={[styles.actionButtons, responsive.isDesktop && styles.actionButtonsDesktop]}>
             <TouchableOpacity
-              style={[styles.actionButton, styles.deleteButton, responsive.isDesktop && styles.deleteButtonDesktop]}
+              style={[
+                styles.actionButton,
+                styles.deleteButton,
+                responsive.isDesktop && styles.deleteButtonDesktop,
+                { borderBottomLeftRadius: 16, borderBottomRightRadius: 16 }, // Add both left and right border radius
+              ]}
               onPress={handleDelete}
             >
               <MaterialCommunityIcons name="delete-outline" size={responsive.isDesktop ? 24 : 22} color="#fff" />
               <Text style={[styles.actionButtonText, responsive.isDesktop && styles.actionButtonTextDesktop]}>
                 Eliminar
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.actionButton, styles.editButton, responsive.isDesktop && styles.editButtonDesktop]}
-              onPress={handleModify}
-            >
-              <MaterialCommunityIcons name="pencil-outline" size={responsive.isDesktop ? 24 : 22} color="#fff" />
-              <Text style={[styles.actionButtonText, responsive.isDesktop && styles.actionButtonTextDesktop]}>
-                Modificar
               </Text>
             </TouchableOpacity>
           </View>
@@ -366,29 +369,13 @@ const styles = StyleSheet.create({
   deleteButtonDesktop: {
     paddingVertical: 18,
     borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20, // Add this line
     ...Platform.select({
       web: {
         cursor: "pointer",
         transition: "all 0.2s ease",
         ":hover": {
           backgroundColor: "#ff5252",
-        },
-      },
-    }),
-  },
-  editButton: {
-    backgroundColor: Colors.PRIMARYCOLOR,
-    borderBottomRightRadius: 16,
-  },
-  editButtonDesktop: {
-    paddingVertical: 18,
-    borderBottomRightRadius: 20,
-    ...Platform.select({
-      web: {
-        cursor: "pointer",
-        transition: "all 0.2s ease",
-        ":hover": {
-          backgroundColor: "#0055e6",
         },
       },
     }),
@@ -406,4 +393,3 @@ const styles = StyleSheet.create({
 })
 
 export default AppointmentModalAdmin
-

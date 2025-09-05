@@ -24,12 +24,12 @@ const styles = StyleSheet.create({
   screenName: {
     fontSize: 25,
     fontWeight: 'bold',
-    color: Colors.TEXTWHITE
+    color: Colors.PRIMARYCOLOR
   },
   headerText: {
     fontSize: 20,
     fontWeight: 'normal',
-    color: Colors.TEXTWHITE
+    color: Colors.PRIMARYCOLOR
   },
 });
 

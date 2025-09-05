@@ -5,7 +5,7 @@ import { Animated, StyleSheet, View, TextInput, TouchableOpacity, Platform } fro
 import Colors from "@styles/colors.js"
 import FontAwesome from "react-native-vector-icons/FontAwesome"
 
-const Input = forwardRef(({ title = "", icon = "", handleAction = () => {}, ...rest }, ref) => {
+const Input = forwardRef(({ title = "", icon = "", handleAction = () => {}, inputRef = null, ...rest }, ref) => {
   const animatedValues = {
     animation: useRef(new Animated.Value(0)).current,
   }
@@ -72,6 +72,7 @@ const Input = forwardRef(({ title = "", icon = "", handleAction = () => {}, ...r
         onFocus={handleFocus}
         onBlur={handleBlur}
         placeholderTextColor={Colors.ACCENT}
+        ref={inputRef} // Usamos la prop inputRef para acceder al TextInput nativo
         {...rest}
       />
       {icon && (
@@ -94,7 +95,7 @@ const styles = StyleSheet.create({
     alignSelf: "stretch",
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: Colors.BACKGROUND,
+    backgroundColor: '#FFFFFF',
     borderWidth: 1.5,
     // El color del borde ahora se aplica condicionalmente en el componente
     borderRadius: 10,
@@ -118,7 +119,7 @@ const styles = StyleSheet.create({
     height: "100%",
     paddingHorizontal: 15,
     fontSize: 16,
-    color: Colors.PRIMARYCOLOR,
+    color: '#000000',
     borderTopLeftRadius: 10,
     borderBottomLeftRadius: 10,
     // Eliminamos el borde resaltado en navegadores web
@@ -132,7 +133,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     borderRadius: 22.5,
-    backgroundColor: Colors.BACKGROUND,
+    backgroundColor: '#FFFFFF',
     marginRight: 10,
   },
   titleBox: {
@@ -140,7 +141,7 @@ const styles = StyleSheet.create({
     width: "auto",
     paddingHorizontal: 2,
     paddingVertical: 0.5,
-    backgroundColor: Colors.BACKGROUND,
+    backgroundColor: '#FFFFFF',
     position: "absolute",
     justifyContent: "center",
     alignItems: "center",
@@ -154,4 +155,3 @@ const styles = StyleSheet.create({
 })
 
 export default Input
-

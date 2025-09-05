@@ -3,12 +3,14 @@
     "name": "Senda Servicio Empleados",
     "slug": "SendaServicioEmpleados",
     "version": "1.0.0",
-    "newArchEnabled": true,
     "scheme": "senda-servicio-empleados",
     "ios": {
       "googleServicesFile": "./GoogleService-Info.plist",
       "bundleIdentifier": "com.sendagestion.servicioempleadosenda",
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "googleServicesFile": "./google-services.json",
@@ -16,31 +18,45 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#FFFFFF"
-      }
+      },
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "plugins": [
-      
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera"
+        }
+      ],
       "expo-font",
       [
-      "expo-build-properties",
-      {
-        "android": {
-          "minSdkVersion": 24,
-          "compileSdkVersion": 35,
-          "googleServicesFile": "./google-services.json"
-        },
-        "ios": {
-          "deploymentTarget": "15.1",
-          "useFrameworks": "static",
-          "googleServicesFile":"./GoogleService-Info.plist"
+        "expo-build-properties",
+        {
+          "android": {
+            "minSdkVersion": 24,
+            "compileSdkVersion": 35,
+            "googleServicesFile": "./google-services.json"
+          },
+          "ios": {
+            "deploymentTarget": "15.1",
+            "useFrameworks": "static",
+            "googleServicesFile": "./GoogleService-Info.plist"
+          }
         }
-      }
-    ]
+      ]
     ],
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "b000852e-3a53-47cb-89b4-da33da235158"
+      }
     }
   }
 }

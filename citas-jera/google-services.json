@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "867980405186",
-    "project_id": "servicio-empleado-senda",
-    "storage_bucket": "servicio-empleado-senda.firebasestorage.app"
+    "project_number": "853903965398",
+    "project_id": "senda-servicio-empleado",
+    "storage_bucket": "senda-servicio-empleado.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:867980405186:android:38bb188c75fb4f5d448e5b",
+        "mobilesdk_app_id": "1:853903965398:android:1203fdebc625e191d41d77",
         "android_client_info": {
           "package_name": "com.sendagestion.servicioempleadosenda"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyD9uVidlOLkSGIlJ2DVtT_NmK9fnuxWRec"
+          "current_key": "AIzaSyAEcjx_F8ukEvbAcewwpnrXV_bVcivkD24"
         }
       ],
       "services": {
