@@ -26,7 +26,7 @@ import ServiceSelectionModal from "@components/RequestServiceModal"
 import AppointmentCalendarScreen from "@components/AppoimentCalendarScreen"
 import { db, auth } from "../../../firebaseConfig.js"
 import { collection, addDoc, query, where, getDoc, doc, onSnapshot } from "firebase/firestore"
-import { formatDate, extractTime, formatFirestoreDate } from "@utils/date.js"
+import { formatDate, extractTime, formatFirestoreDate } from "../../utils/date.js"
 import styles from "./styles.js"
 
 // --- Static Data for Employee Role ---
@@ -177,8 +177,8 @@ const SharedAppointmentsScreen = ({ userRole }) => {
             
             return onSnapshot(datesQuery, async (dateSnapshot) => {
                 setIsUpdating(true)
-                const appointmentsData = await Promise.all(dateSnapshot.docs.map(async (doc) => {
-                    const data = doc.data()
+                const appointmentsData = await Promise.all(dateSnapshot.docs.map(async (dateDoc) => {
+                    const data = dateDoc.data()
                     const userDoc = await getDoc(doc(db, "users", data.userId))
                     const userData = userDoc.exists() ? userDoc.data() : {}
                     let teacherData = {}
@@ -187,7 +187,7 @@ const SharedAppointmentsScreen = ({ userRole }) => {
                         teacherData = teacherDoc.exists() ? teacherDoc.data() : {}
                     }
                     return {
-                        id: doc.id,
+                        id: dateDoc.id,
                         date: data.date ? formatFirestoreDate(data.date) : null,
                         time: data.date ? extractTime(data.date) : "",
                         category: data.service || "",
@@ -525,7 +525,19 @@ const SharedAppointmentsScreen = ({ userRole }) => {
                 </TouchableOpacity>
               )}
               <View style={styles.iosCalendarContainer}>
-                <Calendar current={selectedDate || undefined} onDayPress={handleDayPress} markedDates={markedDates} markingType={"multi-dot"} theme={{...}} />
+                <Calendar
+                  current={selectedDate || undefined}
+                  onDayPress={handleDayPress}
+                  markedDates={markedDates}
+                  markingType={"multi-dot"}
+                  theme={{
+                    calendarBackground: "#FFFFFF",
+                    todayTextColor: Colors.PRIMARYCOLOR,
+                    arrowColor: Colors.PRIMARYCOLOR,
+                    monthTextColor: Colors.PRIMARYCOLOR,
+                    textMonthFontWeight: "600",
+                  }}
+                />
               </View>
               {selectedDate && (
                 <TouchableOpacity style={styles.iosClearDateButtonLarge} onPress={clearDateSelection} activeOpacity={0.8}>
@@ -549,7 +561,19 @@ const SharedAppointmentsScreen = ({ userRole }) => {
             {!listOnlyView && (
               <>
                 <View style={styles.iosCalendarContainer}>
-                    <Calendar current={selectedDate || undefined} onDayPress={handleDayPress} markedDates={markedDates} markingType={"multi-dot"} theme={{...}} />
+                  <Calendar
+                    current={selectedDate || undefined}
+                    onDayPress={handleDayPress}
+                    markedDates={markedDates}
+                    markingType={"multi-dot"}
+                    theme={{
+                      calendarBackground: "#FFFFFF",
+                      todayTextColor: Colors.PRIMARYCOLOR,
+                      arrowColor: Colors.PRIMARYCOLOR,
+                      monthTextColor: Colors.PRIMARYCOLOR,
+                      textMonthFontWeight: "600",
+                    }}
+                  />
                 </View>
                 {selectedDate && (
                   <TouchableOpacity style={styles.iosClearDateButtonLarge} onPress={clearDateSelection} activeOpacity={0.8}>
