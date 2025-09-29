@@ -24,7 +24,7 @@ const EmptyScreen = () => {
   )
 }
 
-const HomeManager = () => {
+const HomeTeacher = () => {
   const [logoutModalVisible, setLogoutModalVisible] = useState(false)
   const [isLoggingOut, setIsLoggingOut] = useState(false)
   const navigation = useNavigation()
@@ -173,9 +173,9 @@ const HomeManager = () => {
       // En desktop, renderizamos el contenido según la pestaña activa
       return (
         <View style={styles.desktopContentContainer}>
-          {activeTab === "Citas" && <AppointmentsScreen />}
-          {activeTab === "Solicitudes" && <RequestsScreen />}
-          {activeTab === "Empleados" && <EmployeesScreen />}
+          {activeTab === "Citas" && <AppointmentsScreen userRole='teacher' />}
+          {activeTab === "Solicitudes" && <RequestsScreen userRole='teacher' />}
+          {activeTab === "Empleados" && <EmployeesScreen userRole='teacher' />}
         </View>
       )
     }
@@ -246,23 +246,17 @@ const HomeManager = () => {
         initialRouteName="Citas"
         backBehavior="initialRoute"
       >
-        <Tab.Screen
-          name="Citas"
-          component={AppointmentsScreen}
-          options={{ headerShown: false, tabBarLabel: "Citas" }}
-        />
+        <Tab.Screen name="Citas" options={{ headerShown: false, tabBarLabel: "Citas" }}>
+          {() => <AppointmentsScreen userRole="teacher" />}
+        </Tab.Screen>
 
-        <Tab.Screen
-          name="Solicitudes"
-          component={RequestsScreen}
-          options={{ headerShown: false, tabBarLabel: "Solicitudes" }}
-        />
+        <Tab.Screen name="Solicitudes" options={{ headerShown: false, tabBarLabel: "Solicitudes" }}>
+          {() => <RequestsScreen userRole="teacher" />}
+        </Tab.Screen>
 
-        <Tab.Screen
-          name="Empleados"
-          component={EmployeesScreen}
-          options={{ headerShown: false, tabBarLabel: "Empleados" }}
-        />
+        <Tab.Screen name="Empleados" options={{ headerShown: false, tabBarLabel: "Empleados" }}>
+          {() => <EmployeesScreen userRole="teacher" />}
+        </Tab.Screen>
 
         {/* Pestaña para cerrar sesión */}
         <Tab.Screen
@@ -418,4 +412,4 @@ const styles = StyleSheet.create({
   },
 })
 
-export default HomeManager
+export default HomeTeacher
