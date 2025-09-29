@@ -102,6 +102,13 @@ const SharedAppointmentsScreen = ({ userRole }) => {
         const userDoc = await getDoc(userDocRef)
         if (userDoc.exists()) {
           const userData = userDoc.data()
+          console.log(
+                 "[Appointments] Auth UID:",
+                currentUser.uid,
+                 "| role (Firestore):",
+                 userData.role,
+                 "| role (prop userRole):",
+                userRole)
           setUser({
             name: userData.name || userData.firstName || "Usuario",
             id: currentUser.uid,
