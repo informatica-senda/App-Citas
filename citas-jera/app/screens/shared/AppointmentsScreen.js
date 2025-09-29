@@ -173,18 +173,29 @@ const SharedAppointmentsScreen = ({ userRole }) => {
                 return
             }
 
-            const datesQuery = query(collection(db, "dates"), where("userId", "in", userIds), where("date", "!=", null))
+            // Helper function to query in chunks
+            const queryInChunks = (collectionRef, field, values) => {
+                const chunks = [];
+                for (let i = 0; i < values.length; i += 10) {
+                    chunks.push(values.slice(i, i + 10));
+                }
+                return chunks.map(chunk => query(collectionRef, where(field, "in", chunk)));
+            };
+
+            const datesQueries = queryInChunks(collection(db, "dates"), "userId", userIds);
             
-            return onSnapshot(datesQuery, async (dateSnapshot) => {
-                setIsUpdating(true)
+            // Removing the where("date", "!=", null) from the query
+
+            const unsubscribes = datesQueries.map(q => onSnapshot(q, async (dateSnapshot) => {
+                setIsUpdating(true);
                 const appointmentsData = await Promise.all(dateSnapshot.docs.map(async (dateDoc) => {
-                    const data = dateDoc.data()
-                    const userDoc = await getDoc(doc(db, "users", data.userId))
-                    const userData = userDoc.exists() ? userDoc.data() : {}
-                    let teacherData = {}
+                    const data = dateDoc.data();
+                    const userDoc = await getDoc(doc(db, "users", data.userId));
+                    const userData = userDoc.exists() ? userDoc.data() : {};
+                    let teacherData = {};
                     if (data.teacherId) {
-                        const teacherDoc = await getDoc(doc(db, "users", data.teacherId))
-                        teacherData = teacherDoc.exists() ? teacherDoc.data() : {}
+                        const teacherDoc = await getDoc(doc(db, "users", data.teacherId));
+                        teacherData = teacherDoc.exists() ? teacherDoc.data() : {};
                     }
                     return {
                         id: dateDoc.id,
@@ -200,17 +211,30 @@ const SharedAppointmentsScreen = ({ userRole }) => {
                         userId: data.userId,
                         teacherId: data.teacherId,
                         rawData: data,
-                    }
-                }))
-                setAppointments(appointmentsData)
-                setLoading(false)
-                setIsUpdating(false)
+                    };
+                }));
+
+                // Merge new data with existing appointments
+                setAppointments(prev => {
+                    const newAppointments = appointmentsData.filter(newApp => !prev.some(existing => existing.id === newApp.id));
+                    const updatedAppointments = prev.map(existing => {
+                        const updated = appointmentsData.find(a => a.id === existing.id);
+                        return updated ? updated : existing;
+                    });
+                    return [...updatedAppointments, ...newAppointments];
+                });
+
+                setLoading(false);
+                setIsUpdating(false);
             }, (err) => {
-                console.error("Error listening to admin appointments:", err)
-                setError("Error al cargar las citas.")
-                setLoading(false)
-                setIsUpdating(false)
-            })
+                console.error("Error listening to admin appointments:", err);
+                setError("Error al cargar las citas.");
+                setLoading(false);
+                setIsUpdating(false);
+            }));
+
+            return () => unsubscribes.forEach(unsub => unsub());
+
         }, (err) => {
             console.error("Error listening to users:", err)
             setError("Error al cargar los usuarios.")
@@ -307,6 +331,7 @@ const SharedAppointmentsScreen = ({ userRole }) => {
         service: serviceType,
         state: false,
         date: null,
+        companyId: companyId,
       })
       alert("Solicitud enviada correctamente.")
     } catch (error) {
@@ -330,6 +355,7 @@ const SharedAppointmentsScreen = ({ userRole }) => {
         service: selectedService.toLowerCase(),
         state: false,
         date: appointmentDate,
+        companyId: companyId,
       })
       alert("Cita creada correctamente.")
     } catch (error) {
