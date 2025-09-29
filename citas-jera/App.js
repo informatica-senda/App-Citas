@@ -1,12 +1,14 @@
+// App.js
 import React from 'react';
-import { enableScreens } from 'react-native-screens'; // ✅ IMPORTA ESTO
-import Appnavigation from '@navigation/AppNavigation';
+import { Platform } from 'react-native';
+import { enableScreens } from 'react-native-screens';
+if (Platform.OS !== 'web') enableScreens();
+
+import Appnavigation from '@navigation/AppNavigation'; // o ruta relativa correcta
 import SplashScreenWrapper from './Splashscreen.js';
 
-console.log("API Key:", process.env.EXPO_PUBLIC_APIKEY);
-
-// ✅ LLAMA A ESTA FUNCIÓN ANTES DE RENDERIZAR CUALQUIER NAVEGACIÓN
-enableScreens();
+// 💡 Evita logs confusos, si necesitas ver la key, lee desde tu objeto firebaseConfig donde la montes
+// console.log("API Key:", process.env.EXPO_PUBLIC_APIKEY);
 
 export default function App() {
   return (
