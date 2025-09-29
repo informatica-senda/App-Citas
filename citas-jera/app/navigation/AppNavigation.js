@@ -6,7 +6,7 @@ import { useFonts, Inter_400Regular, Inter_700Bold, Inter_500Medium, Inter_600Se
 // Importamos las pantallas de la aplicación desde sus respectivas rutas
 // Estas pantallas serán utilizadas dentro de nuestro sistema de navegación
 import LoginScreen from '@screens/login.js';
-import UserDoc from '@screens/employee/UserDoc.js';
+import UserDoc from '@screens/shared/UserDoc.js';
 import HomeEmployee from '@screens/employee/HomeEmployee.js';
 import HomeUser from '@screens/user/HomeUser.js';
 import HomeManager from '@screens/manager/HomeManager.js';

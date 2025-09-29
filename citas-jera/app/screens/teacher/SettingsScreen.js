@@ -1,7 +1,7 @@
 import SharedSettingsScreen from "../shared/SettingsScreen";
 
 const SettingsScreen = () => {
-  return <SharedSettingsScreen userRole="manager" />;
+  return <SharedSettingsScreen userRole="teacher" />;
 };
 
 export default SettingsScreen;
