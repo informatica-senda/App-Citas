@@ -1,6 +1,6 @@
-"use client"
+"use client";
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback } from "react";
 import {
   View,
   StyleSheet,
@@ -13,21 +13,39 @@ import {
   SafeAreaView,
   Dimensions,
   ActivityIndicator,
-} from "react-native"
-import { Calendar } from "react-native-calendars"
-import { Ionicons, FontAwesome5, MaterialCommunityIcons } from "@expo/vector-icons"
-import { useNavigation } from "@react-navigation/native"
-import Header from "@components/HeaderUser"
-import AppointmentModal from "@components/AppointmentModal"
-import AppointmentModalAdmin from "@components/AppointmentModalAdmin"
-import Colors from "@styles/colors"
-import LogoutModal from "@components/LogOutModal"
-import ServiceSelectionModal from "@components/RequestServiceModal"
-import AppointmentCalendarScreen from "@components/AppoimentCalendarScreen"
-import { db, auth } from "../../../firebaseConfig.js"
-import { collection, addDoc, query, where, getDocs, getDoc, doc, onSnapshot, limit } from "firebase/firestore"
-import { formatDate, extractTime, formatFirestoreDate } from "../../utils/date.js"
-import styles from "./styles.js"
+} from "react-native";
+import { Calendar } from "react-native-calendars";
+import {
+  Ionicons,
+  FontAwesome5,
+  MaterialCommunityIcons,
+} from "@expo/vector-icons";
+import { useNavigation } from "@react-navigation/native";
+import Header from "@components/HeaderUser";
+import AppointmentModal from "@components/AppointmentModal";
+import AppointmentModalAdmin from "@components/AppointmentModalAdmin";
+import Colors from "@styles/colors";
+import LogoutModal from "@components/LogOutModal";
+import ServiceSelectionModal from "@components/RequestServiceModal";
+import AppointmentCalendarScreen from "@components/AppoimentCalendarScreen";
+import { db, auth } from "../../../firebaseConfig.js";
+import {
+  collection,
+  addDoc,
+  query,
+  where,
+  getDocs,
+  getDoc,
+  doc,
+  onSnapshot,
+  limit,
+} from "firebase/firestore";
+import {
+  formatDate,
+  extractTime,
+  formatFirestoreDate,
+} from "../../utils/date.js";
+import styles from "./styles.js";
 
 // --- Static Data for Employee Role ---
 const EMPLOYEE_APPOINTMENTS = [
@@ -50,334 +68,415 @@ const EMPLOYEE_APPOINTMENTS = [
     state: false,
   },
   // Add more static appointments if needed
-]
+];
 
 const SharedAppointmentsScreen = ({ userRole }) => {
-  const navigation = useNavigation()
+  const navigation = useNavigation();
 
   // --- STATE MANAGEMENT ---
-  const [user, setUser] = useState({ name: "Usuario" })
-  const [appointments, setAppointments] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
+  const [user, setUser] = useState({ name: "Usuario" });
+  const [appointments, setAppointments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   // Filters and View
-  const [activeFilter, setActiveFilter] = useState("all") // 'all', 'psychology', 'nutrition'
-  const [statusFilter, setStatusFilter] = useState("all") // 'all', 'confirmed', 'pending'
-  const [listOnlyView, setListOnlyView] = useState(false)
+  const [activeFilter, setActiveFilter] = useState("all"); // 'all', 'psychology', 'nutrition'
+  const [statusFilter, setStatusFilter] = useState("all"); // 'all', 'confirmed', 'pending'
+  const [listOnlyView, setListOnlyView] = useState(false);
 
   // Calendar and Dates
-  const [selectedDate, setSelectedDate] = useState("")
-  const [markedDates, setMarkedDates] = useState({})
+  const [selectedDate, setSelectedDate] = useState("");
+  const [markedDates, setMarkedDates] = useState({});
 
   // Modals
-  const [selectedAppointment, setSelectedAppointment] = useState(null)
-  const [modalVisible, setModalVisible] = useState(false)
-  const [serviceModalVisible, setServiceModalVisible] = useState(false)
-  const [calendarVisible, setCalendarVisible] = useState(false)
+  const [selectedAppointment, setSelectedAppointment] = useState(null);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [serviceModalVisible, setServiceModalVisible] = useState(false);
+  const [calendarVisible, setCalendarVisible] = useState(false);
 
   // User/Request Flow
-  const [selectedService, setSelectedService] = useState(null)
-  const [companyId, setCompanyId] = useState(null)
-  const [isUpdating, setIsUpdating] = useState(false)
+  const [selectedService, setSelectedService] = useState(null);
+  const [companyId, setCompanyId] = useState(null);
+  const [isUpdating, setIsUpdating] = useState(false);
 
   // Responsive Design
-  const screenWidth = Dimensions.get("window").width
-  const isDesktop = screenWidth >= 768
+  const screenWidth = Dimensions.get("window").width;
+  const isDesktop = screenWidth >= 768;
 
   // --- DATA FETCHING ---
   const setupAppointmentsListener = useCallback(() => {
     try {
-      setLoading(true)
-      setError(null)
-      const currentUser = auth.currentUser
+      setLoading(true);
+      setError(null);
+      const currentUser = auth.currentUser;
       if (!currentUser) {
-        setLoading(false)
-        return () => {}
+        setLoading(false);
+        return () => {};
       }
 
-      const userDocRef = doc(db, "users", currentUser.uid)
+      const userDocRef = doc(db, "users", currentUser.uid);
 
       const fetchUserData = async () => {
-        const userDoc = await getDoc(userDocRef)
+        const userDoc = await getDoc(userDocRef);
         if (userDoc.exists()) {
-          const userData = userDoc.data()
+          const userData = userDoc.data();
           console.log(
-                 "[Appointments] Auth UID:",
-                currentUser.uid,
-                 "| role (Firestore):",
-                 userData.role,
-                 "| role (prop userRole):",
-                userRole)
+            "[Appointments] Auth UID:",
+            currentUser.uid,
+            "| role (Firestore):",
+            userData.role,
+            "| role (prop userRole):",
+            userRole
+          );
           setUser({
             name: userData.name || userData.firstName || "Usuario",
             id: currentUser.uid,
             role: userData.role || "user",
-          })
-          setCompanyId(userData.companyId)
+          });
+          setCompanyId(userData.companyId);
         }
-      }
+      };
 
-      fetchUserData()
+      fetchUserData();
 
       // --- Role-based Data Logic ---
       if (userRole === "user") {
-        const appointmentsQuery = query(collection(db, "dates"), where("userId", "==", currentUser.uid))
+        const appointmentsQuery = query(
+          collection(db, "dates"),
+          where("userId", "==", currentUser.uid)
+        );
         return onSnapshot(
           appointmentsQuery,
-          (snapshot) => {
-            setIsUpdating(true)
-            const appointmentsData = snapshot.docs.map((doc) => {
-              const data = doc.data()
-              return {
-                id: doc.id,
-                title: `Consulta de ${data.service === "psychology" ? "Psicología" : "Nutrición"}`,
-                date: data.date ? formatFirestoreDate(data.date) : "Sin fecha",
-                category: data.service || "other",
-                time: data.date ? extractTime(data.date) : "Sin hora",
-                doctor: data.teacherId ? `Dr. ${data.teacherId}` : "Sin asignar",
-                state: data.state,
-                rawData: data,
-              }
-            })
-            setAppointments(appointmentsData)
-            setLoading(false)
-            setIsUpdating(false)
+          async (snapshot) => {
+            setIsUpdating(true);
+
+            const appointmentsData = await Promise.all(
+              snapshot.docs.map(async (docSnap) => {
+                const data = docSnap.data();
+
+                // Obtener nombre del teacher (si hay)
+                let teacherName = null;
+                if (data.teacherId) {
+                  try {
+                    const teacherDoc = await getDoc(
+                      doc(db, "users", data.teacherId)
+                    );
+                    if (teacherDoc.exists()) {
+                      const t = teacherDoc.data();
+                      const fullName = `${t.name || ""} ${
+                        t.lastName || ""
+                      }`.trim();
+                      teacherName = fullName || null;
+                    }
+                  } catch (e) {
+                    console.warn(
+                      "No se pudo obtener el nombre del teacher:",
+                      e
+                    );
+                  }
+                }
+
+                return {
+                  id: docSnap.id,
+                  title: `Consulta de ${
+                    data.service === "psychology" ? "Psicología" : "Nutrición"
+                  }`,
+                  date: data.date
+                    ? formatFirestoreDate(data.date)
+                    : "Sin fecha",
+                  category: data.service || "other",
+                  time: data.date ? extractTime(data.date) : "Sin hora",
+                  // 👇 Mostrar nombre del teacher (o 'Sin asignar')
+                  doctor: teacherName || "Sin asignar",
+                  state: data.state,
+                  rawData: data,
+                };
+              })
+            );
+
+            setAppointments(appointmentsData);
+            setLoading(false);
+            setIsUpdating(false);
           },
           (err) => {
-            console.error("Error listening to user appointments:", err)
-            setError("Error al cargar las citas.")
-            setLoading(false)
-            setIsUpdating(false)
+            console.error("Error listening to user appointments:", err);
+            setError("Error al cargar las citas.");
+            setLoading(false);
+            setIsUpdating(false);
           }
-        )
+        );
       } else if (userRole === "employee") {
-        setAppointments(EMPLOYEE_APPOINTMENTS)
-        setLoading(false)
-        return () => {} // No listener to unsubscribe from
+        setAppointments(EMPLOYEE_APPOINTMENTS);
+        setLoading(false);
+        return () => {}; // No listener to unsubscribe from
       } else if (userRole === "manager" || userRole === "teacher") {
         if (!companyId) {
-            setLoading(false)
-            return () => {}
-        }
-        
-        let usersQuery;
-        if (userRole === 'manager') {
-            usersQuery = query(
-              collection(db, "users"),
-              where("role", "==", "user"),
-              where("companyId", "==", companyId),
-            )
-        } else { // teacher
-            usersQuery = query(collection(db, "users"), where("role", "in", ["user", "externalUser"]))
+          setLoading(false);
+          return () => {};
         }
 
-        return onSnapshot(usersQuery, (userSnapshot) => {
-            const userIds = userSnapshot.docs.map(doc => doc.id)
+        let usersQuery;
+        if (userRole === "manager") {
+          usersQuery = query(
+            collection(db, "users"),
+            where("role", "==", "user"),
+            where("companyId", "==", companyId)
+          );
+        } else {
+          // teacher
+          usersQuery = query(
+            collection(db, "users"),
+            where("role", "in", ["user", "externalUser"])
+          );
+        }
+
+        return onSnapshot(
+          usersQuery,
+          (userSnapshot) => {
+            const userIds = userSnapshot.docs.map((doc) => doc.id);
             if (userIds.length === 0) {
-                setAppointments([])
-                setLoading(false)
-                return
+              setAppointments([]);
+              setLoading(false);
+              return;
             }
 
             // Helper function to query in chunks
             const queryInChunks = (collectionRef, field, values) => {
-                const chunks = [];
-                for (let i = 0; i < values.length; i += 10) {
-                    chunks.push(values.slice(i, i + 10));
-                }
-                return chunks.map(chunk => query(collectionRef, where(field, "in", chunk)));
+              const chunks = [];
+              for (let i = 0; i < values.length; i += 10) {
+                chunks.push(values.slice(i, i + 10));
+              }
+              return chunks.map((chunk) =>
+                query(collectionRef, where(field, "in", chunk))
+              );
             };
 
-            const datesQueries = queryInChunks(collection(db, "dates"), "userId", userIds);
-            
+            const datesQueries = queryInChunks(
+              collection(db, "dates"),
+              "userId",
+              userIds
+            );
+
             // Removing the where("date", "!=", null) from the query
 
-            const unsubscribes = datesQueries.map(q => onSnapshot(q, async (dateSnapshot) => {
-                setIsUpdating(true);
-                const appointmentsData = await Promise.all(dateSnapshot.docs.map(async (dateDoc) => {
-                    const data = dateDoc.data();
-                    const userDoc = await getDoc(doc(db, "users", data.userId));
-                    const userData = userDoc.exists() ? userDoc.data() : {};
-                    let teacherData = {};
-                    if (data.teacherId) {
-                        const teacherDoc = await getDoc(doc(db, "users", data.teacherId));
-                        teacherData = teacherDoc.exists() ? teacherDoc.data() : {};
-                    }
-                    return {
+            const unsubscribes = datesQueries.map((q) =>
+              onSnapshot(
+                q,
+                async (dateSnapshot) => {
+                  setIsUpdating(true);
+                  const appointmentsData = await Promise.all(
+                    dateSnapshot.docs.map(async (dateDoc) => {
+                      const data = dateDoc.data();
+                      const userDoc = await getDoc(
+                        doc(db, "users", data.userId)
+                      );
+                      const userData = userDoc.exists() ? userDoc.data() : {};
+                      let teacherData = {};
+                      if (data.teacherId) {
+                        const teacherDoc = await getDoc(
+                          doc(db, "users", data.teacherId)
+                        );
+                        teacherData = teacherDoc.exists()
+                          ? teacherDoc.data()
+                          : {};
+                      }
+                      return {
                         id: dateDoc.id,
                         date: data.date ? formatFirestoreDate(data.date) : null,
                         time: data.date ? extractTime(data.date) : "",
                         category: data.service || "",
                         state: data.state,
-                        title: `Cita de ${data.service || 'Servicio'}`,
-                        client: `${userData.name || ""} ${userData.lastName || ""}`.trim(),
-                        employee: teacherData.name ? `${teacherData.name} ${teacherData.lastName || ""}`.trim() : "Sin asignar",
+                        title: `Cita de ${data.service || "Servicio"}`,
+                        client: `${userData.name || ""} ${
+                          userData.lastName || ""
+                        }`.trim(),
+                        employee: teacherData.name
+                          ? `${teacherData.name} ${
+                              teacherData.lastName || ""
+                            }`.trim()
+                          : "Sin asignar",
                         phone: userData.phone || "Sin teléfono",
                         status: data.state ? "confirmed" : "pending",
                         userId: data.userId,
                         teacherId: data.teacherId,
                         rawData: data,
-                    };
-                }));
+                      };
+                    })
+                  );
 
-                // Merge new data with existing appointments
-                setAppointments(prev => {
-                    const newAppointments = appointmentsData.filter(newApp => !prev.some(existing => existing.id === newApp.id));
-                    const updatedAppointments = prev.map(existing => {
-                        const updated = appointmentsData.find(a => a.id === existing.id);
-                        return updated ? updated : existing;
+                  // Merge new data with existing appointments
+                  setAppointments((prev) => {
+                    const newAppointments = appointmentsData.filter(
+                      (newApp) =>
+                        !prev.some((existing) => existing.id === newApp.id)
+                    );
+                    const updatedAppointments = prev.map((existing) => {
+                      const updated = appointmentsData.find(
+                        (a) => a.id === existing.id
+                      );
+                      return updated ? updated : existing;
                     });
                     return [...updatedAppointments, ...newAppointments];
-                });
+                  });
 
-                setLoading(false);
-                setIsUpdating(false);
-            }, (err) => {
-                console.error("Error listening to admin appointments:", err);
-                setError("Error al cargar las citas.");
-                setLoading(false);
-                setIsUpdating(false);
-            }));
+                  setLoading(false);
+                  setIsUpdating(false);
+                },
+                (err) => {
+                  console.error("Error listening to admin appointments:", err);
+                  setError("Error al cargar las citas.");
+                  setLoading(false);
+                  setIsUpdating(false);
+                }
+              )
+            );
 
-            return () => unsubscribes.forEach(unsub => unsub());
-
-        }, (err) => {
-            console.error("Error listening to users:", err)
-            setError("Error al cargar los usuarios.")
-            setLoading(false)
-        })
+            return () => unsubscribes.forEach((unsub) => unsub());
+          },
+          (err) => {
+            console.error("Error listening to users:", err);
+            setError("Error al cargar los usuarios.");
+            setLoading(false);
+          }
+        );
       }
     } catch (err) {
-      console.error("Error setting up listener:", err)
-      setError("Ocurrió un error inesperado.")
-      setLoading(false)
-      return () => {}
+      console.error("Error setting up listener:", err);
+      setError("Ocurrió un error inesperado.");
+      setLoading(false);
+      return () => {};
     }
-  }, [userRole, companyId])
+  }, [userRole, companyId]);
 
   useEffect(() => {
-    const unsubscribe = setupAppointmentsListener()
-    return () => unsubscribe && unsubscribe()
-  }, [setupAppointmentsListener])
-
+    const unsubscribe = setupAppointmentsListener();
+    return () => unsubscribe && unsubscribe();
+  }, [setupAppointmentsListener]);
 
   // --- MARKED DATES ---
   useEffect(() => {
-    const marked = {}
+    const marked = {};
     const filteredAppointments = appointments.filter(
-      (appointment) => activeFilter === "all" || appointment.category === activeFilter
-    )
+      (appointment) =>
+        activeFilter === "all" || appointment.category === activeFilter
+    );
 
     filteredAppointments.forEach((appointment) => {
-      if (!appointment.date) return
-      
-      const dots = marked[appointment.date]?.dots || []
-      if (appointment.category === "psychology" && !dots.some(d => d.key === 'psychology')) {
-        dots.push({ key: "psychology", color: Colors.PSICOLOGIA })
+      if (!appointment.date) return;
+
+      const dots = marked[appointment.date]?.dots || [];
+      if (
+        appointment.category === "psychology" &&
+        !dots.some((d) => d.key === "psychology")
+      ) {
+        dots.push({ key: "psychology", color: Colors.PSICOLOGIA });
       }
-      if (appointment.category === "nutrition" && !dots.some(d => d.key === 'nutrition')) {
-        dots.push({ key: "nutrition", color: Colors.NUTRICIÓN })
+      if (
+        appointment.category === "nutrition" &&
+        !dots.some((d) => d.key === "nutrition")
+      ) {
+        dots.push({ key: "nutrition", color: Colors.NUTRICIÓN });
       }
 
-      marked[appointment.date] = { dots, marked: true }
-    })
+      marked[appointment.date] = { dots, marked: true };
+    });
 
     if (selectedDate && marked[selectedDate]) {
-      marked[selectedDate].selected = true
+      marked[selectedDate].selected = true;
       marked[selectedDate].selectedColor =
         activeFilter === "psychology"
           ? Colors.PSICOLOGIA
           : activeFilter === "nutrition"
           ? Colors.NUTRICIÓN
-          : Colors.PRIMARYCOLOR
+          : Colors.PRIMARYCOLOR;
     } else if (selectedDate) {
       marked[selectedDate] = {
         selected: true,
         selectedColor: Colors.PRIMARYCOLOR,
-      }
+      };
     }
-    setMarkedDates(marked)
-  }, [appointments, selectedDate, activeFilter])
-  
+    setMarkedDates(marked);
+  }, [appointments, selectedDate, activeFilter]);
+
   // --- HANDLERS ---
   const handleDayPress = (day) => {
-    setSelectedDate(day.dateString === selectedDate ? "" : day.dateString)
-  }
+    setSelectedDate(day.dateString === selectedDate ? "" : day.dateString);
+  };
 
   const clearDateSelection = () => {
-    setSelectedDate("")
-  }
+    setSelectedDate("");
+  };
 
   const toggleViewMode = () => {
-    setListOnlyView(!listOnlyView)
-  }
+    setListOnlyView(!listOnlyView);
+  };
 
   const handleSelectAppointment = (appointment) => {
-    setSelectedAppointment(appointment)
-    setModalVisible(true)
-  }
-  
+    setSelectedAppointment(appointment);
+    setModalVisible(true);
+  };
+
   const handleDeleteAppointment = (id) => {
-      setAppointments((prev) => prev.filter((appointment) => appointment.id !== id))
-  }
+    setAppointments((prev) =>
+      prev.filter((appointment) => appointment.id !== id)
+    );
+  };
 
   // User-specific handlers
   const openServiceModal = () => {
-    setServiceModalVisible(true)
-  }
+    setServiceModalVisible(true);
+  };
 
- const handleServiceConfirm = async (serviceType) => {
-  setServiceModalVisible(false);
-  const currentUser = auth.currentUser;
-  if (!currentUser || user.role !== "user") return;
+  const handleServiceConfirm = async (serviceType) => {
+    setServiceModalVisible(false);
+    const currentUser = auth.currentUser;
+    if (!currentUser || user.role !== "user") return;
 
-  try {
-    // Find a teacher with the selected subject
-    const teachersQuery = query(
-      collection(db, "users"),
-      where("role", "==", "teacher"),
-      where("subject", "==", serviceType), // subject matches the service type
-      limit(1)
-    );
+    try {
+      // Find a teacher with the selected subject
+      const teachersQuery = query(
+        collection(db, "users"),
+        where("role", "==", "teacher"),
+        where("subject", "==", serviceType), // subject matches the service type
+        limit(1)
+      );
 
-    const teacherSnapshot = await getDocs(teachersQuery);
-    let teacherId = null;
+      const teacherSnapshot = await getDocs(teachersQuery);
+      let teacherId = null;
 
-    if (!teacherSnapshot.empty) {
-      teacherId = teacherSnapshot.docs[0].id;
-    } else {
-      console.error("No teachers found for the selected service.");
-      alert("No hay profesores disponibles para este servicio.");
-      return; // Stop if no teacher is found
+      if (!teacherSnapshot.empty) {
+        teacherId = teacherSnapshot.docs[0].id;
+      } else {
+        console.error("No teachers found for the selected service.");
+        alert("No hay profesores disponibles para este servicio.");
+        return; // Stop if no teacher is found
+      }
+
+      // Create the appointment with the found teacherId
+      await addDoc(collection(db, "dates"), {
+        userId: currentUser.uid,
+        service: serviceType,
+        state: false, // Pending state
+        date: null, // No date assigned yet
+        companyId: companyId, // User's company ID
+        teacherId: teacherId, // Assigned teacher
+      });
+
+      alert("Solicitud enviada correctamente.");
+    } catch (error) {
+      console.error("Error al crear cita:", error);
+      alert("Error al crear la cita.");
     }
+  };
 
-    // Create the appointment with the found teacherId
-    await addDoc(collection(db, "dates"), {
-      userId: currentUser.uid,
-      service: serviceType,
-      state: false, // Pending state
-      date: null,   // No date assigned yet
-      companyId: companyId, // User's company ID
-      teacherId: teacherId, // Assigned teacher
-    });
-
-    alert("Solicitud enviada correctamente.");
-  } catch (error) {
-    console.error("Error al crear cita:", error);
-    alert("Error al crear la cita.");
-  }
-};
-
-  
   const handleCalendarClose = () => {
-    setCalendarVisible(false)
-  }
+    setCalendarVisible(false);
+  };
 
   const handleAppointmentConfirm = async (appointmentDate) => {
-    setCalendarVisible(false)
-    const currentUser = auth.currentUser
-    if (!currentUser || !user || !selectedService) return
+    setCalendarVisible(false);
+    const currentUser = auth.currentUser;
+    if (!currentUser || !user || !selectedService) return;
 
     try {
       await addDoc(collection(db, "dates"), {
@@ -386,27 +485,28 @@ const SharedAppointmentsScreen = ({ userRole }) => {
         state: false,
         date: appointmentDate,
         companyId: companyId,
-      })
-      alert("Cita creada correctamente.")
+      });
+      alert("Cita creada correctamente.");
     } catch (error) {
-      console.error("Error al guardar la cita:", error)
-      alert("Error al guardar la cita.")
+      console.error("Error al guardar la cita:", error);
+      alert("Error al guardar la cita.");
     }
-  }
-
+  };
 
   // --- FILTERING ---
   const getFilteredAppointments = () => {
     return appointments.filter((appointment) => {
-      const matchesCategory = activeFilter === "all" || appointment.category === activeFilter
-      const matchesDate = !selectedDate || appointment.date === selectedDate
+      const matchesCategory =
+        activeFilter === "all" || appointment.category === activeFilter;
+      const matchesDate = !selectedDate || appointment.date === selectedDate;
       const matchesStatus =
         statusFilter === "all" ||
         (statusFilter === "confirmed" && appointment.state === true) ||
-        (statusFilter === "pending" && (appointment.state === false || appointment.state === undefined))
-      return matchesCategory && matchesDate && matchesStatus
-    })
-  }
+        (statusFilter === "pending" &&
+          (appointment.state === false || appointment.state === undefined));
+      return matchesCategory && matchesDate && matchesStatus;
+    });
+  };
 
   // --- RENDER METHODS ---
   const renderLoading = () => (
@@ -414,158 +514,331 @@ const SharedAppointmentsScreen = ({ userRole }) => {
       <ActivityIndicator size="large" color={Colors.PRIMARYCOLOR} />
       <Text style={styles.iosLoadingText}>Cargando citas...</Text>
     </View>
-  )
+  );
 
   const renderError = () => (
     <View style={styles.iosErrorContainer}>
       <Ionicons name="alert-circle-outline" size={48} color="#FF3B30" />
       <Text style={styles.iosErrorText}>{error}</Text>
-      <TouchableOpacity style={styles.iosRetryButton} onPress={() => setupAppointmentsListener()}>
+      <TouchableOpacity
+        style={styles.iosRetryButton}
+        onPress={() => setupAppointmentsListener()}
+      >
         <Text style={styles.iosRetryButtonText}>Reintentar</Text>
       </TouchableOpacity>
     </View>
-  )
+  );
 
   const renderAppointmentsList = () => {
-    const filteredAppointments = getFilteredAppointments()
+    const filteredAppointments = getFilteredAppointments();
 
-    if (loading) return renderLoading()
-    if (error) return renderError()
+    if (loading) return renderLoading();
+    if (error) return renderError();
 
     return (
       <View style={styles.iosAppointmentsList}>
         <View style={styles.iosSelectedDateHeader}>
-            <View style={styles.iosStatusFilterContainer}>
+          <View style={styles.iosStatusFilterContainer}>
             <TouchableOpacity
-                style={[styles.iosStatusFilterButton, statusFilter === "all" && styles.iosStatusFilterButtonActive]}
-                onPress={() => setStatusFilter("all")}
+              style={[
+                styles.iosStatusFilterButton,
+                statusFilter === "all" && styles.iosStatusFilterButtonActive,
+              ]}
+              onPress={() => setStatusFilter("all")}
             >
-                <Ionicons name="apps" size={18} color={statusFilter === "all" ? "#FFFFFF" : "#8E8E93"} />
-                <Text style={[styles.iosStatusFilterText, statusFilter === "all" && styles.iosStatusFilterTextActive]}>Todas</Text>
+              <Ionicons
+                name="apps"
+                size={18}
+                color={statusFilter === "all" ? "#FFFFFF" : "#8E8E93"}
+              />
+              <Text
+                style={[
+                  styles.iosStatusFilterText,
+                  statusFilter === "all" && styles.iosStatusFilterTextActive,
+                ]}
+              >
+                Todas
+              </Text>
             </TouchableOpacity>
             <TouchableOpacity
-                style={[styles.iosStatusFilterButton, statusFilter === "confirmed" && styles.iosStatusFilterButtonConfirmed]}
-                onPress={() => setStatusFilter("confirmed")}
+              style={[
+                styles.iosStatusFilterButton,
+                statusFilter === "confirmed" &&
+                  styles.iosStatusFilterButtonConfirmed,
+              ]}
+              onPress={() => setStatusFilter("confirmed")}
             >
-                <Ionicons name="checkmark-circle" size={18} color={statusFilter === "confirmed" ? "#FFFFFF" : "#8E8E93"} />
-                <Text style={[styles.iosStatusFilterText, statusFilter === "confirmed" && styles.iosStatusFilterTextActive]}>Confirmadas</Text>
+              <Ionicons
+                name="checkmark-circle"
+                size={18}
+                color={statusFilter === "confirmed" ? "#FFFFFF" : "#8E8E93"}
+              />
+              <Text
+                style={[
+                  styles.iosStatusFilterText,
+                  statusFilter === "confirmed" &&
+                    styles.iosStatusFilterTextActive,
+                ]}
+              >
+                Confirmadas
+              </Text>
             </TouchableOpacity>
             <TouchableOpacity
-                style={[styles.iosStatusFilterButton, statusFilter === "pending" && styles.iosStatusFilterButtonPending]}
-                onPress={() => setStatusFilter("pending")}
+              style={[
+                styles.iosStatusFilterButton,
+                statusFilter === "pending" &&
+                  styles.iosStatusFilterButtonPending,
+              ]}
+              onPress={() => setStatusFilter("pending")}
             >
-                <Ionicons name="time" size={18} color={statusFilter === "pending" ? "#FFFFFF" : "#8E8E93"} />
-                <Text style={[styles.iosStatusFilterText, statusFilter === "pending" && styles.iosStatusFilterTextActive]}>Pendientes</Text>
+              <Ionicons
+                name="time"
+                size={18}
+                color={statusFilter === "pending" ? "#FFFFFF" : "#8E8E93"}
+              />
+              <Text
+                style={[
+                  styles.iosStatusFilterText,
+                  statusFilter === "pending" &&
+                    styles.iosStatusFilterTextActive,
+                ]}
+              >
+                Pendientes
+              </Text>
             </TouchableOpacity>
-            </View>
+          </View>
         </View>
 
         {isUpdating && (
-            <View style={styles.iosUpdatingContainer}>
+          <View style={styles.iosUpdatingContainer}>
             <ActivityIndicator size="small" color={Colors.PRIMARYCOLOR} />
             <Text style={styles.iosUpdatingText}>Actualizando...</Text>
-            </View>
+          </View>
         )}
 
         {filteredAppointments.length === 0 ? (
           <View style={styles.iosEmptyStateContainer}>
-            <Text style={styles.iosNoAppointmentsText}>No se encontraron citas con los filtros seleccionados.</Text>
+            <Text style={styles.iosNoAppointmentsText}>
+              No se encontraron citas con los filtros seleccionados.
+            </Text>
             <TouchableOpacity
               style={styles.iosClearFilterButton}
               onPress={() => {
-                clearDateSelection()
-                setStatusFilter("all")
-                setActiveFilter("all")
+                clearDateSelection();
+                setStatusFilter("all");
+                setActiveFilter("all");
               }}
             >
-              <Text style={styles.iosClearFilterButtonText}>Limpiar todos los filtros</Text>
+              <Text style={styles.iosClearFilterButtonText}>
+                Limpiar todos los filtros
+              </Text>
             </TouchableOpacity>
           </View>
         ) : (
-          <View style={isDesktop && !listOnlyView ? styles.iosAppointmentsGridDesktop : undefined}>
+          <View
+            style={
+              isDesktop && !listOnlyView
+                ? styles.iosAppointmentsGridDesktop
+                : undefined
+            }
+          >
             {filteredAppointments.map((appointment) => (
               <TouchableOpacity
                 key={appointment.id}
                 style={[
                   styles.iosAppointmentItemCompact,
-                  appointment.category === "psychology" ? styles.iosPsychologyItem : styles.iosNutritionItem,
-                  isDesktop && !listOnlyView && styles.iosAppointmentItemDesktop,
+                  appointment.category === "psychology"
+                    ? styles.iosPsychologyItem
+                    : styles.iosNutritionItem,
+                  isDesktop &&
+                    !listOnlyView &&
+                    styles.iosAppointmentItemDesktop,
                 ]}
                 onPress={() => handleSelectAppointment(appointment)}
                 activeOpacity={0.7}
               >
                 <View style={styles.iosAppointmentRow}>
                   <View style={styles.iosAppointmentMainInfo}>
-                    <Text style={styles.iosAppointmentTitleCompact}>{appointment.title}</Text>
+                    <Text style={styles.iosAppointmentTitleCompact}>
+                      {appointment.title}
+                    </Text>
                     <View style={styles.iosAppointmentTimeRow}>
                       <Ionicons name="time-outline" size={14} color="#8E8E93" />
-                      <Text style={styles.iosDetailTextCompact}>{appointment.time || "Sin hora"}</Text>
+                      <Text style={styles.iosDetailTextCompact}>
+                        {appointment.time || "Sin hora"}
+                      </Text>
                       <Text style={styles.iosDateSeparator}>•</Text>
-                      <Text style={styles.iosDetailTextCompact}>{appointment.date ? formatDate(appointment.date) : "Sin fecha"}</Text>
+                      <Text style={styles.iosDetailTextCompact}>
+                        {appointment.date
+                          ? formatDate(appointment.date)
+                          : "Sin fecha"}
+                      </Text>
                     </View>
                   </View>
-                   <View style={[ styles.iosCategoryBadgeCompact, appointment.category === "psychology" ? styles.iosPsychologyBadge : styles.iosNutritionBadge, ]}>
-                        <Text style={styles.iosCategoryTextCompact}>
-                            {appointment.category === "psychology" ? "Psic." : "Nutr."}
-                        </Text>
-                    </View>
+                  <View
+                    style={[
+                      styles.iosCategoryBadgeCompact,
+                      appointment.category === "psychology"
+                        ? styles.iosPsychologyBadge
+                        : styles.iosNutritionBadge,
+                    ]}
+                  >
+                    <Text style={styles.iosCategoryTextCompact}>
+                      {appointment.category === "psychology"
+                        ? "Psic."
+                        : "Nutr."}
+                    </Text>
+                  </View>
                 </View>
 
-                {userRole !== 'user' && (
-                    <View style={styles.iosDoctorRow}>
-                        <Ionicons name="person-outline" size={14} color="#8E8E93" />
-                        <Text style={styles.iosDetailTextCompact}>{appointment.client || "No especificado"}</Text>
-                    </View>
+                {userRole !== "user" && (
+                  <View style={styles.iosDoctorRow}>
+                    <Ionicons name="person-outline" size={14} color="#8E8E93" />
+                    <Text style={styles.iosDetailTextCompact}>
+                      {appointment.client || "No especificado"}
+                    </Text>
+                  </View>
                 )}
 
                 <View style={styles.iosDoctorRow}>
-                    <Ionicons name={userRole === 'user' ? "person-outline" : "medical-outline"} size={14} color="#8E8E93" />
-                    <Text style={styles.iosDetailTextCompact}>{userRole === 'user' ? appointment.doctor : appointment.employee}</Text>
+                  <Ionicons
+                    name={
+                      userRole === "user" ? "person-outline" : "medical-outline"
+                    }
+                    size={14}
+                    color="#8E8E93"
+                  />
+                  <Text style={styles.iosDetailTextCompact}>
+                    {userRole === "user"
+                      ? appointment.doctor
+                      : appointment.employee}
+                  </Text>
                 </View>
 
                 <View style={styles.iosStatusRow}>
-                    <View style={[ styles.iosStatusIndicator, appointment.state ? styles.iosStatusConfirmed : styles.iosStatusPending, ]}/>
-                    <Text style={styles.iosStatusText}>{appointment.state ? "Confirmada" : "Pendiente"}</Text>
+                  <View
+                    style={[
+                      styles.iosStatusIndicator,
+                      appointment.state
+                        ? styles.iosStatusConfirmed
+                        : styles.iosStatusPending,
+                    ]}
+                  />
+                  <Text style={styles.iosStatusText}>
+                    {appointment.state ? "Confirmada" : "Pendiente"}
+                  </Text>
                 </View>
               </TouchableOpacity>
             ))}
           </View>
         )}
       </View>
-    )
-  }
+    );
+  };
 
   // --- MAIN RENDER ---
   return (
     <SafeAreaView style={styles.iosSafeArea}>
-      <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
+      <StatusBar
+        translucent
+        backgroundColor="transparent"
+        barStyle="dark-content"
+      />
 
       <View style={styles.iosHeaderContainer}>
         <Header
           userName={user.name}
-          screenName={userRole === "user" || userRole === "employee" ? "Mis Citas" : "Citas"}
+          screenName={
+            userRole === "user" || userRole === "employee"
+              ? "Mis Citas"
+              : "Citas"
+          }
           headerStyle={styles.iosHeader}
           titleStyle={styles.iosHeaderTitle}
         />
-        <TouchableOpacity style={styles.iosViewToggleButton} onPress={toggleViewMode}>
-          <Ionicons name={listOnlyView ? "calendar-outline" : "list-outline"} size={24} color={Colors.PRIMARYCOLOR} />
+        <TouchableOpacity
+          style={styles.iosViewToggleButton}
+          onPress={toggleViewMode}
+        >
+          <Ionicons
+            name={listOnlyView ? "calendar-outline" : "list-outline"}
+            size={24}
+            color={Colors.PRIMARYCOLOR}
+          />
         </TouchableOpacity>
       </View>
 
       <View style={styles.iosContainer}>
         <View style={styles.iosFilterContainer}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.iosFilterScrollContent}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.iosFilterScrollContent}
+          >
             {/* Category Filters */}
-            <TouchableOpacity style={[styles.iosFilterButton, activeFilter === "all" && styles.iosFilterButtonActive]} onPress={() => setActiveFilter("all")} activeOpacity={0.7}>
-              <Text style={[styles.iosFilterText, activeFilter === "all" && styles.iosFilterTextActive]}>Todas</Text>
+            <TouchableOpacity
+              style={[
+                styles.iosFilterButton,
+                activeFilter === "all" && styles.iosFilterButtonActive,
+              ]}
+              onPress={() => setActiveFilter("all")}
+              activeOpacity={0.7}
+            >
+              <Text
+                style={[
+                  styles.iosFilterText,
+                  activeFilter === "all" && styles.iosFilterTextActive,
+                ]}
+              >
+                Todas
+              </Text>
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.iosFilterButton, activeFilter === "psychology" && styles.iosPsychologyFilterActive]} onPress={() => setActiveFilter("psychology")} activeOpacity={0.7}>
-              <FontAwesome5 name="brain" size={14} color={activeFilter === "psychology" ? "#FFFFFF" : "#8E8E93"} style={styles.iosFilterIcon} />
-              <Text style={[styles.iosFilterText, activeFilter === "psychology" && styles.iosFilterTextActive]}>Psicología</Text>
+            <TouchableOpacity
+              style={[
+                styles.iosFilterButton,
+                activeFilter === "psychology" &&
+                  styles.iosPsychologyFilterActive,
+              ]}
+              onPress={() => setActiveFilter("psychology")}
+              activeOpacity={0.7}
+            >
+              <FontAwesome5
+                name="brain"
+                size={14}
+                color={activeFilter === "psychology" ? "#FFFFFF" : "#8E8E93"}
+                style={styles.iosFilterIcon}
+              />
+              <Text
+                style={[
+                  styles.iosFilterText,
+                  activeFilter === "psychology" && styles.iosFilterTextActive,
+                ]}
+              >
+                Psicología
+              </Text>
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.iosFilterButton, activeFilter === "nutrition" && styles.iosNutritionFilterActive]} onPress={() => setActiveFilter("nutrition")} activeOpacity={0.7}>
-              <MaterialCommunityIcons name="food-apple" size={16} color={activeFilter === "nutrition" ? "#FFFFFF" : "#8E8E93"} style={styles.iosFilterIcon} />
-              <Text style={[styles.iosFilterText, activeFilter === "nutrition" && styles.iosFilterTextActive]}>Nutrición</Text>
+            <TouchableOpacity
+              style={[
+                styles.iosFilterButton,
+                activeFilter === "nutrition" && styles.iosNutritionFilterActive,
+              ]}
+              onPress={() => setActiveFilter("nutrition")}
+              activeOpacity={0.7}
+            >
+              <MaterialCommunityIcons
+                name="food-apple"
+                size={16}
+                color={activeFilter === "nutrition" ? "#FFFFFF" : "#8E8E93"}
+                style={styles.iosFilterIcon}
+              />
+              <Text
+                style={[
+                  styles.iosFilterText,
+                  activeFilter === "nutrition" && styles.iosFilterTextActive,
+                ]}
+              >
+                Nutrición
+              </Text>
             </TouchableOpacity>
           </ScrollView>
         </View>
@@ -573,11 +846,26 @@ const SharedAppointmentsScreen = ({ userRole }) => {
         {isDesktop && !listOnlyView ? (
           // --- Desktop Layout ---
           <View style={styles.iosContentContainerDesktop}>
-            <ScrollView showsVerticalScrollIndicator={false} style={styles.iosScrollViewDesktop} contentContainerStyle={styles.iosScrollContentDesktop}>
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              style={styles.iosScrollViewDesktop}
+              contentContainerStyle={styles.iosScrollContentDesktop}
+            >
               {userRole === "user" && (
-                <TouchableOpacity style={styles.iosRequestServiceButton} onPress={openServiceModal} activeOpacity={0.8}>
-                    <Ionicons name="add-circle-outline" size={20} color="#FFFFFF" style={styles.iosButtonIcon} />
-                    <Text style={styles.iosRequestServiceButtonText}>Solicitar nueva cita</Text>
+                <TouchableOpacity
+                  style={styles.iosRequestServiceButton}
+                  onPress={openServiceModal}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons
+                    name="add-circle-outline"
+                    size={20}
+                    color="#FFFFFF"
+                    style={styles.iosButtonIcon}
+                  />
+                  <Text style={styles.iosRequestServiceButtonText}>
+                    Solicitar nueva cita
+                  </Text>
                 </TouchableOpacity>
               )}
               <View style={styles.iosCalendarContainer}>
@@ -596,24 +884,48 @@ const SharedAppointmentsScreen = ({ userRole }) => {
                 />
               </View>
               {selectedDate && (
-                <TouchableOpacity style={styles.iosClearDateButtonLarge} onPress={clearDateSelection} activeOpacity={0.8}>
-                  <Text style={styles.iosClearDateButtonText}>Limpiar selección</Text>
+                <TouchableOpacity
+                  style={styles.iosClearDateButtonLarge}
+                  onPress={clearDateSelection}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.iosClearDateButtonText}>
+                    Limpiar selección
+                  </Text>
                 </TouchableOpacity>
               )}
             </ScrollView>
-            <ScrollView style={styles.iosAppointmentsScrollDesktop} showsVerticalScrollIndicator={false}>
+            <ScrollView
+              style={styles.iosAppointmentsScrollDesktop}
+              showsVerticalScrollIndicator={false}
+            >
               {renderAppointmentsList()}
             </ScrollView>
           </View>
         ) : (
           // --- Mobile Layout ---
-          <ScrollView style={styles.iosMobileScrollView} contentContainerStyle={styles.iosMobileScrollContent} showsVerticalScrollIndicator={false}>
-             {userRole === "user" && (
-                <TouchableOpacity style={styles.iosRequestServiceButton} onPress={openServiceModal} activeOpacity={0.8}>
-                    <Ionicons name="add-circle-outline" size={18} color="#FFFFFF" style={styles.iosButtonIcon} />
-                    <Text style={styles.iosRequestServiceButtonText}>Solicitar nueva cita</Text>
-                </TouchableOpacity>
-              )}
+          <ScrollView
+            style={styles.iosMobileScrollView}
+            contentContainerStyle={styles.iosMobileScrollContent}
+            showsVerticalScrollIndicator={false}
+          >
+            {userRole === "user" && (
+              <TouchableOpacity
+                style={styles.iosRequestServiceButton}
+                onPress={openServiceModal}
+                activeOpacity={0.8}
+              >
+                <Ionicons
+                  name="add-circle-outline"
+                  size={18}
+                  color="#FFFFFF"
+                  style={styles.iosButtonIcon}
+                />
+                <Text style={styles.iosRequestServiceButtonText}>
+                  Solicitar nueva cita
+                </Text>
+              </TouchableOpacity>
+            )}
             {!listOnlyView && (
               <>
                 <View style={styles.iosCalendarContainer}>
@@ -632,8 +944,14 @@ const SharedAppointmentsScreen = ({ userRole }) => {
                   />
                 </View>
                 {selectedDate && (
-                  <TouchableOpacity style={styles.iosClearDateButtonLarge} onPress={clearDateSelection} activeOpacity={0.8}>
-                    <Text style={styles.iosClearDateButtonText}>Limpiar selección</Text>
+                  <TouchableOpacity
+                    style={styles.iosClearDateButtonLarge}
+                    onPress={clearDateSelection}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.iosClearDateButtonText}>
+                      Limpiar selección
+                    </Text>
                   </TouchableOpacity>
                 )}
               </>
@@ -642,45 +960,44 @@ const SharedAppointmentsScreen = ({ userRole }) => {
           </ScrollView>
         )}
       </View>
-      
+
       {/* --- MODALS --- */}
-      {userRole === 'user' || userRole === 'employee' ? (
-          <AppointmentModal
-              appointment={selectedAppointment}
-              visible={modalVisible}
-              onClose={() => setModalVisible(false)}
-          />
+      {userRole === "user" || userRole === "employee" ? (
+        <AppointmentModal
+          appointment={selectedAppointment}
+          visible={modalVisible}
+          onClose={() => setModalVisible(false)}
+        />
       ) : (
-          <AppointmentModalAdmin
-              appointment={selectedAppointment}
-              visible={modalVisible}
-              onClose={() => setModalVisible(false)}
-              onDelete={handleDeleteAppointment}
+        <AppointmentModalAdmin
+          appointment={selectedAppointment}
+          visible={modalVisible}
+          onClose={() => setModalVisible(false)}
+          onDelete={handleDeleteAppointment}
+        />
+      )}
+
+      {userRole === "user" && (
+        <>
+          <ServiceSelectionModal
+            visible={serviceModalVisible}
+            onClose={() => setServiceModalVisible(false)}
+            onConfirm={handleServiceConfirm}
           />
+          {calendarVisible && (
+            <View style={styles.iosCalendarScreenOverlay}>
+              <AppointmentCalendarScreen
+                onClose={handleCalendarClose}
+                onConfirm={handleAppointmentConfirm}
+                patientName={user.name}
+                service={selectedService}
+              />
+            </View>
+          )}
+        </>
       )}
-
-      {userRole === 'user' && (
-          <>
-            <ServiceSelectionModal
-                visible={serviceModalVisible}
-                onClose={() => setServiceModalVisible(false)}
-                onConfirm={handleServiceConfirm}
-            />
-            {calendarVisible && (
-                <View style={styles.iosCalendarScreenOverlay}>
-                    <AppointmentCalendarScreen
-                        onClose={handleCalendarClose}
-                        onConfirm={handleAppointmentConfirm}
-                        patientName={user.name}
-                        service={selectedService}
-                    />
-                </View>
-            )}
-          </>
-      )}
-
     </SafeAreaView>
-  )
-}
+  );
+};
 
-export default SharedAppointmentsScreen
+export default SharedAppointmentsScreen;
