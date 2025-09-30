@@ -25,7 +25,7 @@ import LogoutModal from "@components/LogOutModal"
 import ServiceSelectionModal from "@components/RequestServiceModal"
 import AppointmentCalendarScreen from "@components/AppoimentCalendarScreen"
 import { db, auth } from "../../../firebaseConfig.js"
-import { collection, addDoc, query, where, getDoc, doc, onSnapshot } from "firebase/firestore"
+import { collection, addDoc, query, where, getDocs, getDoc, doc, onSnapshot, limit } from "firebase/firestore"
 import { formatDate, extractTime, formatFirestoreDate } from "../../utils/date.js"
 import styles from "./styles.js"
 
@@ -327,25 +327,48 @@ const SharedAppointmentsScreen = ({ userRole }) => {
     setServiceModalVisible(true)
   }
 
-  const handleServiceConfirm = async (serviceType) => {
-    setServiceModalVisible(false)
-    const currentUser = auth.currentUser
-    if (!currentUser || user.role !== "user") return
+ const handleServiceConfirm = async (serviceType) => {
+  setServiceModalVisible(false);
+  const currentUser = auth.currentUser;
+  if (!currentUser || user.role !== "user") return;
 
-    try {
-      await addDoc(collection(db, "dates"), {
-        userId: currentUser.uid,
-        service: serviceType,
-        state: false,
-        date: null,
-        companyId: companyId,
-      })
-      alert("Solicitud enviada correctamente.")
-    } catch (error) {
-      console.error("Error al crear cita:", error)
-      alert("Error al crear la cita.")
+  try {
+    // Find a teacher with the selected subject
+    const teachersQuery = query(
+      collection(db, "users"),
+      where("role", "==", "teacher"),
+      where("subject", "==", serviceType), // subject matches the service type
+      limit(1)
+    );
+
+    const teacherSnapshot = await getDocs(teachersQuery);
+    let teacherId = null;
+
+    if (!teacherSnapshot.empty) {
+      teacherId = teacherSnapshot.docs[0].id;
+    } else {
+      console.error("No teachers found for the selected service.");
+      alert("No hay profesores disponibles para este servicio.");
+      return; // Stop if no teacher is found
     }
+
+    // Create the appointment with the found teacherId
+    await addDoc(collection(db, "dates"), {
+      userId: currentUser.uid,
+      service: serviceType,
+      state: false, // Pending state
+      date: null,   // No date assigned yet
+      companyId: companyId, // User's company ID
+      teacherId: teacherId, // Assigned teacher
+    });
+
+    alert("Solicitud enviada correctamente.");
+  } catch (error) {
+    console.error("Error al crear cita:", error);
+    alert("Error al crear la cita.");
   }
+};
+
   
   const handleCalendarClose = () => {
     setCalendarVisible(false)
