@@ -189,6 +189,7 @@ const SharedAppointmentsScreen = ({ userRole }) => {
                   // 👇 Mostrar nombre del teacher (o 'Sin asignar')
                   doctor: teacherName || "Sin asignar",
                   state: data.state,
+                  teacherId: data.teacherId || "sin asignar",
                   rawData: data,
                 };
               })
@@ -282,11 +283,17 @@ const SharedAppointmentsScreen = ({ userRole }) => {
                       }
                       return {
                         id: dateDoc.id,
-                        date: data.date ? formatFirestoreDate(data.date) : null,
-                        time: data.date ? extractTime(data.date) : "",
+                        date: data.date
+                          ? formatFirestoreDate(data.date)
+                          : "Sin fecha",
+                        time: data.date ? extractTime(data.date) : "Sin hora",
                         category: data.service || "",
                         state: data.state,
-                        title: `Cita de ${data.service || "Servicio"}`,
+                        title: `Cita de ${
+                          data.service === "psychology"
+                            ? "Psicología"
+                            : "Nutrición"
+                        }`,
                         client: `${userData.name || ""} ${
                           userData.lastName || ""
                         }`.trim(),
@@ -296,6 +303,9 @@ const SharedAppointmentsScreen = ({ userRole }) => {
                             }`.trim()
                           : "Sin asignar",
                         phone: userData.phone || "Sin teléfono",
+                        clientPhone: userData.phone || null,
+                        employeePhone: teacherData.phone || null,
+                        companyId: data.companyId || null,
                         status: data.state ? "confirmed" : "pending",
                         userId: data.userId,
                         teacherId: data.teacherId,
@@ -304,16 +314,19 @@ const SharedAppointmentsScreen = ({ userRole }) => {
                     })
                   );
 
+                  const normalizedAppointmentsData =
+                    userRole === "teacher"
+                      ? appointmentsData.filter((a) => a?.rawData?.date) // solo con fecha real
+                      : appointmentsData;
+
                   // Merge new data with existing appointments
                   setAppointments((prev) => {
-                    const newAppointments = appointmentsData.filter(
+                    const newAppointments = normalizedAppointmentsData.filter(
                       (newApp) =>
                         !prev.some((existing) => existing.id === newApp.id)
                     );
                     const updatedAppointments = prev.map((existing) => {
-                      const updated = appointmentsData.find(
-                        (a) => a.id === existing.id
-                      );
+                      const updated = normalizedAppointmentsData.find((a) => a.id === existing.id);
                       return updated ? updated : existing;
                     });
                     return [...updatedAppointments, ...newAppointments];
@@ -974,6 +987,7 @@ const SharedAppointmentsScreen = ({ userRole }) => {
           visible={modalVisible}
           onClose={() => setModalVisible(false)}
           onDelete={handleDeleteAppointment}
+          viewerRole={userRole}
         />
       )}
 

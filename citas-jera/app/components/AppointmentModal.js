@@ -37,7 +37,7 @@ const AppointmentModal = ({ appointment, visible, onClose }) => {
 
   // Formatear la fecha para mostrarla en formato más legible
   const formatDate = (dateString) => {
-    if (!dateString) return ""
+    if (!dateString || dateString=="Sin fecha") return "Sin fecha"
 
     try {
       const date = new Date(dateString)
