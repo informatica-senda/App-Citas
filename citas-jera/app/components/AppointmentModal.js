@@ -2,26 +2,38 @@ import { View, Text, Modal, StyleSheet, TouchableOpacity, Linking, Platform } fr
 import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from "@expo/vector-icons"
 import Colors from "@styles/colors.js"
 import { useResponsive } from "../hooks/use-responsive"
+import { useEffect, useState } from "react"
+import { doc, getDoc } from "firebase/firestore"
+import { db } from "../../firebaseConfig"
 
 const AppointmentModal = ({ appointment, visible, onClose }) => {
   const responsive = useResponsive()
+  const [teacher, setTeacher] = useState(null)
+
+  useEffect(() => {
+    const fetchTeacher = async () => {
+      if (appointment && appointment.teacherId) {
+        const teacherDocRef = doc(db, "users", appointment.teacherId)
+        const teacherDocSnap = await getDoc(teacherDocRef)
+        if (teacherDocSnap.exists()) {
+          setTeacher(teacherDocSnap.data())
+        }
+      }
+    }
+
+    fetchTeacher()
+  }, [appointment])
 
   // Función para abrir WhatsApp con el número correspondiente
   const handleWhatsAppAccess = () => {
-    if (appointment) {
-      // Determinar el número de teléfono dependiendo de la categoría
-      const phoneNumber = appointment.category === "psychology" ? "+34637645417" : "+34637645418"
-      Linking.openURL(`whatsapp://send?phone=${phoneNumber}`).catch(() => {
+    if (teacher && teacher.phone) {
+      Linking.openURL(`whatsapp://send?phone=${teacher.phone}`).catch(() => {
         alert("Asegúrate de tener WhatsApp instalado en tu dispositivo")
       })
     }
   }
 
   if (!appointment) return null
-
-  // Asignar el nombre del encargado según la categoría de la cita
-  const encargado = appointment.category === "psychology" ? "Fernando Rodríguez" : "Julieta Murcia"
-  const phoneNumber = appointment.category === "psychology" ? "+34637645417" : "+34637645418"
 
   // Formatear la fecha para mostrarla en formato más legible
   const formatDate = (dateString) => {
@@ -115,7 +127,11 @@ const AppointmentModal = ({ appointment, visible, onClose }) => {
                   <View style={styles.infoTextContainer}>
                     <Text style={[styles.infoLabel, responsive.isDesktop && styles.infoLabelDesktop]}>Fecha</Text>
                     <Text style={[styles.infoValue, responsive.isDesktop && styles.infoValueDesktop]}>
-                      {formatDate(appointment.date)}
+                      {appointment.date
+                        ? formatDate(appointment.date)
+                        : appointment.status === "pendiente"
+                        ? "A revisar por el encargado"
+                        : "No asignada"}
                     </Text>
                   </View>
                 </View>
@@ -140,7 +156,9 @@ const AppointmentModal = ({ appointment, visible, onClose }) => {
                   <MaterialCommunityIcons name="account-tie" size={responsive.isDesktop ? 22 : 20} color="#666" />
                   <View style={styles.infoTextContainer}>
                     <Text style={[styles.infoLabel, responsive.isDesktop && styles.infoLabelDesktop]}>Profesional</Text>
-                    <Text style={[styles.infoValue, responsive.isDesktop && styles.infoValueDesktop]}>{encargado}</Text>
+                    <Text style={[styles.infoValue, responsive.isDesktop && styles.infoValueDesktop]}>
+                      {teacher ? teacher.name : "No asignado"}
+                    </Text>
                   </View>
                 </View>
               </View>
@@ -151,7 +169,7 @@ const AppointmentModal = ({ appointment, visible, onClose }) => {
                   <View style={styles.infoTextContainer}>
                     <Text style={[styles.infoLabel, responsive.isDesktop && styles.infoLabelDesktop]}>Teléfono</Text>
                     <Text style={[styles.infoValue, responsive.isDesktop && styles.infoValueDesktop]}>
-                      {phoneNumber}
+                      {teacher ? teacher.phone : "No disponible"}
                     </Text>
                   </View>
                 </View>
@@ -174,8 +192,14 @@ const AppointmentModal = ({ appointment, visible, onClose }) => {
           {/* Botones de acción */}
           <View style={[styles.actionButtons, responsive.isDesktop && styles.actionButtonsDesktop]}>
             <TouchableOpacity
-              style={[styles.actionButton, styles.whatsappButton, responsive.isDesktop && styles.whatsappButtonDesktop]}
+              style={[
+                styles.actionButton,
+                styles.whatsappButton,
+                responsive.isDesktop && styles.whatsappButtonDesktop,
+                (!teacher || !teacher.phone) && styles.disabledButton,
+              ]}
               onPress={handleWhatsAppAccess}
+              disabled={!teacher || !teacher.phone}
             >
               <Ionicons name="logo-whatsapp" size={responsive.isDesktop ? 22 : 20} color="#fff" />
               <Text style={[styles.actionButtonText, responsive.isDesktop && styles.actionButtonTextDesktop]}>
@@ -414,6 +438,9 @@ const styles = StyleSheet.create({
       },
     }),
   },
+  disabledButton: {
+    backgroundColor: "#a9a9a9",
+  },
   actionButtonText: {
     color: "#fff",
     fontWeight: "600",
@@ -427,4 +454,3 @@ const styles = StyleSheet.create({
 })
 
 export default AppointmentModal
-
