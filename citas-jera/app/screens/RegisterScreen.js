@@ -608,7 +608,7 @@ const RegisterScreen = () => {
               handleAction={() => setHidePassword(!hidePassword)}
               ref={passwordRef}
               title={"Contraseña"}
-              icon={hidePassword ? "eye" : "eye-slash"}
+              icon={hidePassword ? "eye-off-outline" : "eye-outline"}
               containerStyle={styles.iosInputContainer}
               inputStyle={styles.iosInput}
               titleStyle={styles.iosInputLabel}
@@ -622,7 +622,7 @@ const RegisterScreen = () => {
               handleAction={() => setHideConfirmPassword(!hideConfirmPassword)}
               ref={confirmPasswordRef}
               title={"Confirmar Contraseña"}
-              icon={hideConfirmPassword ? "eye" : "eye-slash"}
+              icon={hideConfirmPassword ? "eye-off-outline" : "eye-outline"}
               containerStyle={styles.iosInputContainer}
               inputStyle={styles.iosInput}
               titleStyle={styles.iosInputLabel}
@@ -815,7 +815,7 @@ const RegisterScreen = () => {
                     handleAction={() => setHidePassword(!hidePassword)}
                     ref={passwordRef}
                     title={"Contraseña"}
-                    icon={hidePassword ? "eye" : "eye-slash"}
+                    icon={hidePassword ? "eye-off-outline" : "eye-outline"}
                     containerStyle={styles.iosInputContainer}
                     inputStyle={styles.iosInput}
                     titleStyle={styles.iosInputLabel}
@@ -829,7 +829,7 @@ const RegisterScreen = () => {
                     handleAction={() => setHideConfirmPassword(!hideConfirmPassword)}
                     ref={confirmPasswordRef}
                     title={"Confirmar Contraseña"}
-                    icon={hideConfirmPassword ? "eye" : "eye-slash"}
+                    icon={hideConfirmPassword ? "eye-off-outline" : "eye-outline"}
                     containerStyle={styles.iosInputContainer}
                     inputStyle={styles.iosInput}
                     titleStyle={styles.iosInputLabel}

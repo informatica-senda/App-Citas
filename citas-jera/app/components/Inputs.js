@@ -3,7 +3,7 @@
 import { forwardRef, useEffect, useRef, useState } from "react"
 import { Animated, StyleSheet, View, TextInput, TouchableOpacity, Platform } from "react-native"
 import Colors from "@styles/colors.js"
-import FontAwesome from "react-native-vector-icons/FontAwesome"
+import Ionicons from "@expo/vector-icons/Ionicons"
 
 const Input = forwardRef(({ title = "", icon = "", handleAction = () => {}, inputRef = null, ...rest }, ref) => {
   const animatedValues = {
@@ -77,7 +77,7 @@ const Input = forwardRef(({ title = "", icon = "", handleAction = () => {}, inpu
       />
       {icon && (
         <TouchableOpacity onPress={handleAction} style={styles.iconContainer}>
-          <FontAwesome name={icon} size={18} color={Colors.SECONDARYCOLOR} />
+          <Ionicons name={icon} size={18} color={Colors.SECONDARYCOLOR} />
         </TouchableOpacity>
       )}
       <Animated.View style={[styles.titleBox, animatedStyles]} pointerEvents={"none"}>

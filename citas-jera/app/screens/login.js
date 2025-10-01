@@ -210,7 +210,7 @@ const LoginScreen = () => {
                   handleAction={() => setHide(!hide)}
                   ref={password}
                   title={"Contraseña"}
-                  icon={hide ? "eye" : "eye-slash"}
+                  icon={hide ? "eye-off-outline" : "eye-outline"}
                   containerStyle={styles.iosInputContainer}
                   inputStyle={styles.iosInput}
                   titleStyle={styles.iosInputLabel}
@@ -279,7 +279,7 @@ const LoginScreen = () => {
                 handleAction={() => setHide(!hide)}
                 ref={password}
                 title={"Contraseña"}
-                icon={hide ? "eye" : "eye-slash"}
+                icon={hide ? "eye-off-outline" : "eye-outline"}
                 containerStyle={styles.iosInputContainer}
                 inputStyle={styles.iosInput}
                 titleStyle={styles.iosInputLabel}
