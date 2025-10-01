@@ -100,7 +100,6 @@ export default StyleSheet.create({
     fontSize: 16,
     fontWeight: "500",
   },
-
   // Calendario con estilo iOS
   iosCalendarContainer: {
     backgroundColor: "#FFFFFF",
@@ -459,5 +458,28 @@ export default StyleSheet.create({
     color: Colors.PRIMARYCOLOR,
     marginLeft: 8,
     fontWeight: "500",
+  },
+  iosRequestServiceButton: {
+    backgroundColor: Colors.PRIMARYCOLOR,
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  iosButtonIcon: {
+    marginRight: 8,
+  },
+  iosRequestServiceButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
 })
