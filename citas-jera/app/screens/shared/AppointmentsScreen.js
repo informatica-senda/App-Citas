@@ -326,7 +326,9 @@ const SharedAppointmentsScreen = ({ userRole }) => {
                         !prev.some((existing) => existing.id === newApp.id)
                     );
                     const updatedAppointments = prev.map((existing) => {
-                      const updated = normalizedAppointmentsData.find((a) => a.id === existing.id);
+                      const updated = normalizedAppointmentsData.find(
+                        (a) => a.id === existing.id
+                      );
                       return updated ? updated : existing;
                     });
                     return [...updatedAppointments, ...newAppointments];
@@ -442,44 +444,8 @@ const SharedAppointmentsScreen = ({ userRole }) => {
 
   const handleServiceConfirm = async (serviceType) => {
     setServiceModalVisible(false);
-    const currentUser = auth.currentUser;
-    if (!currentUser || user.role !== "user") return;
-
-    try {
-      // Find a teacher with the selected subject
-      const teachersQuery = query(
-        collection(db, "users"),
-        where("role", "==", "teacher"),
-        where("subject", "==", serviceType), // subject matches the service type
-        limit(1)
-      );
-
-      const teacherSnapshot = await getDocs(teachersQuery);
-      let teacherId = null;
-
-      if (!teacherSnapshot.empty) {
-        teacherId = teacherSnapshot.docs[0].id;
-      } else {
-        console.error("No teachers found for the selected service.");
-        alert("No hay profesores disponibles para este servicio.");
-        return; // Stop if no teacher is found
-      }
-
-      // Create the appointment with the found teacherId
-      await addDoc(collection(db, "dates"), {
-        userId: currentUser.uid,
-        service: serviceType,
-        state: false, // Pending state
-        date: null, // No date assigned yet
-        companyId: companyId, // User's company ID
-        teacherId: teacherId, // Assigned teacher
-      });
-
-      alert("Solicitud enviada correctamente.");
-    } catch (error) {
-      console.error("Error al crear cita:", error);
-      alert("Error al crear la cita.");
-    }
+    setSelectedService(serviceType);
+    setCalendarVisible(true);
   };
 
   const handleCalendarClose = () => {
@@ -864,7 +830,7 @@ const SharedAppointmentsScreen = ({ userRole }) => {
               style={styles.iosScrollViewDesktop}
               contentContainerStyle={styles.iosScrollContentDesktop}
             >
-              {userRole === "user" && (
+              {(userRole === "user" || userRole === "externalUser") && (
                 <TouchableOpacity
                   style={styles.iosRequestServiceButton}
                   onPress={openServiceModal}
@@ -922,7 +888,7 @@ const SharedAppointmentsScreen = ({ userRole }) => {
             contentContainerStyle={styles.iosMobileScrollContent}
             showsVerticalScrollIndicator={false}
           >
-            {userRole === "user" && (
+            {(userRole === "user" || userRole === "externalUser") && (
               <TouchableOpacity
                 style={styles.iosRequestServiceButton}
                 onPress={openServiceModal}
@@ -975,7 +941,9 @@ const SharedAppointmentsScreen = ({ userRole }) => {
       </View>
 
       {/* --- MODALS --- */}
-      {userRole === "user" || userRole === "employee" ? (
+      {userRole === "user" ||
+      userRole === "employee" ||
+      userRole === "externalUser" ? (
         <AppointmentModal
           appointment={selectedAppointment}
           visible={modalVisible}
@@ -991,7 +959,7 @@ const SharedAppointmentsScreen = ({ userRole }) => {
         />
       )}
 
-      {userRole === "user" && (
+      {(userRole === "user" || userRole === "externalUser") && (
         <>
           <ServiceSelectionModal
             visible={serviceModalVisible}
@@ -1005,6 +973,7 @@ const SharedAppointmentsScreen = ({ userRole }) => {
                 onConfirm={handleAppointmentConfirm}
                 patientName={user.name}
                 service={selectedService}
+                companyId={companyId}
               />
             </View>
           )}

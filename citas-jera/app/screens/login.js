@@ -1,6 +1,6 @@
-"use client"
+"use client";
 
-import { useRef, useState, useEffect } from "react"
+import { useRef, useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -17,103 +17,108 @@ import {
   ActivityIndicator,
   Keyboard,
   TextInput,
-} from "react-native"
-import { useNavigation } from "@react-navigation/native"
-import Input from "@components/Inputs.js"
-import Colors from "@styles/colors.js"
-import { signInWithEmailAndPassword } from "firebase/auth"
-import { db, auth } from "../../firebaseConfig.js"
-import { doc, getDoc } from "firebase/firestore"
-import { useResponsive } from "../hooks/use-responsive"
+} from "react-native";
+import { useNavigation } from "@react-navigation/native";
+import Input from "@components/Inputs.js";
+import Colors from "@styles/colors.js";
+import { signInWithEmailAndPassword } from "firebase/auth";
+import { db, auth } from "../../firebaseConfig.js";
+import { doc, getDoc } from "firebase/firestore";
+import { useResponsive } from "../hooks/use-responsive";
 
 // Obtenemos las dimensiones de la pantalla del dispositivo
-const { width, height } = Dimensions.get("window")
+const { width, height } = Dimensions.get("window");
 
 // Componente principal de la pantalla de inicio de sesión
 const LoginScreen = () => {
-  const responsive = useResponsive()
-  const [isLoading, setIsLoading] = useState(false)
+  const responsive = useResponsive();
+  const [isLoading, setIsLoading] = useState(false);
 
-  const navigation = useNavigation()
+  const navigation = useNavigation();
 
   // Referencias para los campos de entrada
-  const password = useRef()
-  const usernameRef = useRef()
-  const phoneNumberRef = useRef()
-  const workerIdRef = useRef()
-  
+  const password = useRef();
+  const usernameRef = useRef();
+  const phoneNumberRef = useRef();
+  const workerIdRef = useRef();
+
   // Referencias a los TextInput nativos dentro de nuestros componentes Input
-  const usernameInputRef = useRef(null)
-  const passwordInputRef = useRef(null)
+  const usernameInputRef = useRef(null);
+  const passwordInputRef = useRef(null);
 
   // Estado que controla la visibilidad de la contraseña
-  const [hide, setHide] = useState(true)
+  const [hide, setHide] = useState(true);
 
   /**
    * Función que maneja el proceso de inicio de sesión.
    */
   const handleLogin = async () => {
-    const username = usernameRef.current?.getValue()
-    const passwordComp = password.current?.getValue()
-  
+    const username = usernameRef.current?.getValue();
+    const passwordComp = password.current?.getValue();
+
     if (username && passwordComp) {
       try {
-        setIsLoading(true)
-        const response = await signInWithEmailAndPassword(auth, username, passwordComp)
+        setIsLoading(true);
+        const response = await signInWithEmailAndPassword(
+          auth,
+          username,
+          passwordComp
+        );
         if (response) {
-          const userDocRef = doc(db, "users", response.user.uid)
-          const userDocSnap = await getDoc(userDocRef)
-  
+          const userDocRef = doc(db, "users", response.user.uid);
+          const userDocSnap = await getDoc(userDocRef);
+
           if (userDocSnap.exists()) {
-            const userData = userDocSnap.data()
-            setIsLoading(false)
-  
-            // Mapeo de roles a pantallas
+            const userData = userDocSnap.data();
+            setIsLoading(false);
+
+            // Mapeo de roles a pantallas (externalUser navega igual que user)
             const roleScreens = {
-              admin: "HomeManager",       // Si quieres mantener "admin" como alias de manager
+              admin: "HomeManager", // Si quieres mantener "admin" como alias de manager
               manager: "HomeManager",
               user: "HomeUser",
+              externalUser: "HomeUser",
               employee: "HomeEmployee",
-              teacher: "HomeTeacher"
-            }
-  
-            const screen = roleScreens[userData.role]
-  
+              teacher: "HomeTeacher",
+            };
+
+            const screen = roleScreens[userData.role];
+
             if (screen) {
-              navigation.replace(screen)
-              alert("Inicio de sesión correcto")
+              navigation.replace(screen);
+              alert("Inicio de sesión correcto");
             } else {
-              alert("Rol no reconocido, contacta con soporte")
+              alert("Rol no reconocido, contacta con soporte");
             }
           } else {
-            setIsLoading(false)
-            alert("Usuario o contraseña incorrectos")
+            setIsLoading(false);
+            alert("Usuario o contraseña incorrectos");
           }
         }
       } catch (e) {
-        setIsLoading(false)
-        alert("Ha ocurrido un error al iniciar sesión")
+        setIsLoading(false);
+        alert("Ha ocurrido un error al iniciar sesión");
       }
     } else {
-      alert("Introduce el usuario y la contraseña")
+      alert("Introduce el usuario y la contraseña");
     }
-  }
-  
+  };
+
   // Función para navegar a la pantalla de registro
   const navigateToRegister = () => {
-    navigation.navigate("RegisterScreen")
-  }
+    navigation.navigate("RegisterScreen");
+  };
 
   // Manejador de eventos de teclado para detectar la tecla Enter
   useEffect(() => {
     // Esta función solo se ejecutará en entornos web (desktop)
-    if (responsive.isDesktop && typeof window !== 'undefined') {
+    if (responsive.isDesktop && typeof window !== "undefined") {
       const handleKeyDown = (event) => {
         // Código 13 corresponde a la tecla Enter
-        if (event.keyCode === 13 || event.key === 'Enter') {
+        if (event.keyCode === 13 || event.key === "Enter") {
           // Prevenir el comportamiento por defecto para evitar doble acción
           event.preventDefault();
-          
+
           // Si el foco está en el campo de usuario, mover al campo de contraseña
           if (document.activeElement === usernameInputRef.current) {
             passwordInputRef.current?.focus();
@@ -125,11 +130,11 @@ const LoginScreen = () => {
       };
 
       // Agregar el event listener
-      window.addEventListener('keydown', handleKeyDown);
+      window.addEventListener("keydown", handleKeyDown);
 
       // Limpiar el event listener cuando el componente se desmonte
       return () => {
-        window.removeEventListener('keydown', handleKeyDown);
+        window.removeEventListener("keydown", handleKeyDown);
       };
     }
   }, [responsive.isDesktop]);
@@ -153,11 +158,11 @@ const LoginScreen = () => {
       if (element) {
         // Guardamos la referencia al TextInput nativo
         nativeRef.current = element;
-        
+
         // Si el componente Input usa forwardRef, también actualizamos esa referencia
-        if (inputRef && typeof inputRef === 'function') {
+        if (inputRef && typeof inputRef === "function") {
           inputRef(element);
-        } else if (inputRef && typeof inputRef === 'object') {
+        } else if (inputRef && typeof inputRef === "object") {
           inputRef.current = element;
         }
       }
@@ -165,8 +170,17 @@ const LoginScreen = () => {
   };
 
   return (
-    <SafeAreaView style={[styles.container, responsive.isDesktop && styles.containerDesktop]}>
-      <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
+    <SafeAreaView
+      style={[
+        styles.container,
+        responsive.isDesktop && styles.containerDesktop,
+      ]}
+    >
+      <StatusBar
+        translucent
+        backgroundColor="transparent"
+        barStyle="dark-content"
+      />
 
       {responsive.isDesktop ? (
         // Layout para escritorio - diseño de dos columnas con estilo iOS
@@ -175,13 +189,21 @@ const LoginScreen = () => {
           <View style={styles.desktopSidebar}>
             <View style={styles.sidebarContent}>
               <View style={styles.logoContainerDesktop}>
-                <Image source={require("@assets/icon.png")} style={styles.desktopLogo} resizeMode="contain" />
+                <Image
+                  source={require("@assets/icon.png")}
+                  style={styles.desktopLogo}
+                  resizeMode="contain"
+                />
               </View>
               <Text style={styles.desktopWelcomeTitle}>Senda Servicios</Text>
-              <Text style={styles.desktopWelcomeText}>Accede a tu cuenta para gestionar tus citas y servicios</Text>
+              <Text style={styles.desktopWelcomeText}>
+                Accede a tu cuenta para gestionar tus citas y servicios
+              </Text>
             </View>
             <View style={styles.sidebarFooter}>
-              <Text style={styles.copyrightText}>© 2025 Servicio de Atención al Empleado</Text>
+              <Text style={styles.copyrightText}>
+                © 2025 Servicio de Atención al Empleado
+              </Text>
             </View>
           </View>
 
@@ -189,7 +211,9 @@ const LoginScreen = () => {
           <View style={styles.desktopFormPanel}>
             <View style={styles.formContainer}>
               <Text style={styles.desktopFormTitle}>Iniciar Sesión</Text>
-              <Text style={styles.desktopFormSubtitle}>Introduce tus credenciales para acceder</Text>
+              <Text style={styles.desktopFormSubtitle}>
+                Introduce tus credenciales para acceder
+              </Text>
 
               <View style={styles.formFields}>
                 <Input
@@ -220,20 +244,28 @@ const LoginScreen = () => {
                   inputRef={getInputRef(null, passwordInputRef)}
                 />
 
-                <TouchableOpacity style={styles.iosLoginButton} onPress={handleLogin} activeOpacity={0.8}>
+                <TouchableOpacity
+                  style={styles.iosLoginButton}
+                  onPress={handleLogin}
+                  activeOpacity={0.8}
+                >
                   <Text style={styles.iosLoginButtonText}>Iniciar Sesión</Text>
                 </TouchableOpacity>
               </View>
 
               <View style={styles.iosRegisterSection}>
-                <Text style={styles.iosRegisterText}>¿No tienes una cuenta?</Text>
+                <Text style={styles.iosRegisterText}>
+                  ¿No tienes una cuenta?
+                </Text>
                 <TouchableOpacity onPress={navigateToRegister}>
                   <Text style={styles.iosRegisterButtonText}>Registrarse</Text>
                 </TouchableOpacity>
               </View>
 
               <View style={styles.iosHelpSection}>
-                <Text style={styles.iosHelpText}>¿Necesitas ayuda? Contacta con el administrador</Text>
+                <Text style={styles.iosHelpText}>
+                  ¿Necesitas ayuda? Contacta con el administrador
+                </Text>
               </View>
             </View>
           </View>
@@ -252,12 +284,18 @@ const LoginScreen = () => {
           >
             {/* Encabezado con el logo */}
             <View style={styles.iosHeader}>
-              <Image source={require("@assets/icon.png")} style={styles.iosLogo} resizeMode="contain" />
+              <Image
+                source={require("@assets/icon.png")}
+                style={styles.iosLogo}
+                resizeMode="contain"
+              />
             </View>
 
             {/* Título de la aplicación */}
             <Text style={styles.iosAppTitle}>Senda Servicios</Text>
-            <Text style={styles.iosAppSubtitle}>Servicio de Atención al Empleado</Text>
+            <Text style={styles.iosAppSubtitle}>
+              Servicio de Atención al Empleado
+            </Text>
 
             {/* Campos de entrada con estilo iOS */}
             <View style={styles.iosFormContainer}>
@@ -290,13 +328,19 @@ const LoginScreen = () => {
               />
 
               {/* Botón de inicio de sesión con estilo iOS */}
-              <TouchableOpacity style={styles.iosLoginButton} onPress={handleLogin} activeOpacity={0.8}>
+              <TouchableOpacity
+                style={styles.iosLoginButton}
+                onPress={handleLogin}
+                activeOpacity={0.8}
+              >
                 <Text style={styles.iosLoginButtonText}>Iniciar Sesión</Text>
               </TouchableOpacity>
 
               {/* Sección de registro para móvil con estilo iOS */}
               <View style={styles.iosRegisterSection}>
-                <Text style={styles.iosRegisterText}>¿No tienes una cuenta?</Text>
+                <Text style={styles.iosRegisterText}>
+                  ¿No tienes una cuenta?
+                </Text>
                 <TouchableOpacity onPress={navigateToRegister}>
                   <Text style={styles.iosRegisterButtonText}>Registrarse</Text>
                 </TouchableOpacity>
@@ -316,8 +360,8 @@ const LoginScreen = () => {
         </View>
       </Modal>
     </SafeAreaView>
-  )
-}
+  );
+};
 
 // Definición de estilos para la pantalla de inicio de sesión con estilo iOS
 const styles = StyleSheet.create({
@@ -534,6 +578,6 @@ const styles = StyleSheet.create({
     color: "#8E8E93",
     textAlign: "center",
   },
-})
+});
 
-export default LoginScreen
+export default LoginScreen;
