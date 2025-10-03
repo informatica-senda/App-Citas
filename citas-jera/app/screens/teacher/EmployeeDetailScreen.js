@@ -9,8 +9,6 @@ import {
   ScrollView,
   StatusBar,
   ActivityIndicator,
-  Modal,
-  FlatList,
   Platform,
 } from "react-native"
 import { MaterialIcons, Ionicons } from "@expo/vector-icons"
@@ -21,64 +19,7 @@ import { db } from "../../../firebaseConfig.js"
 import { doc, getDoc, collection, query, where, onSnapshot } from "firebase/firestore"
 import { auth } from "../../../firebaseConfig"
 
-// Create a completely separate web-specific component for the appointments button
-const WebAppointmentsButton = ({ onPress }) => {
-  return (
-    <div
-      style={{
-        marginTop: "20px",
-        marginBottom: "20px",
-        width: "100%",
-      }}
-    >
-      <button
-        onClick={onPress}
-        style={{
-          backgroundColor: Colors.PRIMARYCOLOR,
-          color: "white",
-          border: "none",
-          borderRadius: "8px",
-          padding: "12px 16px",
-          fontSize: "16px",
-          fontWeight: "600",
-          cursor: "pointer",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          width: "100%",
-          boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
-        }}
-      >
-        <span style={{ marginRight: "8px" }}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path
-              d="M19 4H5C3.89543 4 3 4.89543 3 6V20C3 21.1046 3.89543 22 5 22H19C20.1046 22 21 21.1046 21 20V6C21 4.89543 20.1046 4 19 4Z"
-              stroke="white"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-            <path d="M16 2V6" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            <path d="M8 2V6" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            <path d="M3 10H21" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            <path d="M9 16L11 18L15 14" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </span>
-        Ver Citas Confirmadas
-      </button>
-    </div>
-  )
-}
-
-// Regular React Native button for mobile
-const MobileAppointmentsButton = ({ onPress }) => {
-  return (
-    <TouchableOpacity style={styles.appointmentsButton} onPress={onPress} activeOpacity={0.8}>
-      <MaterialIcons name="event-available" size={20} color="#FFFFFF" style={styles.appointmentsButtonIcon} />
-      <Text style={styles.appointmentsButtonText}>Ver Citas Confirmadas</Text>
-    </TouchableOpacity>
-  )
-}
+// Botones de "Ver Citas Confirmadas" eliminados
 
 const EmployeeDetailScreen = () => {
   const navigation = useNavigation()
@@ -87,7 +28,7 @@ const EmployeeDetailScreen = () => {
   const isWeb = Platform.OS === "web"
 
   const { employee } = route.params || {
-    // Valores por defecto en caso de que no se pasen parámetros
+    // Valores por defecto en caso de que no se pasen parÃƒÂ¡metros
     employee: {
       name: "Empleado",
       code: "EMP000",
@@ -100,7 +41,7 @@ const EmployeeDetailScreen = () => {
   }
 
   const { company } = route.params || {
-    // Valores por defecto en caso de que no se pasen parámetros
+    // Valores por defecto en caso de que no se pasen parÃƒÂ¡metros
     employee: {
       name: "Empresa Demo",
       code: "DEMO25",
@@ -117,11 +58,7 @@ const EmployeeDetailScreen = () => {
   const [companyData, setCompanyData] = useState(company)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState(null)
-  const [showAppointments, setShowAppointments] = useState(false)
-  const [employeeAppointments, setEmployeeAppointments] = useState([])
-  const [loadingAppointments, setLoadingAppointments] = useState(false)
-  const [appointmentsError, setAppointmentsError] = useState(null)
-  const [sortOrder, setSortOrder] = useState("newest")
+  
   const [authUser, setAuthUser] = useState(null)
 
   // Cargar datos adicionales del empleado si es necesario
@@ -132,7 +69,7 @@ const EmployeeDetailScreen = () => {
         return
       }
 
-      // Si tenemos el ID del empleado pero necesitamos más datos
+      // Si tenemos el ID del empleado pero necesitamos mÃƒÂ¡s datos
       if (employee.id) {
         setIsLoading(true)
         try {
@@ -191,142 +128,16 @@ const EmployeeDetailScreen = () => {
   }, [])
 
   // Fetch confirmed appointments for this employee
-  const fetchEmployeeAppointments = useCallback(() => {
-    if (!employeeData.id) return () => {}
+  
 
-    setLoadingAppointments(true)
-    setAppointmentsError(null)
+  
 
-    try {
-      // Get the current user's role and subject from employeeData, with null checks
-      const currentUserRole = authUser?.role || ""
-      const currentUserSubject = authUser?.subject || ""
-      const currentUser = auth.currentUser
-      const userId = currentUser?.uid
-
-      // Base query - filter by teacherId and state
-      let appointmentsQuery = query(collection(db, "dates"), where("state", "==", true))
-
-      // Add additional filtering for teachers based on subject
-      if (currentUserRole === "teacher") {
-        if (currentUserSubject === "psychology") {
-          appointmentsQuery = query(
-            collection(db, "dates"),
-            where("teacherId", "==", userId),
-            where("state", "==", true),
-            where("service", "==", "psychology"),
-            where("userId", "==", employeeData.id),
-          )
-        } else if (currentUserSubject === "nutrition") {
-          appointmentsQuery = query(
-            collection(db, "dates"),
-            where("teacherId", "==", userId),
-            where("state", "==", true),
-            where("service", "==", "nutrition"),
-            where("userId", "==", employeeData.id),
-          )
-        }
-      }else{
-        appointmentsQuery = query(
-            collection(db, "dates"),
-            where("state", "==", true),
-            where("userId", "==", employeeData.id),
-          )
-      }
-
-      // Set up real-time listener
-      const unsubscribe = onSnapshot(
-        appointmentsQuery,
-        async (snapshot) => {
-          const appointmentsData = []
-
-          for (const docSnapshot of snapshot.docs) {
-            const appointmentData = docSnapshot.data()
-
-            // Get user details if available
-            let userData = {}
-            if (appointmentData.userId) {
-              const userDocRef = doc(db, "users", appointmentData.userId)
-              const userDocSnap = await getDoc(userDocRef)
-              userData = userDocSnap.exists() ? userDocSnap.data() : {}
-            }
-
-            // Format date and time
-            let formattedDate = "Sin fecha"
-            let formattedTime = "Sin hora"
-
-            if (appointmentData.date && typeof appointmentData.date.toDate === "function") {
-              const dateObj = appointmentData.date.toDate()
-
-              // Format date as dd/mm/yyyy
-              const day = String(dateObj.getDate()).padStart(2, "0")
-              const month = String(dateObj.getMonth() + 1).padStart(2, "0")
-              const year = dateObj.getFullYear()
-              formattedDate = `${day}/${month}/${year}`
-
-              // Format time as HH:MM
-              const hours = String(dateObj.getHours()).padStart(2, "0")
-              const minutes = String(dateObj.getMinutes()).padStart(2, "0")
-              formattedTime = `${hours}:${minutes}`
-            }
-
-            appointmentsData.push({
-              id: docSnapshot.id,
-              date: formattedDate,
-              time: formattedTime,
-              category: appointmentData.service || "",
-              title: `Cita de ${appointmentData.service ? appointmentData.service.charAt(0).toUpperCase() + appointmentData.service.slice(1) : "Servicio"}`,
-              client: `${userData.name || ""} ${userData.lastName || ""}`.trim() || "Cliente sin nombre",
-              phone: userData.phone || "Sin teléfono",
-              rawData: appointmentData,
-            })
-          }
-
-          setEmployeeAppointments(appointmentsData)
-          setLoadingAppointments(false)
-        },
-        (error) => {
-          console.error("Error fetching employee appointments:", error)
-          setAppointmentsError("Error al cargar las citas del empleado")
-          setLoadingAppointments(false)
-        },
-      )
-
-      return unsubscribe
-    } catch (err) {
-      console.error("Error setting up appointments listener:", err)
-      setAppointmentsError("Error al configurar el listener de citas")
-      setLoadingAppointments(false)
-      return () => {}
-    }
-  }, [employeeData.id, authUser])
-
-  const toggleSortOrder = () => {
-    setSortOrder(sortOrder === "newest" ? "oldest" : "newest")
-  }
-
-  // Set up and clean up appointments listener when showing appointments
-  useEffect(() => {
-    let unsubscribe = () => {}
-
-    if (showAppointments && employeeData.id) {
-      unsubscribe = fetchEmployeeAppointments()
-    }
-
-    return () => {
-      unsubscribe()
-    }
-  }, [showAppointments, employeeData.id, fetchEmployeeAppointments])
-
-  // Función para manejar el botón de volver atrás
+  // FunciÃƒÂ³n para manejar el botÃƒÂ³n de volver atrÃƒÂ¡s
   const handleGoBack = () => {
     navigation.goBack()
   }
 
-  // Handle opening appointments modal
-  const handleOpenAppointments = () => {
-    setShowAppointments(true)
-  }
+  // Eliminado: manejador para abrir el modal de citas confirmadas
 
   // Render the employee information section consistently across all views
   const renderEmployeeInfoSection = () => (
@@ -340,7 +151,7 @@ const EmployeeDetailScreen = () => {
           <MaterialIcons name="phone" size={20} color={Colors.PRIMARYCOLOR} />
         </View>
         <View style={styles.infoContent}>
-          <Text style={styles.infoLabel}>Teléfono</Text>
+          <Text style={styles.infoLabel}>Telefono</Text>
           <Text style={styles.infoValue}>{employeeData.phone}</Text>
         </View>
       </View>
@@ -369,26 +180,7 @@ const EmployeeDetailScreen = () => {
 
   
 
-  // Render the appointments button section consistently across all views
-  const renderAppointmentsSection = () => {
-    // For web platform, use the web-specific button
-    if (isWeb && responsive.isDesktop) {
-      return (
-        <View style={[styles.infoSection, styles.infoSectionDesktop]}>
-          <Text style={[styles.sectionTitle, styles.sectionTitleDesktop]}>Citas</Text>
-          <WebAppointmentsButton onPress={handleOpenAppointments} />
-        </View>
-      )
-    }
-
-    // For mobile or non-desktop web, use the React Native button
-    return (
-      <View style={[styles.infoSection, responsive.isDesktop && styles.infoSectionDesktop]}>
-        <Text style={[styles.sectionTitle, responsive.isDesktop && styles.sectionTitleDesktop]}>Citas</Text>
-        <MobileAppointmentsButton onPress={handleOpenAppointments} />
-      </View>
-    )
-  }
+  // Eliminado: secciÃƒÂ³n de botÃƒÂ³n para ver citas confirmadas
 
   // For web platform in desktop mode, render a simplified view that matches the screenshot
   if (isWeb && responsive.isDesktop) {
@@ -397,7 +189,7 @@ const EmployeeDetailScreen = () => {
         {isLoading ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={Colors.PRIMARYCOLOR} />
-            <Text style={styles.loadingText}>Cargando información...</Text>
+            <Text style={styles.loadingText}>Cargando informaciÃƒÂ³n...</Text>
           </View>
         ) : error ? (
           <View style={styles.errorContainer}>
@@ -427,7 +219,7 @@ const EmployeeDetailScreen = () => {
 
             {/* Contact Information */}
             <View style={styles.webSection}>
-              <Text style={styles.webSectionTitle}>Información de contacto</Text>
+              <Text style={styles.webSectionTitle}>InformaciÃƒÂ³n de contacto</Text>
 
               <View style={styles.webInfoRow}>
                 <MaterialIcons name="phone" size={20} color={Colors.PRIMARYCOLOR} />
@@ -447,11 +239,11 @@ const EmployeeDetailScreen = () => {
 
             {/* Job Information */}
             <View style={styles.webSection}>
-              <Text style={styles.webSectionTitle}>Información laboral</Text>
+              <Text style={styles.webSectionTitle}>InformaciÃƒÂ³n laboral</Text>
 
               <View style={styles.webInfoRow}>
                 <MaterialIcons name="badge" size={20} color={Colors.PRIMARYCOLOR} />
-                <Text style={styles.webInfoText}>Código: {employeeData.code}</Text>
+                <Text style={styles.webInfoText}>CÃƒÂ³digo: {employeeData.code}</Text>
               </View>
 
               <View style={styles.webInfoRow}>
@@ -465,9 +257,9 @@ const EmployeeDetailScreen = () => {
                   <Text style={styles.webInfoText}>
                     Especialidad:{" "}
                     {employeeData.subject === "psychology"
-                      ? "Psicología"
+                      ? "PsicologÃƒÂ­a"
                       : employeeData.subject === "nutrition"
-                        ? "Nutrición"
+                        ? "NutriciÃƒÂ³n"
                         : employeeData.subject}
                   </Text>
                 </View>
@@ -486,9 +278,9 @@ const EmployeeDetailScreen = () => {
                       <Text style={styles.webInfoText}>
                         Tu Especialidad:{" "}
                         {authUser.subject === "psychology"
-                          ? "Psicología"
+                          ? "PsicologÃƒÂ­a"
                           : authUser.subject === "nutrition"
-                            ? "Nutrición"
+                            ? "NutriciÃƒÂ³n"
                             : authUser.subject}
                       </Text>
                     </View>
@@ -497,120 +289,21 @@ const EmployeeDetailScreen = () => {
               )}
             </View>
 
-            {/* Appointments Button - Web Specific */}
-            <WebAppointmentsButton onPress={handleOpenAppointments} />
+            
           </ScrollView>
         )}
 
-        {/* Modal para mostrar las citas confirmadas */}
-        <Modal
-          visible={showAppointments}
-          animationType="fade"
-          transparent={true}
-          onRequestClose={() => setShowAppointments(false)}
-        >
-          <View style={styles.modalContainer}>
-            <View style={styles.modalContent}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Citas Confirmadas</Text>
-                <TouchableOpacity style={styles.modalCloseButton} onPress={() => setShowAppointments(false)}>
-                  <Ionicons name="close" size={24} color="#000" />
-                </TouchableOpacity>
-              </View>
+        
 
-              {loadingAppointments ? (
-                <View style={styles.loadingContainer}>
-                  <ActivityIndicator size="large" color={Colors.PRIMARYCOLOR} />
-                  <Text style={styles.loadingText}>Cargando citas...</Text>
-                </View>
-              ) : appointmentsError ? (
-                <View style={styles.errorContainer}>
-                  <MaterialIcons name="error-outline" size={60} color="#FF3B30" />
-                  <Text style={styles.errorText}>{appointmentsError}</Text>
-                </View>
-              ) : employeeAppointments.length === 0 ? (
-                <View style={styles.emptyAppointmentsContainer}>
-                  <MaterialIcons name="event-busy" size={60} color="#CCCCCC" />
-                  <Text style={styles.emptyAppointmentsText}>No hay citas confirmadas</Text>
-                </View>
-              ) : (
-                <FlatList
-                  data={employeeAppointments.sort((a, b) => {
-                    // Convert string dates to Date objects for comparison
-                    const dateA = a.date.split("/").reverse().join("-")
-                    const dateB = b.date.split("/").reverse().join("-")
-                    const timeA = a.time
-                    const timeB = b.time
-
-                    const dateTimeA = new Date(`${dateA}T${timeA}`)
-                    const dateTimeB = new Date(`${dateB}T${timeB}`)
-
-                    return sortOrder === "newest" ? dateTimeB - dateTimeA : dateTimeA - dateTimeB
-                  })}
-                  keyExtractor={(item) => item.id}
-                  ListHeaderComponent={() => (
-                    <TouchableOpacity style={styles.sortButton} onPress={toggleSortOrder}>
-                      <MaterialIcons
-                        name={sortOrder === "newest" ? "arrow-downward" : "arrow-upward"}
-                        size={16}
-                        color="#fff"
-                      />
-                      <Text style={styles.sortButtonText}>
-                        {sortOrder === "newest" ? "Más recientes primero" : "Más antiguas primero"}
-                      </Text>
-                    </TouchableOpacity>
-                  )}
-                  renderItem={({ item }) => (
-                    <View style={styles.appointmentItem}>
-                      <View style={styles.appointmentHeader}>
-                        <Text style={styles.appointmentTitle}>{item.title}</Text>
-                        <View
-                          style={[
-                            styles.categoryBadge,
-                            item.category === "psychology" ? styles.psychologyBadge : styles.nutritionBadge,
-                          ]}
-                        >
-                          <Text style={styles.categoryText}>
-                            {item.category === "psychology" ? "Psicología" : "Nutrición"}
-                          </Text>
-                        </View>
-                      </View>
-
-                      <View style={styles.appointmentDetail}>
-                        <MaterialIcons name="access-time" size={16} color="#666" />
-                        <Text style={styles.appointmentDetailText}>
-                          {item.date} - {item.time}
-                        </Text>
-                      </View>
-
-                      <View style={styles.appointmentDetail}>
-                        <MaterialIcons name="person" size={16} color="#666" />
-                        <Text style={styles.appointmentDetailText}>{item.client}</Text>
-                      </View>
-
-                      <View style={styles.appointmentDetail}>
-                        <MaterialIcons name="phone" size={16} color="#666" />
-                        <Text style={styles.appointmentDetailText}>{item.phone}</Text>
-                      </View>
-                    </View>
-                  )}
-                  contentContainerStyle={styles.appointmentsList}
-                  showsVerticalScrollIndicator={false}
-                />
-              )}
-            </View>
-          </View>
-        </Modal>
+              
       </View>
     )
   }
-
-  // For mobile or non-desktop web, use the original layout
   return (
     <View style={[styles.container, responsive.isWeb && { height: "100vh" }]}>
       <StatusBar backgroundColor={Colors.PRIMARYCOLOR} barStyle="light-content" />
 
-      {/* Encabezado con botón de volver */}
+      {/* Encabezado con botÃƒÂ³n de volver */}
       <View style={[styles.header, responsive.isDesktop && styles.headerDesktop]}>
         <TouchableOpacity
           style={styles.backButton}
@@ -626,7 +319,7 @@ const EmployeeDetailScreen = () => {
       {isLoading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={Colors.PRIMARYCOLOR} />
-          <Text style={styles.loadingText}>Cargando información...</Text>
+          <Text style={styles.loadingText}>Cargando informaciÃƒÂ³n...</Text>
         </View>
       ) : error ? (
         <View style={styles.errorContainer}>
@@ -637,13 +330,13 @@ const EmployeeDetailScreen = () => {
           </TouchableOpacity>
         </View>
       ) : (
-        // Layout para móvil - una columna con scroll
+        // Layout para mÃƒÂ³vil - una columna con scroll
         <ScrollView
           style={styles.scrollView}
           contentContainerStyle={[styles.scrollViewContent, responsive.isWeb && { paddingBottom: 80 }]}
           showsVerticalScrollIndicator={false}
         >
-          {/* Sección de perfil */}
+          {/* SecciÃƒÂ³n de perfil */}
           <View style={styles.profileSection}>
             <View style={styles.avatarLarge}>
               <Text style={styles.avatarLargeText}>
@@ -656,113 +349,15 @@ const EmployeeDetailScreen = () => {
             <Text style={styles.employeeName}>{employeeData.name}</Text>
           </View>
 
-          {/* Sección de información */}
+          {/* SecciÃƒÂ³n de informaciÃƒÂ³n */}
           {renderEmployeeInfoSection()}
 
-          {/* Botón para ver citas confirmadas */}
-          {renderAppointmentsSection()}
+          
+          
         </ScrollView>
       )}
 
-      {/* Modal para mostrar las citas confirmadas */}
-      <Modal
-        visible={showAppointments}
-        animationType="fade"
-        transparent={true}
-        onRequestClose={() => setShowAppointments(false)}
-      >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Citas Confirmadas</Text>
-              <TouchableOpacity style={styles.modalCloseButton} onPress={() => setShowAppointments(false)}>
-                <Ionicons name="close" size={24} color="#000" />
-              </TouchableOpacity>
-            </View>
-
-            {loadingAppointments ? (
-              <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color={Colors.PRIMARYCOLOR} />
-                <Text style={styles.loadingText}>Cargando citas...</Text>
-              </View>
-            ) : appointmentsError ? (
-              <View style={styles.errorContainer}>
-                <MaterialIcons name="error-outline" size={60} color="#FF3B30" />
-                <Text style={styles.errorText}>{appointmentsError}</Text>
-              </View>
-            ) : employeeAppointments.length === 0 ? (
-              <View style={styles.emptyAppointmentsContainer}>
-                <MaterialIcons name="event-busy" size={60} color="#CCCCCC" />
-                <Text style={styles.emptyAppointmentsText}>No hay citas confirmadas</Text>
-              </View>
-            ) : (
-              <FlatList
-                data={employeeAppointments.sort((a, b) => {
-                  // Convert string dates to Date objects for comparison
-                  const dateA = a.date.split("/").reverse().join("-")
-                  const dateB = b.date.split("/").reverse().join("-")
-                  const timeA = a.time
-                  const timeB = b.time
-
-                  const dateTimeA = new Date(`${dateA}T${timeA}`)
-                  const dateTimeB = new Date(`${dateB}T${timeB}`)
-
-                  return sortOrder === "newest" ? dateTimeB - dateTimeA : dateTimeA - dateTimeB
-                })}
-                keyExtractor={(item) => item.id}
-                ListHeaderComponent={() => (
-                  <TouchableOpacity style={styles.sortButton} onPress={toggleSortOrder}>
-                    <MaterialIcons
-                      name={sortOrder === "newest" ? "arrow-downward" : "arrow-upward"}
-                      size={16}
-                      color="#fff"
-                    />
-                    <Text style={styles.sortButtonText}>
-                      {sortOrder === "newest" ? "Más recientes primero" : "Más antiguas primero"}
-                    </Text>
-                  </TouchableOpacity>
-                )}
-                renderItem={({ item }) => (
-                  <View style={styles.appointmentItem}>
-                    <View style={styles.appointmentHeader}>
-                      <Text style={styles.appointmentTitle}>{item.title}</Text>
-                      <View
-                        style={[
-                          styles.categoryBadge,
-                          item.category === "psychology" ? styles.psychologyBadge : styles.nutritionBadge,
-                        ]}
-                      >
-                        <Text style={styles.categoryText}>
-                          {item.category === "psychology" ? "Psicología" : "Nutrición"}
-                        </Text>
-                      </View>
-                    </View>
-
-                    <View style={styles.appointmentDetail}>
-                      <MaterialIcons name="access-time" size={16} color="#666" />
-                      <Text style={styles.appointmentDetailText}>
-                        {item.date} - {item.time}
-                      </Text>
-                    </View>
-
-                    <View style={styles.appointmentDetail}>
-                      <MaterialIcons name="person" size={16} color="#666" />
-                      <Text style={styles.appointmentDetailText}>{item.client}</Text>
-                    </View>
-
-                    <View style={styles.appointmentDetail}>
-                      <MaterialIcons name="phone" size={16} color="#666" />
-                      <Text style={styles.appointmentDetailText}>{item.phone}</Text>
-                    </View>
-                  </View>
-                )}
-                contentContainerStyle={styles.appointmentsList}
-                showsVerticalScrollIndicator={false}
-              />
-            )}
-          </View>
-        </View>
-      </Modal>
+      
     </View>
   )
 }
@@ -814,7 +409,7 @@ const styles = StyleSheet.create({
   desktopRightColumn: {
     flex: 1,
   },
-  // Estilos para móvil
+  // Estilos para mÃƒÂ³vil
   scrollView: {
     flex: 1,
   },
@@ -1016,140 +611,6 @@ const styles = StyleSheet.create({
     paddingBottom: 50,
     flexGrow: 1,
   },
-  // Estilos para el botón de citas
-  appointmentsButton: {
-    backgroundColor: Colors.PRIMARYCOLOR,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    marginTop: 8,
-  },
-  appointmentsButtonIcon: {
-    marginRight: 8,
-  },
-  appointmentsButtonText: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  // Estilos para el modal de citas
-  modalContainer: {
-    flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  modalContent: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 16,
-    width: "90%",
-    maxWidth: 500,
-    maxHeight: "80%",
-    padding: 20,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
-  modalHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 16,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F2F2F7",
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: "#000000",
-  },
-  modalCloseButton: {
-    padding: 4,
-  },
-  emptyAppointmentsContainer: {
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 40,
-  },
-  emptyAppointmentsText: {
-    fontSize: 16,
-    color: "#666",
-    marginTop: 16,
-    textAlign: "center",
-  },
-  appointmentsList: {
-    paddingBottom: 20,
-  },
-  appointmentItem: {
-    backgroundColor: "#F9F9F9",
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    borderLeftWidth: 4,
-    borderLeftColor: Colors.PRIMARYCOLOR,
-  },
-  appointmentHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 12,
-  },
-  appointmentTitle: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#333",
-    flex: 1,
-  },
-  categoryBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    marginLeft: 8,
-  },
-  psychologyBadge: {
-    backgroundColor: Colors.PSICOLOGIA || "#8996F2",
-  },
-  nutritionBadge: {
-    backgroundColor: Colors.NUTRICIÓN || "#6EB566",
-  },
-  categoryText: {
-    color: "#FFFFFF",
-    fontSize: 12,
-    fontWeight: "bold",
-  },
-  appointmentDetail: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 8,
-  },
-  appointmentDetailText: {
-    fontSize: 14,
-    color: "#666",
-    marginLeft: 8,
-  },
-  sortButton: {
-    backgroundColor: Colors.PRIMARYCOLOR,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    marginBottom: 16,
-  },
-  sortButtonText: {
-    color: "#FFFFFF",
-    fontSize: 14,
-    fontWeight: "500",
-    marginLeft: 6,
-  },
-
   // Web-specific styles for the desktop split-screen layout
   webDesktopContainer: {
     flex: 1,
@@ -1213,152 +674,6 @@ const styles = StyleSheet.create({
     color: "#333333",
     marginLeft: 12,
   },
-  modalContainer: {
-    flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.6)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  modalContent: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 12,
-    width: "90%",
-    maxWidth: 550,
-    maxHeight: "85%",
-    padding: 0,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 10,
-    overflow: "hidden",
-  },
-  modalHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 24,
-    paddingVertical: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: "#EAEAEA",
-    backgroundColor: "#FFFFFF",
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: "#222222",
-    letterSpacing: 0.2,
-  },
-  modalCloseButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "#F5F5F5",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  emptyAppointmentsContainer: {
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 60,
-  },
-  emptyAppointmentsText: {
-    fontSize: 16,
-    color: "#666",
-    marginTop: 16,
-    textAlign: "center",
-    lineHeight: 24,
-  },
-  appointmentsList: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 24,
-  },
-  appointmentItem: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 10,
-    padding: 0,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: "#EAEAEA",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 2,
-    overflow: "hidden",
-  },
-  appointmentHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F2F2F2",
-    backgroundColor: "#FAFAFA",
-  },
-  appointmentTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#333333",
-    flex: 1,
-  },
-  categoryBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 6,
-    marginLeft: 8,
-  },
-  psychologyBadge: {
-    backgroundColor: Colors.PSICOLOGIA,
-  },
-  nutritionBadge: {
-    backgroundColor: Colors.NUTRICIÓN,
-  },
-  categoryText: {
-    color: "#FFFFFF",
-    fontSize: 12,
-    fontWeight: "600",
-    letterSpacing: 0.3,
-  },
-  appointmentDetail: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F5F5F5",
-  },
-  appointmentDetailText: {
-    fontSize: 14,
-    color: "#555555",
-    marginLeft: 12,
-    letterSpacing: 0.2,
-    flex: 1,
-  },
-  sortButton: {
-    backgroundColor: Colors.PRIMARYCOLOR,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    marginBottom: 20,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  sortButtonText: {
-    color: "#FFFFFF",
-    fontSize: 14,
-    fontWeight: "600",
-    marginLeft: 8,
-  },
-
   // Web-specific styles for the desktop split-screen layout
   webDesktopContainer: {
     flex: 1,

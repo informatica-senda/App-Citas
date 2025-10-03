@@ -6,13 +6,11 @@ import {
   Text,
   TextInput,
   FlatList,
-  Modal,
   TouchableOpacity,
   StatusBar,
   ActivityIndicator,
 } from "react-native";
-import { Feather, MaterialIcons, Ionicons } from "@expo/vector-icons";
-import Colors from "@styles/colors";
+import { Feather, MaterialIcons } from "@expo/vector-icons";
 import Header from "@components/HeaderAdmin.js";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { useResponsive } from "../../hooks/use-responsive";
@@ -60,13 +58,7 @@ const EmployeesScreen = ({ userRole }) => {
     },
   };
 
-  const [employeeData, setEmployeeData] = useState(employee);
-
-  const [loadingAppointments, setLoadingAppointments] = useState(false);
-
-  const [showAppointments, setShowAppointments] = useState(false);
-
-  const [employeeAppointments, setEmployeeAppointments] = useState([]);
+  
 
   // Estado para manejar la búsqueda de empleados
   const [searchQuery, setSearchQuery] = useState("");
@@ -86,12 +78,12 @@ const EmployeesScreen = ({ userRole }) => {
   // Estado para almacenar el ID de la compañía del usuario actual
   const [companyId, setCompanyId] = useState(null);
 
-  const [authUser, setAuthUser] = useState(null);
+  
 
   // Estado para almacenar la información del usuario actual
   const [currentUser, setCurrentUser] = useState(null);
 
-  const [appointmentsError, setAppointmentsError] = useState(null);
+  
 
   // Obtener el usuario actual y su companyId
   useEffect(() => {
@@ -121,29 +113,9 @@ const EmployeesScreen = ({ userRole }) => {
     fetchCurrentUser();
   }, []);
 
-  // Fetch authenticated user data
-  useEffect(() => {
-    const fetchAuthUser = async () => {
-      try {
-        const user = auth.currentUser;
-        if (user) {
-          const userDocRef = doc(db, "users", user.uid);
-          const userDocSnap = await getDoc(userDocRef);
+  
 
-          if (userDocSnap.exists()) {
-            const userData = userDocSnap.data();
-            setAuthUser(userData);
-          }
-        }
-      } catch (err) {
-        console.error("Error fetching authenticated user:", err);
-      }
-    };
-
-    fetchAuthUser();
-  }, []);
-
-  // Fetch confirmed appointments for this employee
+  /* // Fetch confirmed appointments for this employee
   const fetchEmployeeAppointments = useCallback(() => {
     if (!employeeData.id) return () => {};
 
@@ -265,20 +237,9 @@ const EmployeesScreen = ({ userRole }) => {
       setLoadingAppointments(false);
       return () => {};
     }
-  }, [employeeData.id, authUser]);
+  }, [employeeData.id, authUser]); */
 
-  // Set up and clean up appointments listener when showing appointments
-  useEffect(() => {
-    let unsubscribe = () => {};
-
-    if (showAppointments && employeeData.id) {
-      unsubscribe = fetchEmployeeAppointments();
-    }
-
-    return () => {
-      unsubscribe();
-    };
-  }, [showAppointments, employeeData.id, fetchEmployeeAppointments]);
+  
 
   // Reemplazar la función fetchEmployees con una versión que use onSnapshot
   const fetchEmployees = useCallback(() => {
@@ -348,10 +309,7 @@ const EmployeesScreen = ({ userRole }) => {
   }, [companyId, userRole]);
 
   // Abre el modal y establece el empleado seleccionado
-  const handleOpenAppointments = (employee) => {
-    setEmployeeData(employee);
-    setShowAppointments(true);
-  };
+  
 
   // Reemplazar el useEffect que carga empleados para manejar la limpieza del listener
   useEffect(() => {
@@ -367,7 +325,7 @@ const EmployeesScreen = ({ userRole }) => {
     };
   }, [companyId, fetchEmployees]);
 
-  <Modal
+  /* <Modal
     visible={showAppointments}
     animationType="fade"
     transparent={true}
@@ -381,13 +339,13 @@ const EmployeesScreen = ({ userRole }) => {
             style={styles.modalCloseButton}
             onPress={() => setShowAppointments(false)}
           >
-            <Ionicons name="close" size={24} color="#000" />
+            <MaterialIcons name="close" size={24} color="#000" />
           </TouchableOpacity>
         </View>
 
         {loadingAppointments ? (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={Colors.PRIMARYCOLOR} />
+            <ActivityIndicator size="large" />
             <Text style={styles.loadingText}>Cargando citas...</Text>
           </View>
         ) : appointmentsError ? (
@@ -484,7 +442,7 @@ const EmployeesScreen = ({ userRole }) => {
         )}
       </View>
     </View>
-  </Modal>;
+  </Modal>; */
 
   // Filtra la lista de empleados según el texto ingresado en la búsqueda
   const filteredEmployees = employees.filter(
@@ -574,7 +532,7 @@ const EmployeesScreen = ({ userRole }) => {
   );
 
   // Botón para web y desktop, ahora recibe el empleado
-  const WebAppointmentsButton = ({ onPress, employee }) => {
+  /* const WebAppointmentsButton = ({ onPress, employee }) => {
     return (
       <div
         style={{
@@ -650,11 +608,11 @@ const EmployeesScreen = ({ userRole }) => {
         </button>
       </div>
     );
-  };
+  }; */
   {
     /* Modal para mostrar las citas confirmadas */
   }
-  <Modal
+  /* <Modal
     visible={showAppointments}
     animationType="fade"
     transparent={true}
@@ -668,13 +626,13 @@ const EmployeesScreen = ({ userRole }) => {
             style={styles.modalCloseButton}
             onPress={() => setShowAppointments(false)}
           >
-            <Ionicons name="close" size={24} color="#000" />
+            <MaterialIcons name="close" size={24} color="#000" />
           </TouchableOpacity>
         </View>
 
         {loadingAppointments ? (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={Colors.PRIMARYCOLOR} />
+            <ActivityIndicator size="large" />
             <Text style={styles.loadingText}>Cargando citas...</Text>
           </View>
         ) : appointmentsError ? (
@@ -771,7 +729,7 @@ const EmployeesScreen = ({ userRole }) => {
         )}
       </View>
     </View>
-  </Modal>;
+  </Modal>; */
 
   // Función para renderizar el estado vacío
   const renderEmptyList = () => {
@@ -896,27 +854,15 @@ const EmployeesScreen = ({ userRole }) => {
           </View>
         </View>
         {/* El botón ahora pasa el empleado seleccionado */}
-        <WebAppointmentsButton
-          onPress={handleOpenAppointments}
-          employee={selectedEmployee}
-        />
+        
+          
+          
+        
       </View>
     );
   };
 
-  const renderAppointmentsSection = () => {
-    // For web platform, use the web-specific button
-    if (isWeb && responsive.isDesktop) {
-      return (
-        <View style={[styles.infoSection, styles.infoSectionDesktop]}>
-          <Text style={[styles.sectionTitle, styles.sectionTitleDesktop]}>
-            Citas
-          </Text>
-          <WebAppointmentsButton onPress={handleOpenAppointments} />
-        </View>
-      );
-    }
-  };
+  
 
   return (
     <View style={styles.mainContainer}>
