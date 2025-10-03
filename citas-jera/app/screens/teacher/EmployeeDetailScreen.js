@@ -364,115 +364,10 @@ const EmployeeDetailScreen = () => {
           <Text style={styles.infoValue}>{employeeData.dni || "No disponible"}</Text>
         </View>
       </View>
-
-      <View style={styles.infoItem}>
-        <View style={styles.infoIconContainer}>
-          <MaterialIcons name="location-on" size={20} color={Colors.PRIMARYCOLOR} />
-        </View>
-        <View style={styles.infoContent}>
-          <Text style={styles.infoLabel}>Dirección</Text>
-          <Text style={styles.infoValue}>{employeeData.address || "No disponible"}</Text>
-        </View>
-      </View>
     </View>
   )
 
-  // Render the employee job details section consistently across all views
-  const renderEmployeeJobSection = () => (
-    <View style={[styles.infoSection, responsive.isDesktop && styles.infoSectionDesktop]}>
-      <Text style={[styles.sectionTitle, responsive.isDesktop && styles.sectionTitleDesktop]}>Detalles Laborales</Text>
-
-      <View style={styles.infoItem}>
-        <View style={styles.infoIconContainer}>
-          <MaterialIcons name="business" size={20} color={Colors.PRIMARYCOLOR} />
-        </View>
-        <View style={styles.infoContent}>
-          <Text style={styles.infoLabel}>Departamento</Text>
-          <Text style={styles.infoValue}>{employeeData.department || "No asignado"}</Text>
-        </View>
-      </View>
-
-      <View style={styles.infoItem}>
-        <View style={styles.infoIconContainer}>
-          <MaterialIcons name="date-range" size={20} color={Colors.PRIMARYCOLOR} />
-        </View>
-        <View style={styles.infoContent}>
-          <Text style={styles.infoLabel}>Fecha de Inicio</Text>
-          <Text style={styles.infoValue}>{employeeData.startDate || "No disponible"}</Text>
-        </View>
-      </View>
-
-      <View style={styles.infoItem}>
-        <View style={styles.infoIconContainer}>
-          <MaterialIcons name="work" size={20} color={Colors.PRIMARYCOLOR} />
-        </View>
-        <View style={styles.infoContent}>
-          <Text style={styles.infoLabel}>Cargo</Text>
-          <Text style={styles.infoValue}>{employeeData.role}</Text>
-        </View>
-      </View>
-
-      {employeeData.subject && (
-        <View style={styles.infoItem}>
-          <View style={styles.infoIconContainer}>
-            <MaterialIcons name="school" size={20} color={Colors.PRIMARYCOLOR} />
-          </View>
-          <View style={styles.infoContent}>
-            <Text style={styles.infoLabel}>Especialidad</Text>
-            <Text style={styles.infoValue}>
-              {employeeData.subject === "psychology"
-                ? "Psicología"
-                : employeeData.subject === "nutrition"
-                  ? "Nutrición"
-                  : employeeData.subject}
-            </Text>
-          </View>
-        </View>
-      )}
-
-      <View style={styles.infoItem}>
-        <View style={styles.infoIconContainer}>
-          <MaterialIcons name="badge" size={20} color={Colors.PRIMARYCOLOR} />
-        </View>
-        <View style={styles.infoContent}>
-          <Text style={styles.infoLabel}>Código de Empleado</Text>
-          <Text style={styles.infoValue}>{employeeData.code}</Text>
-        </View>
-      </View>
-
-      {authUser && (
-        <>
-          <View style={styles.infoItem}>
-            <View style={styles.infoIconContainer}>
-              <MaterialIcons name="person" size={20} color={Colors.PRIMARYCOLOR} />
-            </View>
-            <View style={styles.infoContent}>
-              <Text style={styles.infoLabel}>Tu Rol</Text>
-              <Text style={styles.infoValue}>{authUser.role || "No asignado"}</Text>
-            </View>
-          </View>
-
-          {authUser.subject && (
-            <View style={styles.infoItem}>
-              <View style={styles.infoIconContainer}>
-                <MaterialIcons name="school" size={20} color={Colors.PRIMARYCOLOR} />
-              </View>
-              <View style={styles.infoContent}>
-                <Text style={styles.infoLabel}>Tu Especialidad</Text>
-                <Text style={styles.infoValue}>
-                  {authUser.subject === "psychology"
-                    ? "Psicología"
-                    : authUser.subject === "nutrition"
-                      ? "Nutrición"
-                      : authUser.subject}
-                </Text>
-              </View>
-            </View>
-          )}
-        </>
-      )}
-    </View>
-  )
+  
 
   // Render the appointments button section consistently across all views
   const renderAppointmentsSection = () => {
@@ -759,17 +654,10 @@ const EmployeeDetailScreen = () => {
               </Text>
             </View>
             <Text style={styles.employeeName}>{employeeData.name}</Text>
-            <Text style={styles.employeeRole}>{employeeData.role}</Text>
-            <View style={styles.codeContainer}>
-              <Text style={styles.codeText}>{employeeData.code}</Text>
-            </View>
           </View>
 
           {/* Sección de información */}
           {renderEmployeeInfoSection()}
-
-          {/* Sección de detalles laborales */}
-          {renderEmployeeJobSection()}
 
           {/* Botón para ver citas confirmadas */}
           {renderAppointmentsSection()}
