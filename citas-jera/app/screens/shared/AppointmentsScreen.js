@@ -99,6 +99,9 @@ const SharedAppointmentsScreen = ({ userRole }) => {
   const [companyId, setCompanyId] = useState(null);
   const [isUpdating, setIsUpdating] = useState(false);
 
+  // Effective role used for UI/flow decisions
+  const roleForFlow = (user && user.role) || userRole;
+
   // Responsive Design
   const screenWidth = Dimensions.get("window").width;
   const isDesktop = screenWidth >= 768;
@@ -463,12 +466,24 @@ const SharedAppointmentsScreen = ({ userRole }) => {
     setServiceModalVisible(false);
     setSelectedService(serviceType);
 
-    if (userRole === "externalUser") {
+    // Resolve role at confirm-time to avoid race conditions
+    let currentRole = roleForFlow;
+    const currentUser = auth.currentUser;
+    if (!currentRole && currentUser) {
+      try {
+        const uref = doc(db, "users", currentUser.uid);
+        const usnap = await getDoc(uref);
+        if (usnap.exists()) {
+          currentRole = usnap.data().role;
+        }
+      } catch (_) {}
+    }
+
+    if (currentRole === "externalUser") {
       setCalendarVisible(true);
       return;
     }
 
-    const currentUser = auth.currentUser;
     if (!currentUser) return;
     try {
       const teacherId = await findTeacherIdByService(serviceType);
@@ -768,7 +783,7 @@ const SharedAppointmentsScreen = ({ userRole }) => {
       <View style={styles.iosHeaderContainer}>
         <Header
           userName={user.name}
-          screenName={userRole === "user" ? "Mis Citas" : "Citas"}
+          screenName={roleForFlow === "user" ? "Mis Citas" : "Citas"}
           headerStyle={styles.iosHeader}
           titleStyle={styles.iosHeaderTitle}
         />
@@ -867,7 +882,7 @@ const SharedAppointmentsScreen = ({ userRole }) => {
               style={styles.iosScrollViewDesktop}
               contentContainerStyle={styles.iosScrollContentDesktop}
             >
-              {(userRole === "user" || userRole === "externalUser") && (
+              {(roleForFlow === "user" || roleForFlow === "externalUser") && (
                 <TouchableOpacity
                   style={styles.iosRequestServiceButton}
                   onPress={openServiceModal}
@@ -925,7 +940,7 @@ const SharedAppointmentsScreen = ({ userRole }) => {
             contentContainerStyle={styles.iosMobileScrollContent}
             showsVerticalScrollIndicator={false}
           >
-            {(userRole === "user" || userRole === "externalUser") && (
+            {(roleForFlow === "user" || roleForFlow === "externalUser") && (
               <TouchableOpacity
                 style={styles.iosRequestServiceButton}
                 onPress={openServiceModal}
@@ -978,8 +993,8 @@ const SharedAppointmentsScreen = ({ userRole }) => {
       </View>
 
       {/* --- MODALS --- */}
-      {userRole === "user" ||
-      userRole === "externalUser" ? (
+      {roleForFlow === "user" ||
+      roleForFlow === "externalUser" ? (
         <AppointmentModal
           appointment={selectedAppointment}
           visible={modalVisible}
@@ -995,7 +1010,7 @@ const SharedAppointmentsScreen = ({ userRole }) => {
         />
       )}
 
-      {(userRole === "user" || userRole === "externalUser") && (
+      {(roleForFlow === "user" || roleForFlow === "externalUser") && (
         <>
           <ServiceSelectionModal
             visible={serviceModalVisible}
