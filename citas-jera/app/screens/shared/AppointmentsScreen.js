@@ -13,6 +13,7 @@ import {
   SafeAreaView,
   Dimensions,
   ActivityIndicator,
+  Modal,
 } from "react-native";
 import { Calendar } from "react-native-calendars";
 import {
@@ -1017,8 +1018,15 @@ const SharedAppointmentsScreen = ({ userRole }) => {
             onClose={() => setServiceModalVisible(false)}
             onConfirm={handleServiceConfirm}
           />
-          {calendarVisible && (
-            <View style={styles.iosCalendarScreenOverlay}>
+          <Modal
+            visible={calendarVisible}
+            transparent={true}
+            animationType={Platform.OS === 'android' ? 'slide' : 'fade'}
+            statusBarTranslucent={true}
+            onRequestClose={handleCalendarClose}
+            presentationStyle={Platform.OS === 'web' ? undefined : 'overFullScreen'}
+          >
+            <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
               <AppointmentCalendarScreen
                 onClose={handleCalendarClose}
                 onConfirm={handleAppointmentConfirm}
@@ -1027,7 +1035,7 @@ const SharedAppointmentsScreen = ({ userRole }) => {
                 companyId={companyId}
               />
             </View>
-          )}
+          </Modal>
         </>
       )}
     </SafeAreaView>
