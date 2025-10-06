@@ -48,7 +48,7 @@ import {
 import styles from "./styles.js";
 
 // --- Static Data for Employee Role ---
-const EMPLOYEE_APPOINTMENTS = [
+/* const EMPLOYEE_APPOINTMENTS = [
   {
     id: 1,
     title: "Consulta de Psicología",
@@ -68,7 +68,7 @@ const EMPLOYEE_APPOINTMENTS = [
     state: false,
   },
   // Add more static appointments if needed
-];
+]; */
 
 const SharedAppointmentsScreen = ({ userRole }) => {
   const navigation = useNavigation();
@@ -206,10 +206,6 @@ const SharedAppointmentsScreen = ({ userRole }) => {
             setIsUpdating(false);
           }
         );
-      } else if (userRole === "employee") {
-        setAppointments(EMPLOYEE_APPOINTMENTS);
-        setLoading(false);
-        return () => {}; // No listener to unsubscribe from
       } else if (userRole === "manager" || userRole === "teacher") {
         if (!companyId) {
           setLoading(false);
@@ -363,6 +359,27 @@ const SharedAppointmentsScreen = ({ userRole }) => {
     }
   }, [userRole, companyId]);
 
+  // --- HELPERS ---
+  const findTeacherIdByService = async (serviceType) => {
+    try {
+      const normalized = (serviceType || "").toLowerCase();
+      const q = query(
+        collection(db, "users"),
+        where("role", "==", "teacher"),
+        where("subject", "==", normalized),
+        limit(1)
+      );
+      const snap = await getDocs(q);
+      if (!snap.empty) {
+        return snap.docs[0].id;
+      }
+      return null;
+    } catch (e) {
+      console.error("Error fetching teacher for service:", e);
+      return null;
+    }
+  };
+
   useEffect(() => {
     const unsubscribe = setupAppointmentsListener();
     return () => unsubscribe && unsubscribe();
@@ -445,7 +462,29 @@ const SharedAppointmentsScreen = ({ userRole }) => {
   const handleServiceConfirm = async (serviceType) => {
     setServiceModalVisible(false);
     setSelectedService(serviceType);
-    setCalendarVisible(true);
+
+    if (userRole === "externalUser") {
+      setCalendarVisible(true);
+      return;
+    }
+
+    const currentUser = auth.currentUser;
+    if (!currentUser) return;
+    try {
+      const teacherId = await findTeacherIdByService(serviceType);
+      await addDoc(collection(db, "dates"), {
+        userId: currentUser.uid,
+        service: serviceType.toLowerCase(),
+        state: false,
+        date: null,
+        companyId: companyId,
+        teacherId: teacherId || null,
+      });
+      alert("Solicitud enviada correctamente.");
+    } catch (error) {
+      console.error("Error al guardar la solicitud:", error);
+      alert("Error al guardar la solicitud.");
+    }
   };
 
   const handleCalendarClose = () => {
@@ -458,12 +497,14 @@ const SharedAppointmentsScreen = ({ userRole }) => {
     if (!currentUser || !user || !selectedService) return;
 
     try {
+      const teacherId = await findTeacherIdByService(selectedService);
       await addDoc(collection(db, "dates"), {
         userId: currentUser.uid,
         service: selectedService.toLowerCase(),
         state: false,
         date: appointmentDate,
         companyId: companyId,
+        teacherId: teacherId || null,
       });
       alert("Cita creada correctamente.");
     } catch (error) {
@@ -727,11 +768,7 @@ const SharedAppointmentsScreen = ({ userRole }) => {
       <View style={styles.iosHeaderContainer}>
         <Header
           userName={user.name}
-          screenName={
-            userRole === "user" || userRole === "employee"
-              ? "Mis Citas"
-              : "Citas"
-          }
+          screenName={userRole === "user" ? "Mis Citas" : "Citas"}
           headerStyle={styles.iosHeader}
           titleStyle={styles.iosHeaderTitle}
         />
@@ -942,7 +979,6 @@ const SharedAppointmentsScreen = ({ userRole }) => {
 
       {/* --- MODALS --- */}
       {userRole === "user" ||
-      userRole === "employee" ||
       userRole === "externalUser" ? (
         <AppointmentModal
           appointment={selectedAppointment}
